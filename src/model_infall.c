@@ -396,7 +396,7 @@ void determine_and_cache_regime(const int ngal, struct GALAXY *galaxies, const s
         // ALSO enforce the regime immediately to prevent inconsistencies
         if(galaxies[p].Regime == 0) {
             // CGM regime: transfer all HotGas to CGM
-            if(galaxies[p].HotGas > 1e-10) {
+            if(galaxies[p].HotGas > 1e-20) {
                 galaxies[p].CGMgas += galaxies[p].HotGas;
                 galaxies[p].MetalsCGMgas += galaxies[p].MetalsHotGas;
                 galaxies[p].HotGas = 0.0;
@@ -404,7 +404,7 @@ void determine_and_cache_regime(const int ngal, struct GALAXY *galaxies, const s
             }
         } else {
             // HOT regime: transfer all CGMgas to HotGas
-            if(galaxies[p].CGMgas > 1e-10) {
+            if(galaxies[p].CGMgas > 1e-20) {
                 galaxies[p].HotGas += galaxies[p].CGMgas;
                 galaxies[p].MetalsHotGas += galaxies[p].MetalsCGMgas;
                 galaxies[p].CGMgas = 0.0;
@@ -436,7 +436,7 @@ void handle_regime_transition(const int gal, struct GALAXY *galaxies, const stru
     
     if(galaxies[gal].Regime == 0) {
         // CGM regime: transfer all HotGas to CGM
-        if(galaxies[gal].HotGas > 1e-10) {
+        if(galaxies[gal].HotGas > 1e-20) {
             galaxies[gal].CGMgas += galaxies[gal].HotGas;
             galaxies[gal].MetalsCGMgas += galaxies[gal].MetalsHotGas;
             galaxies[gal].HotGas = 0.0;
@@ -444,7 +444,7 @@ void handle_regime_transition(const int gal, struct GALAXY *galaxies, const stru
         }
     } else {
         // HOT regime: transfer all CGMgas to HotGas
-        if(galaxies[gal].CGMgas > 1e-10) {
+        if(galaxies[gal].CGMgas > 1e-20) {
             galaxies[gal].HotGas += galaxies[gal].CGMgas;
             galaxies[gal].MetalsHotGas += galaxies[gal].MetalsCGMgas;
             galaxies[gal].CGMgas = 0.0;
@@ -488,7 +488,7 @@ void final_regime_mass_enforcement(const int ngal, struct GALAXY *galaxies, cons
 
         if(Tvir < Tvir_threshold) {
             // LOW-VELOCITY: Must be in CGM regime regardless of rcool/Rvir
-            if(galaxies[p].HotGas > 1e-10) {
+            if(galaxies[p].HotGas > 1e-20) {
                 galaxies[p].CGMgas += galaxies[p].HotGas;
                 galaxies[p].MetalsCGMgas += galaxies[p].MetalsHotGas;
                 galaxies[p].CGMgas += galaxies[p].ReincorporatedGas;
@@ -500,7 +500,7 @@ void final_regime_mass_enforcement(const int ngal, struct GALAXY *galaxies, cons
             galaxies[p].Regime = 0;
         } else {
             // HIGH-VELOCITY: Must be in HOT regime regardless of rcool/Rvir
-            if(galaxies[p].CGMgas > 1e-10) {
+            if(galaxies[p].CGMgas > 1e-20) {
                 galaxies[p].HotGas += galaxies[p].CGMgas;
                 galaxies[p].MetalsHotGas += galaxies[p].MetalsCGMgas;
                 galaxies[p].HotGas += galaxies[p].ReincorporatedGas;

@@ -2431,6 +2431,402 @@ def save_results(data_merged, group_catalog, output_dir='./'):
         
     return galaxy_output_file
 
+def create_group_aggregated_properties(data_merged, group_catalog, output_dir='./'):
+    """
+    Create a comprehensive CSV with all galaxy properties summed/aggregated per group.
+    
+    Parameters:
+    data_merged: DataFrame with individual galaxy data and group assignments
+    group_catalog: DataFrame with existing group catalog
+    output_dir: Output directory for the file
+    
+    Returns:
+    aggregated_df: DataFrame with aggregated properties per group
+    """
+    output_dir = Path(output_dir)
+    output_dir.mkdir(exist_ok=True)
+    
+    print("Creating comprehensive group-aggregated properties...")
+    
+    # Properties to sum (additive properties)
+    sum_properties = [
+        'StellarMass', 'BulgeMass', 'BlackHoleMass', 'ColdGas', 'HotGas', 
+        'HI_gas', 'H2_gas', 'MetalsColdGas', 'IntraClusterStars', 
+        'OutflowRate', 'CGMgas', 'SfrDisk', 'SfrBulge', 'Cooling'
+    ]
+    
+    # Properties to average (intensive properties)
+    mean_properties = [
+        'VelDisp', 'Vvir', 'Vmax', 'MassLoading', 'DiskRadius'
+    ]
+    
+    # Properties for statistics (min, max, std)
+    stat_properties = [
+        'StellarMass', 'Mvir', 'Rvir', 'VelDisp', 'SfrDisk'
+    ]
+    
+    # Group by group_id and calculate aggregations
+    grouped = data_merged.groupby('group_id')
+    
+    aggregated_data = []
+    
+    for group_id, group_data in grouped:
+        if len(group_data) < 2:  # Skip single-galaxy groups
+            continue
+            
+        row = {'group_id': group_id, 'N_galaxies': len(group_data)}
+        
+        # Add existing group catalog properties
+        group_info = group_catalog[group_catalog['group_id'] == group_id]
+        if len(group_info) > 0:
+            group_row = group_info.iloc[0]
+            for col in ['x_center', 'y_center', 'z_center', 'vdisp_gap', 'radius', 'Nm']:
+                if col in group_row:
+                    row[col] = group_row[col]
+        
+        # Sum additive properties
+        for prop in sum_properties:
+            if prop in group_data.columns:
+                valid_data = group_data[prop][(group_data[prop] > 0) & np.isfinite(group_data[prop])]
+                if len(valid_data) > 0:
+                    row[f'total_{prop}'] = valid_data.sum()
+                    row[f'N_galaxies_with_{prop}'] = len(valid_data)
+                else:
+                    row[f'total_{prop}'] = 0
+                    row[f'N_galaxies_with_{prop}'] = 0
+        
+        # Average intensive properties
+        for prop in mean_properties:
+            if prop in group_data.columns:
+                valid_data = group_data[prop][(group_data[prop] > 0) & np.isfinite(group_data[prop])]
+                if len(valid_data) > 0:
+                    row[f'mean_{prop}'] = valid_data.mean()
+                    row[f'std_{prop}'] = valid_data.std()
+                else:
+                    row[f'mean_{prop}'] = np.nan
+                    row[f'std_{prop}'] = np.nan
+        
+        # Calculate statistics for key properties
+        for prop in stat_properties:
+            if prop in group_data.columns:
+                valid_data = group_data[prop][(group_data[prop] > 0) & np.isfinite(group_data[prop])]
+                if len(valid_data) > 0:
+                    row[f'min_{prop}'] = valid_data.min()
+                    row[f'max_{prop}'] = valid_data.max()
+                    row[f'median_{prop}'] = valid_data.median()
+                else:
+                    row[f'min_{prop}'] = np.nan
+                    row[f'max_{prop}'] = np.nan
+                    row[f'median_{prop}'] = np.nan
+        
+        # Calculate derived properties
+        # Total star formation rate
+        if 'SfrDisk' in group_data.columns and 'SfrBulge' in group_data.columns:
+            total_sfr_disk = group_data['SfrDisk'][(group_data['SfrDisk'] > 0)].sum()
+            total_sfr_bulge = group_data['SfrBulge'][(group_data['SfrBulge'] > 0)].sum()
+            row['total_SFR'] = total_sfr_disk + total_sfr_bulge
+            row['total_SfrDisk'] = total_sfr_disk
+            row['total_SfrBulge'] = total_sfr_bulge
+            
+            # Specific star formation rate
+            if row.get('total_StellarMass', 0) > 0:
+                row['group_sSFR'] = row['total_SFR'] / row['total_StellarMass']
+            else:
+                row['group_sSFR'] = np.nan
+        
+        # Gas fractions
+        if 'total_StellarMass' in row and 'total_ColdGas' in row:
+            if row['total_StellarMass'] > 0:
+                row['cold_gas_fraction'] = row['total_ColdGas'] / row['total_StellarMass']
+            else:
+                row['cold_gas_fraction'] = np.nan
+                
+        if 'total_ColdGas' in row and 'total_HI_gas' in row and 'total_H2_gas' in row:
+            total_gas = row['total_ColdGas']
+            if total_gas > 0:
+                row['HI_fraction'] = row['total_HI_gas'] / total_gas
+                row['H2_fraction'] = row['total_H2_gas'] / total_gas
+            else:
+                row['HI_fraction'] = np.nan
+                row['H2_fraction'] = np.nan
+        
+        # Galaxy type composition
+        if 'Type' in group_data.columns:
+            type_counts = group_data['Type'].value_counts()
+            row['N_central_galaxies'] = type_counts.get(0, 0)
+            row['N_satellite_galaxies'] = type_counts.get(1, 0)
+            row['satellite_fraction'] = row['N_satellite_galaxies'] / len(group_data)
+        
+        # Mass-weighted properties
+        if 'StellarMass' in group_data.columns:
+            stellar_masses = group_data['StellarMass'][(group_data['StellarMass'] > 0)]
+            if len(stellar_masses) > 0:
+                total_stellar = stellar_masses.sum()
+                
+                # Mass-weighted average properties
+                for prop in ['VelDisp', 'SfrDisk', 'MassLoading']:
+                    if prop in group_data.columns:
+                        prop_data = group_data[prop][(group_data['StellarMass'] > 0) & (group_data[prop] > 0)]
+                        mass_data = group_data['StellarMass'][(group_data['StellarMass'] > 0) & (group_data[prop] > 0)]
+                        
+                        if len(prop_data) > 0 and total_stellar > 0:
+                            mass_weighted_avg = np.average(prop_data, weights=mass_data)
+                            row[f'mass_weighted_{prop}'] = mass_weighted_avg
+                        else:
+                            row[f'mass_weighted_{prop}'] = np.nan
+        
+        aggregated_data.append(row)
+    
+    # Convert to DataFrame
+    aggregated_df = pd.DataFrame(aggregated_data)
+    
+    # Sort by total stellar mass (descending)
+    if 'total_StellarMass' in aggregated_df.columns:
+        aggregated_df = aggregated_df.sort_values('total_StellarMass', ascending=False)
+    
+    # Save to CSV
+    output_file = output_dir / 'group_aggregated_properties.csv'
+    aggregated_df.to_csv(output_file, index=False)
+    
+    print(f"Saved aggregated group properties to {output_file}")
+    print(f"Created {len(aggregated_df)} group entries with {len(aggregated_df.columns)} properties each")
+    
+    # Print summary of what was aggregated
+    sum_cols = [col for col in aggregated_df.columns if col.startswith('total_')]
+    mean_cols = [col for col in aggregated_df.columns if col.startswith('mean_')]
+    stat_cols = [col for col in aggregated_df.columns if col.startswith(('min_', 'max_', 'median_'))]
+    
+    print(f"\nAggregated properties summary:")
+    print(f"  Summed properties: {len(sum_cols)} ({', '.join([c.replace('total_', '') for c in sum_cols[:5]])}...)")
+    print(f"  Averaged properties: {len(mean_cols)} ({', '.join([c.replace('mean_', '') for c in mean_cols[:3]])}...)")
+    print(f"  Statistical properties: {len(stat_cols)} (min/max/median)")
+    
+    return aggregated_df
+
+def create_group_aggregated_evolution(group_evolution, snapshot_data, output_dir='./'):
+    """
+    Create evolution CSV with aggregated group properties across all snapshots.
+    
+    Parameters:
+    group_evolution: dict with group evolution tracking data
+    snapshot_data: dict of {snapshot: (data_merged, group_catalog)}
+    output_dir: Output directory for the file
+    
+    Returns:
+    evolution_aggregated_df: DataFrame with aggregated properties evolution
+    """
+    output_dir = Path(output_dir)
+    output_dir.mkdir(exist_ok=True)
+    
+    print("Creating group aggregated properties evolution across snapshots...")
+    
+    # Properties to aggregate - same as before but organized
+    sum_properties = [
+        'StellarMass', 'BulgeMass', 'BlackHoleMass', 'ColdGas', 'HotGas', 
+        'HI_gas', 'H2_gas', 'MetalsColdGas', 'IntraClusterStars', 
+        'OutflowRate', 'CGMgas', 'SfrDisk', 'SfrBulge', 'Cooling', 'Mvir'
+    ]
+    
+    mean_properties = ['VelDisp', 'Vvir', 'Vmax', 'MassLoading', 'DiskRadius']
+    
+    evolution_data = []
+    
+    # Cosmological parameters for time calculation
+    cosmo_params = {'H0': 70.0, 'Omega_m': 0.27, 'Omega_Lambda': 0.73}
+    
+    # Process each tracking chain
+    for tracking_id, track in group_evolution.items():
+        if len(track['snapshots']) < 2:  # Skip single-snapshot tracks
+            continue
+            
+        # Process each snapshot in this track
+        for i, snapshot in enumerate(track['snapshots']):
+            if snapshot not in snapshot_data:
+                continue
+                
+            data_merged, group_catalog = snapshot_data[snapshot]
+            group_id = track['group_ids'][i]
+            
+            # Get galaxies in this group at this snapshot
+            group_galaxies = data_merged[data_merged['group_id'] == group_id]
+            
+            if len(group_galaxies) == 0:
+                continue
+            
+            # Basic row information
+            row = {
+                'tracking_id': tracking_id,
+                'snapshot': snapshot,
+                'sequence_number': i,
+                'group_id': group_id,
+                'N_galaxies': len(group_galaxies),
+                'redshift': snapshot_to_redshift(snapshot),
+                'lookback_time_gyr': snapshot_to_lookback_time(snapshot, cosmo_params)
+            }
+            
+            # Add existing group properties from catalog
+            group_info = group_catalog[group_catalog['group_id'] == group_id]
+            if len(group_info) > 0:
+                group_row = group_info.iloc[0]
+                for col in ['x_center', 'y_center', 'z_center', 'vdisp_gap', 'radius', 'Nm']:
+                    if col in group_row:
+                        row[col] = group_row[col]
+            
+            # Aggregate summed properties
+            for prop in sum_properties:
+                if prop in group_galaxies.columns:
+                    valid_data = group_galaxies[prop][(group_galaxies[prop] > 0) & np.isfinite(group_galaxies[prop])]
+                    if len(valid_data) > 0:
+                        row[f'total_{prop}'] = valid_data.sum()
+                        row[f'N_with_{prop}'] = len(valid_data)
+                    else:
+                        row[f'total_{prop}'] = 0
+                        row[f'N_with_{prop}'] = 0
+            
+            # Aggregate averaged properties
+            for prop in mean_properties:
+                if prop in group_galaxies.columns:
+                    valid_data = group_galaxies[prop][(group_galaxies[prop] > 0) & np.isfinite(group_galaxies[prop])]
+                    if len(valid_data) > 0:
+                        row[f'mean_{prop}'] = valid_data.mean()
+                        row[f'std_{prop}'] = valid_data.std()
+                    else:
+                        row[f'mean_{prop}'] = np.nan
+                        row[f'std_{prop}'] = np.nan
+            
+            # Calculate derived properties
+            # Total star formation rate
+            if 'SfrDisk' in group_galaxies.columns and 'SfrBulge' in group_galaxies.columns:
+                total_sfr_disk = group_galaxies['SfrDisk'][(group_galaxies['SfrDisk'] > 0)].sum()
+                total_sfr_bulge = group_galaxies['SfrBulge'][(group_galaxies['SfrBulge'] > 0)].sum()
+                row['total_SFR'] = total_sfr_disk + total_sfr_bulge
+                
+                # Specific star formation rate
+                if row.get('total_StellarMass', 0) > 0:
+                    row['group_sSFR'] = row['total_SFR'] / row['total_StellarMass']
+                else:
+                    row['group_sSFR'] = np.nan
+            
+            # Gas fractions
+            if 'total_StellarMass' in row and 'total_ColdGas' in row:
+                if row['total_StellarMass'] > 0:
+                    row['cold_gas_fraction'] = row['total_ColdGas'] / row['total_StellarMass']
+                else:
+                    row['cold_gas_fraction'] = np.nan
+            
+            if 'total_ColdGas' in row and 'total_HI_gas' in row and 'total_H2_gas' in row:
+                total_gas = row['total_ColdGas']
+                if total_gas > 0:
+                    row['HI_fraction'] = row['total_HI_gas'] / total_gas
+                    row['H2_fraction'] = row['total_H2_gas'] / total_gas
+                    row['molecular_gas_ratio'] = row['total_H2_gas'] / row['total_HI_gas'] if row['total_HI_gas'] > 0 else np.nan
+                else:
+                    row['HI_fraction'] = np.nan
+                    row['H2_fraction'] = np.nan
+                    row['molecular_gas_ratio'] = np.nan
+            
+            # Galaxy type composition
+            if 'Type' in group_galaxies.columns:
+                type_counts = group_galaxies['Type'].value_counts()
+                row['N_central_galaxies'] = type_counts.get(0, 0)
+                row['N_satellite_galaxies'] = type_counts.get(1, 0)
+                row['satellite_fraction'] = row['N_satellite_galaxies'] / len(group_galaxies)
+            
+            # Mass-weighted average stellar-to-halo mass ratio (if halo mass available)
+            if 'StellarMass' in group_galaxies.columns and 'Mvir' in group_galaxies.columns:
+                stellar_masses = group_galaxies['StellarMass'][(group_galaxies['StellarMass'] > 0)]
+                halo_masses = group_galaxies['Mvir'][(group_galaxies['Mvir'] > 0) & (group_galaxies['StellarMass'] > 0)]
+                
+                if len(stellar_masses) > 0 and len(halo_masses) > 0:
+                    # Group-level stellar-to-halo mass ratio
+                    total_stellar = stellar_masses.sum()
+                    total_halo = halo_masses.sum()
+                    if total_halo > 0:
+                        row['group_stellar_to_halo_ratio'] = total_stellar / total_halo
+                    else:
+                        row['group_stellar_to_halo_ratio'] = np.nan
+                else:
+                    row['group_stellar_to_halo_ratio'] = np.nan
+            
+            evolution_data.append(row)
+    
+    # Convert to DataFrame
+    evolution_aggregated_df = pd.DataFrame(evolution_data)
+    
+    if len(evolution_aggregated_df) == 0:
+        print("No evolution data to aggregate")
+        return pd.DataFrame()
+    
+    # Sort by tracking_id and sequence_number
+    evolution_aggregated_df = evolution_aggregated_df.sort_values(['tracking_id', 'sequence_number'])
+    
+    # Calculate evolution rates for each tracking chain
+    enhanced_evolution_data = []
+    
+    for tracking_id in evolution_aggregated_df['tracking_id'].unique():
+        track_data = evolution_aggregated_df[evolution_aggregated_df['tracking_id'] == tracking_id].copy()
+        track_data = track_data.sort_values('sequence_number')
+        
+        if len(track_data) < 2:
+            enhanced_evolution_data.extend(track_data.to_dict('records'))
+            continue
+        
+        # Calculate rates of change for key properties
+        properties_to_differentiate = [
+            'total_StellarMass', 'total_SFR', 'total_ColdGas', 'total_HotGas',
+            'group_sSFR', 'cold_gas_fraction', 'N_galaxies', 'total_Mvir'
+        ]
+        
+        for i, row in track_data.iterrows():
+            row_dict = row.to_dict()
+            
+            # Add rates if not the first snapshot
+            if track_data.index.get_loc(i) > 0:
+                prev_row = track_data.iloc[track_data.index.get_loc(i) - 1]
+                dt = row['lookback_time_gyr'] - prev_row['lookback_time_gyr']  # Gyr (can be negative)
+                
+                if abs(dt) > 0.01:  # At least 10 Myr difference
+                    for prop in properties_to_differentiate:
+                        if prop in row_dict and prop in prev_row and not np.isnan(row_dict[prop]) and not np.isnan(prev_row[prop]):
+                            rate = (row_dict[prop] - prev_row[prop]) / dt
+                            row_dict[f'{prop}_rate_per_gyr'] = rate
+                        else:
+                            row_dict[f'{prop}_rate_per_gyr'] = np.nan
+                else:
+                    for prop in properties_to_differentiate:
+                        row_dict[f'{prop}_rate_per_gyr'] = np.nan
+            else:
+                # First snapshot - no rates available
+                for prop in properties_to_differentiate:
+                    row_dict[f'{prop}_rate_per_gyr'] = np.nan
+            
+            enhanced_evolution_data.append(row_dict)
+    
+    # Create final DataFrame with rates
+    final_df = pd.DataFrame(enhanced_evolution_data)
+    final_df = final_df.sort_values(['tracking_id', 'sequence_number'])
+    
+    # Save to CSV
+    output_file = output_dir / 'group_aggregated_properties_evolution.csv'
+    final_df.to_csv(output_file, index=False)
+    
+    print(f"Saved aggregated properties evolution to {output_file}")
+    print(f"Created {len(final_df)} time-step entries for {final_df['tracking_id'].nunique()} tracked groups")
+    
+    # Print summary
+    tracked_groups = final_df['tracking_id'].nunique()
+    snapshots_covered = sorted(final_df['snapshot'].unique())
+    time_span = final_df['lookback_time_gyr'].max() - final_df['lookback_time_gyr'].min()
+    
+    print(f"\nEvolution summary:")
+    print(f"  Tracked groups: {tracked_groups}")
+    print(f"  Snapshots: {snapshots_covered}")
+    print(f"  Time span: {time_span:.2f} Gyr")
+    print(f"  Properties tracked: {len([c for c in final_df.columns if c.startswith('total_')])}")
+    print(f"  Evolution rates calculated: {len([c for c in final_df.columns if c.endswith('_rate_per_gyr')])}")
+    
+    return final_df
+
 # ============================================================================
 # MAIN FUNCTION - EXTENDED VERSION
 # ============================================================================
@@ -2575,6 +2971,17 @@ def main():
             track_max_distance=args.track_max_distance,
             show_progress=not args.no_progress
         )
+
+        if len(group_evolution) > 0:
+                print(f"\n" + "="*50)
+                print("CREATING AGGREGATED PROPERTIES EVOLUTION")
+                print("="*50)
+                
+                evolution_aggregated_df = create_group_aggregated_evolution(
+                    group_evolution, snapshot_data, args.output_dir
+                )
+
+                evolution_aggregated_df.to_csv(Path(args.output_dir) / 'group_aggregated_properties_evolution.csv', index=False)
         
         # Create evolution plots
         print(f"\n" + "="*50)
@@ -2762,6 +3169,10 @@ def main():
             # Save results
             print(f"\nSaving results...")
             galaxy_output_file = save_results(data_merged, group_catalog, args.output_dir)
+            print(f"\nCreating group-aggregated properties...")
+            aggregated_df = create_group_aggregated_properties(data_merged, group_catalog, args.output_dir)
+            aggregated_df.to_csv(Path(args.output_dir) / 'group_aggregated_properties.csv', index=False)
+
             
             # Print summary statistics
             print("\n" + "="*50)

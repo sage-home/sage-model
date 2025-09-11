@@ -119,17 +119,15 @@ double calculate_cgm_cool_fraction(const int gal, struct GALAXY *galaxies)
     
     if(T_vir <= T_cool) {
         // Very low temperature: almost all gas can cool
-        f_cool = 0.95;
+        f_cool = 0.55;
     } else if(T_vir <= T_threshold) {
         // CGM regime: efficient cooling but temperature-dependent
-        // Smooth transition from 95% to 60%
         double temp_factor = (T_vir - T_cool) / (T_threshold - T_cool);
-        f_cool = 0.95 - 0.35 * temp_factor;
+        f_cool = 0.55 * temp_factor;
     } else {
         // HOT regime: poor cooling efficiency
-        f_cool = 0.6 * pow(T_threshold / T_vir, 0.7);
         f_cool = fmax(f_cool, 0.01);  // Minimum cooling
-        f_cool = fmin(f_cool, 0.80);  // Maximum for hot regime
+        f_cool = fmin(f_cool, 0.10);  // Maximum for hot regime
     }
     
     return f_cool;
