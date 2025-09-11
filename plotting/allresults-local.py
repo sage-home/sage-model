@@ -26,7 +26,7 @@ VolumeFraction = 1.0  # Fraction of the full volume output by the model
 # Plotting options
 whichimf = 1        # 0=Slapeter; 1=Chabrier
 dilute = 10000       # Number of galaxies to plot in scatter plots
-sSFRcut = -11.0     # Divide quiescent from star forming galaxies
+sSFRcut = -10.5     # Divide quiescent from star forming galaxies
 
 OutputFormat = '.pdf'
 # plt.rcParams["figure.figsize"] = (8.34,6.25)

@@ -235,7 +235,7 @@ SMF_SimConfigs = [
 # Plotting options
 whichimf = 1        # 0=Slapeter; 1=Chabrier
 dilute = 7000       # Number of galaxies to plot in scatter plots
-sSFRcut = -11.0     # Divide quiescent from star forming galaxies
+sSFRcut = -10.5     # Divide quiescent from star forming galaxies
 
 # Main simulation snapshot details (for mass loading plot)
 FirstSnap = 0          # First snapshot to read
