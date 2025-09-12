@@ -60,9 +60,10 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
 
     // Initialise variables
     strdot = 0.0;
-    // Update the gas components to ensure H2 and HI are correctly calculated
-    if (run_params->SFprescription >= 1) {
-        update_gas_components(&galaxies[p], run_params);
+
+    if (run_params->SFprescription > 0) {
+        // In SF prescription, also include H2 and HI gas in disk mass
+        ensure_h2_consistency(&galaxies[p], run_params); // Ensure consistency before calculation
     }
 
     // star formation recipes
@@ -230,6 +231,10 @@ void update_from_star_formation(const int p, const double stars, const double me
     const double RecycleFraction = run_params->RecycleFraction;
     // update gas and metals from star formation
     galaxies[p].ColdGas -= (1 - RecycleFraction) * stars;
+    if (run_params->SFprescription >= 1) {
+        // In SF prescription, also update H2 and HI fractions
+        ensure_h2_consistency(&galaxies[p], run_params);
+    }
     galaxies[p].MetalsColdGas -= metallicity * (1 - RecycleFraction) * stars;
     galaxies[p].StellarMass += (1 - RecycleFraction) * stars;
     galaxies[p].MetalsStellarMass += metallicity * (1 - RecycleFraction) * stars;
@@ -252,6 +257,10 @@ void update_from_feedback(const int p, const int centralgal, const double reheat
     if(run_params->SupernovaRecipeOn == 1) {
         // Remove gas from cold reservoir (always from galaxy p)
         galaxies[p].ColdGas -= reheated_mass;
+        if (run_params->SFprescription >= 1) {
+            // In SF prescription, also update H2 and HI fractions
+            ensure_h2_consistency(&galaxies[p], run_params);
+        }
         galaxies[p].MetalsColdGas -= metallicity * reheated_mass;
 
         if(run_params->CGMrecipeOn == 1) {

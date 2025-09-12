@@ -10,6 +10,7 @@
 #include "model_cooling_heating.h"
 #include "model_misc.h"
 #include "model_infall.h"
+#include "model_h2_formation.h"
 
 
 double cooling_recipe(const int gal, const double dt, struct GALAXY *galaxies, const struct params *run_params)
@@ -300,7 +301,6 @@ double do_AGN_heating(double coolingGas, const int centralgal, const double dt, 
             galaxies[centralgal].Heating += 0.5 * AGNheating * galaxies[centralgal].Vvir * galaxies[centralgal].Vvir;
         }
     }
-
     return coolingGas;
 }
 
@@ -410,11 +410,19 @@ void cool_gas_onto_galaxy_regime_aware(const int centralgal, const double coolin
             if(coolingGas < galaxies[centralgal].CGMgas) {
                 const double metallicity = get_metallicity(galaxies[centralgal].CGMgas, galaxies[centralgal].MetalsCGMgas);
                 galaxies[centralgal].ColdGas += coolingGas;
+                if (run_params->SFprescription > 0) {
+                    // In SF prescription, also update H2 and HI fractions
+                    ensure_h2_consistency(&galaxies[centralgal], run_params);
+                }
                 galaxies[centralgal].MetalsColdGas += metallicity * coolingGas;
                 galaxies[centralgal].CGMgas -= coolingGas;
                 galaxies[centralgal].MetalsCGMgas -= metallicity * coolingGas;
             } else {
                 galaxies[centralgal].ColdGas += galaxies[centralgal].CGMgas;
+                if (run_params->SFprescription > 0) {
+                    // In SF prescription, also update H2 and HI fractions
+                    ensure_h2_consistency(&galaxies[centralgal], run_params);
+                }
                 galaxies[centralgal].MetalsColdGas += galaxies[centralgal].MetalsCGMgas;
                 galaxies[centralgal].CGMgas = 0.0;
                 galaxies[centralgal].MetalsCGMgas = 0.0;
@@ -424,11 +432,19 @@ void cool_gas_onto_galaxy_regime_aware(const int centralgal, const double coolin
             if(coolingGas < galaxies[centralgal].HotGas) {
                 const double metallicity = get_metallicity(galaxies[centralgal].HotGas, galaxies[centralgal].MetalsHotGas);
                 galaxies[centralgal].ColdGas += coolingGas;
+                if (run_params->SFprescription > 0) {
+                    // In SF prescription, also update H2 and HI fractions
+                    ensure_h2_consistency(&galaxies[centralgal], run_params);
+                }
                 galaxies[centralgal].MetalsColdGas += metallicity * coolingGas;
                 galaxies[centralgal].HotGas -= coolingGas;
                 galaxies[centralgal].MetalsHotGas -= metallicity * coolingGas;
             } else {
                 galaxies[centralgal].ColdGas += galaxies[centralgal].HotGas;
+                if (run_params->SFprescription > 0) {
+                    // In SF prescription, also update H2 and HI fractions
+                    ensure_h2_consistency(&galaxies[centralgal], run_params);
+                }
                 galaxies[centralgal].MetalsColdGas += galaxies[centralgal].MetalsHotGas;
                 galaxies[centralgal].HotGas = 0.0;
                 galaxies[centralgal].MetalsHotGas = 0.0;

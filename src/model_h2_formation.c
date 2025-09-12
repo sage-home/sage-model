@@ -415,18 +415,46 @@ void update_gas_components(struct GALAXY *g, const struct params *run_params)
     if(g->H2_gas < 0.0) g->H2_gas = 0.0;
     if(g->HI_gas < 0.0) g->HI_gas = 0.0;
     
-    // Mass conservation check with detailed debugging
-    if(g->H2_gas + g->HI_gas > g->ColdGas * 1.001) {  
-        float total = g->H2_gas + g->HI_gas;
-        float scale = g->ColdGas / total;
-        if (galaxy_debug_counter % 100 == 0) {
-            printf("DEBUG MAIN: Mass conservation issue - H2+HI=%.2e > ColdGas=%.2e\n", 
-                   total, g->ColdGas);
-            printf("  Applying scale factor: %.6f\n", scale);
-            printf("  Metallicity debug: MetalsColdGas=%.4e, ColdGas=%.4e, metallicity=%.4e\n", 
-                   g->MetalsColdGas, g->ColdGas, (g->ColdGas > 0.0 ? g->MetalsColdGas / g->ColdGas : 0.0));
+    // // Mass conservation check with detailed debugging
+    // if(g->H2_gas + g->HI_gas > g->ColdGas * 1.001) {  
+    //     float total = g->H2_gas + g->HI_gas;
+    //     float scale = g->ColdGas / total;
+    //     if (galaxy_debug_counter % 100 == 0) {
+    //         printf("DEBUG MAIN: Mass conservation issue - H2+HI=%.2e > ColdGas=%.2e\n", 
+    //                total, g->ColdGas);
+    //         printf("  Applying scale factor: %.6f\n", scale);
+    //         printf("  Metallicity debug: MetalsColdGas=%.4e, ColdGas=%.4e, metallicity=%.4e\n", 
+    //                g->MetalsColdGas, g->ColdGas, (g->ColdGas > 0.0 ? g->MetalsColdGas / g->ColdGas : 0.0));
+    //     }
+    //     g->H2_gas *= scale;
+    //     g->HI_gas *= scale;
+    // }
+
+    // CRITICAL: Ensure absolute consistency
+    double total_calculated = g->H2_gas + g->HI_gas;
+    if(total_calculated > g->ColdGas * 1.00001 || g->H2_gas > g->ColdGas) {
+        // Force exact consistency - recalculate from scratch
+        double fraction_h2 = (g->ColdGas > 0.0) ? total_molecular_gas : 0.0;
+        g->H2_gas = fraction_h2 * g->ColdGas;
+        g->HI_gas = (1.0 - fraction_h2) * g->ColdGas;
+        
+        // Final safety check
+        if(g->H2_gas > g->ColdGas) {
+            g->H2_gas = g->ColdGas;
+            g->HI_gas = 0.0;
         }
-        g->H2_gas *= scale;
-        g->HI_gas *= scale;
+        if(g->HI_gas < 0.0) g->HI_gas = 0.0;
+        if(g->H2_gas < 0.0) g->H2_gas = 0.0;
+    }
+}
+
+void ensure_h2_consistency(struct GALAXY *g, const struct params *run_params) {
+    if(run_params->SFprescription > 0 && g->ColdGas > 0.0) {
+        // Recalculate H2/HI based on current ColdGas
+        update_gas_components(g, run_params);
+    } else if(run_params->SFprescription > 0) {
+        // No cold gas = no H2/HI
+        g->H2_gas = 0.0;
+        g->HI_gas = 0.0;
     }
 }

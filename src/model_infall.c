@@ -9,6 +9,7 @@
 #include "model_infall.h"
 #include "model_misc.h"
 #include "core_cool_func.h"
+#include "model_h2_formation.h"
 
 
 double infall_recipe(const int centralgal, const int ngal, const double Zcurr, struct GALAXY *galaxies, const struct params *run_params)
@@ -32,10 +33,9 @@ double infall_recipe(const int centralgal, const int ngal, const double Zcurr, s
         tot_ICS += galaxies[i].ICS;
         tot_ICSMetals += galaxies[i].MetalsICS;
 
-        // Add H2 and HI gas when using H2-based prescriptions
-        if(run_params->SFprescription > 0) {
-            tot_H2gas += galaxies[i].H2_gas;
-            tot_HIgas += galaxies[i].HI_gas;
+        if (run_params->SFprescription > 0) {
+            // In SF prescription, also include H2 and HI gas in disk mass
+            ensure_h2_consistency(&galaxies[i], run_params); // Ensure consistency before calculation
         }
 
         if(i != centralgal) {
@@ -80,14 +80,9 @@ double infall_recipe(const int centralgal, const int ngal, const double Zcurr, s
         galaxies[centralgal].MetalsCGMgas = 0.0;
     }
 
-    // the central galaxy keeps all the H2/HI gas (when using H2 prescriptions)
-    if(run_params->SFprescription > 0) {
-        galaxies[centralgal].H2_gas = tot_H2gas;
-        galaxies[centralgal].HI_gas = tot_HIgas;
-        
-        // Sanity checks
-        if(galaxies[centralgal].H2_gas < 0.0) galaxies[centralgal].H2_gas = 0.0;
-        if(galaxies[centralgal].HI_gas < 0.0) galaxies[centralgal].HI_gas = 0.0;
+    if (run_params->SFprescription > 0) {
+        // In SF prescription, also include H2 and HI gas in disk mass
+        ensure_h2_consistency(&galaxies[centralgal], run_params); // Ensure consistency before calculation
     }
 
     // the central galaxy keeps all the ICS (mostly for numerical convenience)
@@ -386,6 +381,11 @@ void determine_and_cache_regime(const int ngal, struct GALAXY *galaxies, const s
         const double Tvir = 35.9 * galaxies[p].Vvir * galaxies[p].Vvir; // in Kelvin
         const double Tvir_threshold = 2.5e5; // K, corresponds to Vvir ~52.7 km/s
         const double Tvir_to_Tmax_ratio = Tvir_threshold / Tvir;
+
+        if (run_params->SFprescription > 0) {
+            // In SF prescription, also include H2 and HI gas in disk mass
+            ensure_h2_consistency(&galaxies[p], run_params); // Ensure consistency before calculation
+        }
         
         // FIXED: Determine regime based on BOTH cooling radius AND virial velocity
         // CGM regime (0): BOTH rcool > Rvir AND Vvir < 90 km/s
@@ -429,6 +429,11 @@ void handle_regime_transition(const int gal, struct GALAXY *galaxies, const stru
     const double Tvir = 35.9 * galaxies[gal].Vvir * galaxies[gal].Vvir; // in Kelvin
     const double Tvir_threshold = 2.5e5; // K, corresponds to Vvir ~52.7 km/s
     const double Tvir_to_Tmax_ratio = Tvir_threshold / Tvir;
+
+    if (run_params->SFprescription > 0) {
+                    // In SF prescription, also include H2 and HI gas in disk mass
+                    ensure_h2_consistency(&galaxies[gal], run_params); // Ensure consistency before calculation
+                }
 
     
     // FIXED: Use BOTH conditions to determine current regime
@@ -476,6 +481,11 @@ void final_regime_mass_enforcement(const int ngal, struct GALAXY *galaxies, cons
         const double Tvir = 35.9 * galaxies[p].Vvir * galaxies[p].Vvir; // in Kelvin
         const double Tvir_threshold = 2.5e5; // K, corresponds to Vvir ~52.7 km/s
         const double Tvir_to_Tmax_ratio = Tvir_threshold / Tvir;
+
+        if (run_params->SFprescription > 0) {
+                    // In SF prescription, also include H2 and HI gas in disk mass
+                    ensure_h2_consistency(&galaxies[p], run_params); // Ensure consistency before calculation
+                }
 
         // Store original values for diagnostic output
         double original_hot_gas = galaxies[p].HotGas;

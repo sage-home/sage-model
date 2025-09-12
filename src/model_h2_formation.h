@@ -19,3 +19,4 @@ double calculate_molecular_fraction_darksage_pressure(float gas_surface_density,
                                                      float disk_alignment_angle_deg);
 extern void update_gas_components(struct GALAXY *g, const struct params *run_params);
 extern void init_gas_components(struct GALAXY *g);
+extern void ensure_h2_consistency(struct GALAXY *g, const struct params *run_params);
