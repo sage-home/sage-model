@@ -712,9 +712,11 @@ int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals
                 // const double rcool_to_rvir = calculate_rcool_to_rvir_ratio(p, galaxies, run_params);
                 const double Tvir = 35.9 * galaxies[p].Vvir * galaxies[p].Vvir; // in Kelvin
                 const double Tvir_threshold = 2.5e5; // K, corresponds to Vvir ~52.7 km/s
+                const double Tvir_to_Tmax_ratio = Tvir_threshold / Tvir;
+
                 
                 // The ENFORCED regime should be based on velocity threshold
-                int velocity_based_regime = (Tvir < Tvir_threshold) ? 0 : 1;
+                int velocity_based_regime = (Tvir_to_Tmax_ratio > 1.0) ? 0 : 1;
 
                 // Check for violations against the ENFORCED regime (velocity-based)
                 if(galaxies[p].Regime != velocity_based_regime) {
