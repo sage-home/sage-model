@@ -356,11 +356,11 @@ int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals
         // Determine and cache regimes
         determine_and_cache_regime(ngal, galaxies, run_params);
         
-        // Store initial regimes and apply initial cleanup
-        for(int p = 0; p < ngal; p++) {
-            previous_regimes[p] = galaxies[p].Regime;
-            handle_regime_transition(p, galaxies, run_params);
-        }
+        // // Store initial regimes and apply initial cleanup
+        // for(int p = 0; p < ngal; p++) {
+        //     previous_regimes[p] = galaxies[p].Regime;
+        //     handle_regime_transition(p, galaxies, run_params);
+        // }
     }
 
     if (Vvir > 0.0 && Rvir > 0.0) {
@@ -547,7 +547,7 @@ int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals
                         }
                     } else {
                         // Original SAGE behavior: only check HotGas (backwards compatibility)
-                        if(galaxies[p].HotGas > 0.0 && galaxies[p].CGMgas > 0.0) {
+                        if(galaxies[p].HotGas > 0.0) {
                             strip_from_satellite(centralgal, p, Zcurr, galaxies, run_params);
                         }
                     }

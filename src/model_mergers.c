@@ -393,35 +393,38 @@ void collisional_starburst_recipe(const double mass_ratio, const int merger_cent
 
     // formation of new metals - instantaneous recycling approximation - only SNII
     if(galaxies[merger_centralgal].ColdGas > 1e-8 && mass_ratio < run_params->ThreshMajorMerger) {
-        const double FracZleaveDiskVal = run_params->FracZleaveDisk * exp(-1.0 * galaxies[centralgal].Mvir / 30.0);  // Krumholz & Dekel 2011 Eq. 22
+        const double FracZleaveDiskVal = run_params->FracZleaveDisk * exp(-1.0 * galaxies[merger_centralgal].Mvir / 30.0);
         galaxies[merger_centralgal].MetalsColdGas += run_params->Yield * (1.0 - FracZleaveDiskVal) * stars;
         
         // Regime-aware metal deposition for metals that leave the disk
         if(run_params->CGMrecipeOn == 1) {
             if(galaxies[merger_centralgal].Regime == 0) {
                 // CGM regime: metals go to CGM
-                galaxies[centralgal].MetalsCGMgas += run_params->Yield * FracZleaveDiskVal * stars;
+                galaxies[merger_centralgal].MetalsCGMgas += run_params->Yield * FracZleaveDiskVal * stars;
+            } else {
+                // HOT regime: metals go to hot gas  
+                galaxies[merger_centralgal].MetalsHotGas += run_params->Yield * FracZleaveDiskVal * stars;
             }
         } else {
             // Original behavior: metals go to hot gas
-            galaxies[centralgal].MetalsHotGas += run_params->Yield * FracZleaveDiskVal * stars;
+            galaxies[merger_centralgal].MetalsHotGas += run_params->Yield * FracZleaveDiskVal * stars;
+        }
+    } else {
+        // When no cold gas or major merger, all metals leave the disk
+        if(run_params->CGMrecipeOn == 1) {
+            if(galaxies[merger_centralgal].Regime == 0) {
+                // CGM regime: metals go to CGM
+                galaxies[merger_centralgal].MetalsCGMgas += run_params->Yield * stars;
+            } else {
+                // HOT regime: metals go to hot gas
+                galaxies[merger_centralgal].MetalsHotGas += run_params->Yield * stars;
+            }
+        } else {
+            // Original behavior: metals go to hot gas
+            galaxies[merger_centralgal].MetalsHotGas += run_params->Yield * stars;
         }
     }
-    // } else {
-    //     // When no cold gas or major merger, all metals leave the disk - make this regime-aware too
-    //     if(run_params->CGMrecipeOn == 1) {
-    //         if(galaxies[centralgal].Regime == 0) {
-    //             // CGM regime: metals go to CGM
-    //             galaxies[centralgal].MetalsCGMgas += run_params->Yield * stars;
-    //         } else {
-    //             // Hot regime: metals go to hot gas
-    //             galaxies[centralgal].MetalsHotGas += run_params->Yield * stars;
-    //         }
-    //     } else {
-    //         // Original behavior: metals go to hot gas
-    //         galaxies[centralgal].MetalsHotGas += run_params->Yield * stars;
-    //     }
-    // }
+
 }
 
 
