@@ -24,11 +24,11 @@
 ## Current Progress
 
 ### Task 2A.1: Physics Module Interface Design
-- [ ] Design `physics_module_t` structure with execution phases
-- [ ] Define standard module lifecycle (init, execute, cleanup)
-- [ ] Create module registration and lookup functions
-- [ ] Add module capability declarations
-- [ ] Test interface compiles and supports basic operations
+- [x] Design `physics_module_t` structure with execution phases
+- [x] Define standard module lifecycle (init, execute, cleanup)
+- [x] Create module registration and lookup functions
+- [x] Add module capability declarations
+- [x] Test interface compiles and supports basic operations
 
 ### Task 2A.2: Core Evolution Pipeline Abstraction
 - [ ] Remove direct `#include` of physics headers from core
@@ -58,6 +58,12 @@
 - [ ] Support for optional module loading
 - [ ] Test module dependencies resolved correctly
 
+### Task 2A.6: Create Physics Module Developer Guide
+- [ ] Create `docs/physics-module-guide.md` based on the final implementation.
+- [ ] Document the module lifecycle, interface, and best practices.
+- [ ] Provide a step-by-step tutorial for creating a new module, using the wrapped legacy modules as examples.
+- [ ] Update `docs/quick-reference.md` to link to the new guide.
+
 ## Completion Criteria
 **Phase 2A Complete When:**
 - Core compiles and runs without physics modules loaded
@@ -66,7 +72,7 @@
 - Physics-free mode processes merger trees successfully
 - All existing tests pass with wrapped physics modules
 
-**Phase 2A Status**: 0/5 tasks completed
+**Phase 2A Status**: 1/5 tasks completed
 
 ## Validation Requirements
 - **Architecture Compliance**: Core has zero physics knowledge

@@ -34,3 +34,8 @@
 - **Rationale**: Legacy plan violated Principle 1 (Physics-Agnostic Core) by applying properties within monolithic architecture; identified direct physics calls in core requiring immediate fix
 - **Impact**: Establishes architectural compliance foundation; prevents technical debt accumulation; enables all subsequent modular development on sound principles
 
+
+2025-09-15: [Task 2A.1] Constructor-based Module Auto-Registration Pattern
+- **Decision**: Implemented auto-registration using constructor attributes rather than explicit registration calls
+- **Rationale**: Eliminates manual registration overhead, ensures modules are always available when library loads, follows C library patterns
+- **Impact**: Simplified module development workflow; robust module discovery; foundation for future dynamic loading systems

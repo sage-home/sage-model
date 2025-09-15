@@ -49,6 +49,12 @@ SAGE's design is guided by eight foundational principles (detailed in [Architect
 - **Schema Reference**: [Schema Reference](schema-reference.md) - Property and parameter definitions
 - **Property Access**: Type-safe galaxy property access patterns *(TBD)*
 
+### 🧩 Module System
+- **Physics Module Interface**: Runtime-configurable physics modules (Principles 1, 2, 5)
+- **Module Development**: Creating new physics modules using the standardized interface
+- **Module Registry**: Dynamic module loading and dependency resolution
+- **Pipeline Execution**: Ordered module execution in galaxy evolution phases
+
 ### 🔧 Configuration & Parameters
 - **Parameter Files**: Legacy .par format support for backward compatibility
 - **Modern Configuration**: JSON-based configuration with schema validation *(TBD)*

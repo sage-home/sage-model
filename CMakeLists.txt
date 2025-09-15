@@ -398,6 +398,14 @@ if(SAGE_CONFIG_JSON_SUPPORT)
     list(APPEND CONFIG_SOURCES ${SRC_DIR}/core/config/config_json.c)
 endif()
 
+# Physics module interface sources - Task 2A.1
+set(PHYSICS_MODULE_INTERFACE_SOURCES
+    ${SRC_DIR}/core/physics_module_interface.h
+    ${SRC_DIR}/core/physics_module_registry.c
+    ${SRC_DIR}/core/physics_module_utils.c
+    ${SRC_DIR}/core/physics_pipeline.c
+)
+
 # Core infrastructure sources - now in src/core/
 set(SAGE_CORE_SOURCES
     ${SRC_DIR}/core/sage.c
@@ -412,6 +420,7 @@ set(SAGE_CORE_SOURCES
     ${SRC_DIR}/core/core_tree_utils.c
     ${MEMORY_SOURCES}
     ${CONFIG_SOURCES}
+    ${PHYSICS_MODULE_INTERFACE_SOURCES}
 )
 
 # Physics modules - now in src/physics/
@@ -611,6 +620,7 @@ set(IO_TESTS
 # Module System Tests - Phase 5 implementation
 # Tests for modular plugin architecture enabling runtime physics configuration
 set(MODULE_TESTS
+    test_physics_module_interface # Physics module interface validation (Task 2A.1)
     test_pipeline_invoke         # Inter-module communication
     test_module_callback        # Module callback system
     test_module_lifecycle       # Complete module lifecycle management  

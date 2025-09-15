@@ -136,6 +136,9 @@ ctest -V                            # Verbose output
 ### Available Tests
 
 Currently implemented tests:
+- **test_physics_module_interface**: Physics module interface validation (Task 2A.1)
+- **test_memory**: Memory abstraction layer validation
+- **test_config**: Configuration system validation  
 - **test_pipeline**: Example test demonstrating framework usage and core pipeline functionality
 - **sage_end_to_end**: Complete scientific validation via test_sage.sh
 

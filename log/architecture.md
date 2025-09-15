@@ -27,6 +27,9 @@ sage-model/
 │   │   ├── core_io_tree.c      # Tree I/O coordination
 │   │   ├── core_save.c         # Galaxy output coordination
 │   │   ├── memory.h/.c         # Modern memory abstraction (Task 1.3)
+│   │   ├── physics_module_interface.h # Physics module interface (Task 2A.1)
+│   │   ├── physics_module_registry.h/.c # Module registration system
+│   │   ├── physics_pipeline.h/.c # Pipeline execution system
 │   │   └── [other core files]  # Utilities, parameter handling
 │   ├── physics/                # Physics modules
 │   │   ├── model_cooling_heating.c
@@ -231,7 +234,7 @@ Comprehensive testing infrastructure:
 ## Architecture Limitations
 
 ### Current Constraints:
-- **Hardcoded Physics Coupling**: Evolution pipeline has direct calls to physics modules
+- **🚧 Hardcoded Physics Coupling**: Evolution pipeline has direct calls to physics modules (interface designed, integration pending)
 - **Monolithic Data Structure**: GALAXY struct mixes core and physics properties  
 - **Manual I/O Synchronization**: Output fields hardcoded and manually maintained
 
@@ -241,7 +244,8 @@ Comprehensive testing infrastructure:
 - Hardcoded array sizes (MAXSNAPS) limiting simulation flexibility
 - Direct field access throughout codebase without abstraction
 
-### Recently Addressed (Tasks 1.3-1.4):
-- ✅ **Memory Management**: Modern abstraction with debugging tool compatibility
-- ✅ **Configuration System**: Unified dual-format system with validation
-- ✅ **Testing Infrastructure**: Standardized unit testing framework
+### Recently Addressed:
+- ✅ **Memory Management**: Modern abstraction with debugging tool compatibility (Tasks 1.3-1.4)
+- ✅ **Configuration System**: Unified dual-format system with validation (Tasks 1.3-1.4)
+- ✅ **Testing Infrastructure**: Standardized unit testing framework (Tasks 1.3-1.4)
+- ✅ **Physics Module Interface**: Clean interface design with registry and pipeline systems (Task 2A.1)

@@ -129,6 +129,17 @@ This Master Implementation Plan guides the transformation of SAGE from a monolit
 - **Testing**: Module dependencies resolved correctly
 - **Effort**: 2 sessions
 
+#### Task 2A.6: Create Physics Module Developer Guide
+- **Objective**: Create a developer guide for the new physics module system
+- **Implementation**:
+  - Create `docs/physics-module-guide.md`
+  - Document the module interface, lifecycle, and best practices
+  - Provide a tutorial for creating new modules using wrapped legacy physics as examples
+  - Update `docs/quick-reference.md` to link to the new guide for discoverability
+- **Principles**: Principle 1 (Physics-Agnostic Core), Principle 2 (Runtime Modularity)
+- **Testing**: Documentation review for clarity and accuracy
+- **Effort**: 1 session (low complexity)
+
 ### Exit Criteria
 - ✅ Core compiles and runs without physics modules loaded
 - ✅ Physics modules wrapped in interface, calculations unchanged
@@ -434,6 +445,16 @@ This Master Implementation Plan guides the transformation of SAGE from a monolit
 - **Principles**: Maintain performance while achieving modularity
 - **Testing**: Performance within 10% of legacy
 - **Effort**: 2 sessions
+
+#### Task 6.4: Create End-User Scientific Guide
+- **Objective**: Create comprehensive end-user documentation for the scientific application of SAGE, covering the full workflow from configuration to output analysis.
+- **Implementation**:
+  - Create `docs/user-guide.md` targeted at scientists and researchers.
+  - Include a quick-start tutorial, a user-friendly parameter reference, and examples for running SAGE in different configurations (serial, MPI, modules).
+  - Document the HDF5 output format and provide common scientific use cases.
+- **Principles**: Principle 2 (Runtime Modularity), Principle 7 (Format-Agnostic I/O).
+- **Testing**: Documentation review for clarity and accuracy. Verify all examples and tutorials are correct and functional.
+- **Effort**: 2 sessions (moderate complexity).
 
 ### Exit Criteria
 - ✅ All 8 architectural principles fully validated
