@@ -27,6 +27,7 @@ extern "C" {
                                                   const struct params *run_params);
     extern float calculate_stellar_scale_height_BR06(float disk_scale_length_pc);
     extern float calculate_midplane_pressure_BR06(float sigma_gas, float sigma_stars, float disk_scale_length_pc);
+    extern float calculate_molecular_fraction_GD14(float gas_surface_density, float metallicity, float spatial_scale_pc);
 
 #ifdef __cplusplus
 }

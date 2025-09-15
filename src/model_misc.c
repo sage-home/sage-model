@@ -390,10 +390,7 @@ float calculate_stellar_scale_height_BR06(float disk_scale_length_pc)
     return h_star_pc;
 }
 
-/**
- * calculate_midplane_pressure_BR06 - BR06 pressure calculation EXACTLY as in paper
- * From Blitz & Rosolowsky (2006) Equation (5)
- */
+
 float calculate_midplane_pressure_BR06(float sigma_gas, float sigma_stars, float disk_scale_length_pc)
 {
     // Early termination for edge cases
@@ -424,10 +421,7 @@ float calculate_midplane_pressure_BR06(float sigma_gas, float sigma_stars, float
     return pressure; // K cm⁻³
 }
 
-/**
- * calculate_molecular_fraction_BR06 - BR06 molecular fraction EXACTLY as in paper
- * From Blitz & Rosolowsky (2006) Equations (11) and (13)
- */
+
 float calculate_molecular_fraction_BR06(float gas_surface_density, float stellar_surface_density, 
                                          float disk_scale_length_pc)
 {
@@ -444,13 +438,6 @@ float calculate_molecular_fraction_BR06(float gas_surface_density, float stellar
     const float P0 = 4.3e4;    // Reference pressure, K cm⁻³ (equation 13)
     const float alpha = 0.92;  // Power law index (equation 13)
     
-    // Apply pressure threshold - below this, no molecular gas forms
-    // Paper doesn't specify exact value, but this is physically reasonable
-    // const float P_threshold = 1000.0; // K cm⁻³
-    // if (pressure < P_threshold) {
-    //     return 0.0;
-    // }
-    
     // BR06 Equation (11): R_mol = (P_ext/P₀)^α
     float pressure_ratio = pressure / P0;
     float R_mol = pow(pressure_ratio, alpha);
@@ -459,9 +446,7 @@ float calculate_molecular_fraction_BR06(float gas_surface_density, float stellar
     // This is the standard conversion from molecular-to-atomic ratio to molecular fraction
     double f_mol = R_mol / (1.0 + R_mol);
     
-    // // Apply physical bounds
-    // if (f_mol > 0.95) f_mol = 0.95; // Max 95% molecular (to avoid numerical issues)
-    // if (f_mol < 0.0) f_mol = 0.0;   // No negative fractions
+    // Apply physical bounds
     // Smooth cap instead of hard limit
     if (f_mol > 0.8) {
         f_mol = 0.8 + 0.15 * tanh((f_mol - 0.8) / 0.1);
@@ -470,10 +455,7 @@ float calculate_molecular_fraction_BR06(float gas_surface_density, float stellar
     return f_mol;
 }
 
-/**
- * calculate_molecular_fraction_darksage_pressure - DarkSAGE pressure-based H2 formation
- * Implements the exact pressure-based prescription from DarkSAGE H2prescription==0
- */
+
 float calculate_molecular_fraction_darksage_pressure(float gas_surface_density_msun_pc2, 
                                                   float stellar_surface_density_msun_pc2,
                                                   float gas_velocity_dispersion_km_s,
@@ -544,6 +526,74 @@ float calculate_molecular_fraction_darksage_pressure(float gas_surface_density_m
     // Apply physical bounds
     if (f_mol > 0.95) f_mol = 0.95;
     if (f_mol < 0.0 || !isfinite(f_mol)) f_mol = 0.0;
+    
+    return f_mol;
+}
+
+
+float calculate_molecular_fraction_GD14(float gas_surface_density, float metallicity, float spatial_scale_pc)
+{
+    // Early termination for edge cases
+    if (gas_surface_density <= 0.0) {
+        return 0.0;
+    }
+    
+    // Convert metallicity to dust-to-gas ratio relative to Milky Way
+    // Following GD14: D_MW represents dust abundance relative to MW
+    const float zsun = 0.02;  // Solar metallicity (commonly used value)
+    float D_MW = metallicity / zsun;
+    
+    // UV field strength (can be modified based on galaxy properties)
+    float U_MW = 1.0;  // Milky Way UV field strength
+    
+    // Calculate spatial scale parameter S = L/100pc (GD14 equation after eq. 5)
+    float S = spatial_scale_pc / 100.0;
+    
+    // Calculate D* parameter (GD14 equation between 5 and 6)
+    float S5 = pow(S, 5.0);
+    float D_star = 0.17 * (2.0 + S5) / (1.0 + S5);
+    
+    // Calculate g parameter (GD14 equation between 5 and 6)
+    float g = sqrt(D_MW * D_MW + D_star * D_star);
+    
+    // ERRATUM formulation (more accurate):
+    // σ ≡ (0.001 + 0.1U_MW)^0.7
+    float sigma = pow(0.001 + 0.1 * U_MW, 0.7);
+    
+    // α = (1 + 0.7σ^(1/2))/(1 + σ^(1/2))  [Erratum eq. 9]
+    float sqrt_sigma = sqrt(sigma);
+    float alpha = (1.0 + 0.7 * sqrt_sigma) / (1.0 + sqrt_sigma);
+    
+    // Σ_R=1 = 40 M_☉/pc² × g/σ  [Erratum eq. 10]
+    float Sigma_R1 = 40.0 * g / sigma; // M_sun/pc^2
+    
+    // Calculate η parameter (erratum mentions η ≈ 0 on kpc scale, η = 0.25 on 500 pc scale)
+    float eta;
+    if (spatial_scale_pc >= 1000.0) {
+        eta = 0.0;  // kpc scale
+    } else if (spatial_scale_pc <= 500.0) {
+        eta = 0.25; // 500 pc scale
+    } else {
+        // Linear interpolation between 500 pc and 1000 pc
+        eta = 0.25 * (1000.0 - spatial_scale_pc) / 500.0;
+    }
+    
+    // Calculate R using the ERRATUM formula [Erratum eq. 8]:
+    // R ≈ (Σ_gas/Σ_R=1)^α / (1 + η(Σ_gas/Σ_R=1)^α)
+    float ratio = gas_surface_density / Sigma_R1;
+    float ratio_alpha = pow(ratio, alpha);
+    float R = ratio_alpha / (1.0 + eta * ratio_alpha);
+    
+    // Convert to molecular fraction: f_H2 = R / (1 + R)
+    // Since R = Σ_H2/Σ_HI, then f_H2 = Σ_H2/(Σ_HI + Σ_H2) = R/(1+R)
+    float f_mol = R / (1.0 + R);
+    
+    // Apply physical bounds
+    if (f_mol > 1.0) {
+        f_mol = 1.0;
+    } else if (f_mol < 0.0) {
+        f_mol = 0.0;
+    }
     
     return f_mol;
 }

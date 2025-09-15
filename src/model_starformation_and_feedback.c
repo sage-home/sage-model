@@ -122,6 +122,51 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
             strdot = 0.0;
         }
 
+    } else if(run_params->SFprescription == 3) {
+        // GD14 H2 model - Paper exact implementation
+        reff = 3.0 * galaxies[p].DiskScaleRadius;
+        tdyn = reff / galaxies[p].Vvir;
+        
+        const float h = run_params->Hubble_h;
+        const float rs_pc = galaxies[p].DiskScaleRadius * 1.0e6 / h;  // Convert Mpc/h to pc
+        
+        // Calculate disk area using 3× scale radius (captures ~95% of disk mass)
+        float disk_area_pc2 = M_PI * pow(3.0 * rs_pc, 2);
+        
+        // Calculate gas surface density in M_sun/pc^2
+        float gas_surface_density = (galaxies[p].ColdGas * 1.0e10 / h) / disk_area_pc2;
+        
+        // Use the metallicity that's already calculated in the calling function
+        metallicity = get_metallicity(galaxies[p].ColdGas, galaxies[p].MetalsColdGas);
+        
+        // Determine appropriate spatial scale for this calculation
+        // Using the effective radius as the characteristic scale
+        float spatial_scale_pc = 3.0 * rs_pc;
+        
+        // Calculate molecular fraction using paper-exact GD14 prescription
+        float actual_f_mol = calculate_molecular_fraction_GD14(gas_surface_density, metallicity, spatial_scale_pc);
+        
+        // Update galaxy H2 mass
+        total_molecular_gas = actual_f_mol * galaxies[p].ColdGas;
+        galaxies[p].H2gas = total_molecular_gas;
+        
+        galaxy_debug_counter++;
+        if (galaxy_debug_counter % 750000 == 0) {
+            printf("DEBUG GD14: rs_pc=%.2e, spatial_scale=%.2e pc, gas_Σ=%.2e M_sun/pc^2\n",
+                rs_pc, spatial_scale_pc, gas_surface_density);
+            printf("DEBUG GD14: Z=%.4f Z_sun, D_MW=%.4f, f_mol=%.4f\n",
+                metallicity/0.02, metallicity/0.02, actual_f_mol);
+            printf("DEBUG GD14: ColdGas=%.2e, H2_gas=%.2e, HI_gas=%.2e M_sun\n",
+                galaxies[p].ColdGas, galaxies[p].H2gas, galaxies[p].ColdGas - galaxies[p].H2gas);
+        }
+
+        const double cold_crit = 0.19 * galaxies[p].Vvir * reff;
+        if(galaxies[p].ColdGas > cold_crit) {
+            strdot = run_params->SfrEfficiency * galaxies[p].H2gas / tdyn;
+        } else {
+            strdot = 0.0;
+        }
+
     } else {
         fprintf(stderr, "No star formation prescription selected!\n");
         ABORT(0);
