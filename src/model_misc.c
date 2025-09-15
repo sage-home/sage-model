@@ -474,79 +474,61 @@ float calculate_molecular_fraction_BR06(float gas_surface_density, float stellar
  * calculate_molecular_fraction_darksage_pressure - DarkSAGE pressure-based H2 formation
  * Implements the exact pressure-based prescription from DarkSAGE H2prescription==0
  */
-float calculate_molecular_fraction_darksage_pressure(float gas_surface_density, 
-                                                     float stellar_surface_density, 
-                                                     float gas_velocity_dispersion,
-                                                     float stellar_velocity_dispersion,
-                                                     float disk_alignment_angle_deg)
+float calculate_molecular_fraction_darksage_pressure(float gas_surface_density_msun_pc2, 
+                                                  float stellar_surface_density_msun_pc2,
+                                                  float gas_velocity_dispersion_km_s,
+                                                  float stellar_velocity_dispersion_km_s,
+                                                  float disk_alignment_angle_deg,
+                                                  const struct params *run_params)
 {
     // Early termination for edge cases
-    if (gas_surface_density <= 1e-10) {  // More stringent minimum threshold
+    if (gas_surface_density_msun_pc2 <= 1e-10) {
         return 0.0;
     }
     
-    // Additional safety checks
-    if (!isfinite(gas_surface_density) || !isfinite(stellar_surface_density)) {
-        return 0.0;
-    }
-    
-    // DarkSAGE constants 
-    const float ThetaThresh = 30.0;
+    // DarkSAGE constants (these should match your parameter file values)
+    const float ThetaThresh = 30.0;  // degrees
     const float H2FractionFactor = 1.0;  
     const float H2FractionExponent = 0.92;  
-    const float P_0 = 4.3e4;
+    const float P_0 = 4.3e4;  // Reference pressure in K cm^-3
     
-    // Physical constants in CGS
-    const float G_cgs = 6.67e-8;
-    const float Msun_g = 1.989e33;
-    const float pc_cm = 3.086e18;
-    const float kB = 1.38e-16;
-    const float mH = 1.67e-24;
+    // Physical constants from your macros
+    const float G_cgs = GRAVITY;  // cm^3 g^-1 s^-2
+    const float kB = BOLTZMANN;   // erg K^-1
+    const float MSUN_g = SOLAR_MASS;  // g
+    const float PC_cm = CM_PER_MPC / 1e6;  // cm per pc
     
     // Convert surface densities to CGS (g cm^-2)
-    float sigma_gas_cgs = gas_surface_density * Msun_g / (pc_cm * pc_cm);
-    float sigma_stars_cgs = stellar_surface_density * Msun_g / (pc_cm * pc_cm);
+    float sigma_gas_cgs = gas_surface_density_msun_pc2 * MSUN_g / (PC_cm * PC_cm);
+    float sigma_stars_cgs = stellar_surface_density_msun_pc2 * MSUN_g / (PC_cm * PC_cm);
     
-    // Additional safety check after conversion
-    if (sigma_gas_cgs <= 1e-30) {  // Prevent division by zero
-        return 0.0;
-    }
+    // Calculate velocity dispersion ratio (DarkSAGE approach)
+    float f_sigma = (stellar_velocity_dispersion_km_s > 0.0) ? 
+                    gas_velocity_dispersion_km_s / stellar_velocity_dispersion_km_s : 1.0;
     
-    // Calculate velocity dispersion ratio
-    float f_sigma = (stellar_velocity_dispersion > 0.0) ? 
-                    gas_velocity_dispersion / stellar_velocity_dispersion : 1.0;
-    
-    // Calculate midplane pressure
-    float pressure_cgs;
+    // Calculate midplane pressure using DarkSAGE formula
+    float pressure_cgs;  // dyne cm^-2
     if (disk_alignment_angle_deg <= ThetaThresh) {
+        // Aligned discs - both gas and stars contribute
         pressure_cgs = 0.5 * M_PI * G_cgs * sigma_gas_cgs * 
                       (sigma_gas_cgs + f_sigma * sigma_stars_cgs);
     } else {
+        // Misaligned discs - only gas self-gravity
         pressure_cgs = 0.5 * M_PI * G_cgs * sigma_gas_cgs * sigma_gas_cgs;
     }
     
-    // Safety check on pressure
-    if (!isfinite(pressure_cgs) || pressure_cgs <= 0.0) {
-        return 0.0;
-    }
+    // Apply Hubble factor like DarkSAGE does
+    pressure_cgs *= run_params->Hubble_h * run_params->Hubble_h;
     
-    // Convert pressure to K cm^-3 with safety checks
-    const float h_gas_cm = 100.0 * pc_cm;
-    float n_gas = sigma_gas_cgs / (h_gas_cm * mH);
+    // Convert to K cm^-3 (CORRECT FORMULA)
+    float pressure_K_cm3 = pressure_cgs / kB;
     
-    // Prevent division by very small numbers
-    if (n_gas <= 1e-50) {
-        return 0.0;
-    }
-    
-    float pressure_K_cm3 = pressure_cgs / (n_gas * kB);
-    
-    // Safety check on final pressure
+    // Safety checks
     if (!isfinite(pressure_K_cm3) || pressure_K_cm3 <= 0.0) {
         return 0.0;
     }
     
-    // Apply the power-law relation
+    // Apply the DarkSAGE power-law relation
     float pressure_ratio = pressure_K_cm3 / P_0;
     float f_H2_HI = H2FractionFactor * pow(pressure_ratio, H2FractionExponent);
     

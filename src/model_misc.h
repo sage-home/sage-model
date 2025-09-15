@@ -19,8 +19,12 @@ extern "C" {
     extern double calculate_rcool_to_rvir_ratio(const int gal, struct GALAXY *galaxies, const struct params *run_params);
     extern float calculate_muratov_mass_loading(const int gal, struct GALAXY *galaxies, const double z);
     extern float calculate_molecular_fraction_BR06(float gas_surface_density, float stellar_surface_density, float disk_scale_length_pc);
-    extern float calculate_molecular_fraction_darksage_pressure(float gas_surface_density, float stellar_surface_density,
-         float gas_velocity_dispersion, float stellar_velocity_dispersion, float disk_alignment_angle_deg);
+    extern float calculate_molecular_fraction_darksage_pressure(float gas_surface_density_msun_pc2, 
+                                                  float stellar_surface_density_msun_pc2,
+                                                  float gas_velocity_dispersion_km_s,
+                                                  float stellar_velocity_dispersion_km_s,
+                                                  float disk_alignment_angle_deg,
+                                                  const struct params *run_params);
     extern float calculate_stellar_scale_height_BR06(float disk_scale_length_pc);
     extern float calculate_midplane_pressure_BR06(float sigma_gas, float sigma_stars, float disk_scale_length_pc);
 

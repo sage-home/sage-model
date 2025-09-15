@@ -95,10 +95,11 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
         float disk_alignment_angle = 0.0;  // degrees
 
         float actual_f_mol = calculate_molecular_fraction_darksage_pressure(gas_surface_density, 
-                                                                            stellar_surface_density,
-                                                                            gas_velocity_dispersion,
-                                                                            stellar_velocity_dispersion,
-                                                                            disk_alignment_angle);
+                                                                stellar_surface_density,
+                                                                gas_velocity_dispersion,
+                                                                stellar_velocity_dispersion,
+                                                                disk_alignment_angle,
+                                                                run_params);
         
         total_molecular_gas = actual_f_mol * galaxies[p].ColdGas;
         galaxies[p].H2gas = total_molecular_gas;
@@ -116,7 +117,7 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
 
         const double cold_crit = 0.19 * galaxies[p].Vvir * reff;
         if(galaxies[p].ColdGas > cold_crit) {
-            strdot = 4 * run_params->SfrEfficiency * galaxies[p].H2gas / tdyn;
+            strdot = run_params->SfrEfficiency * galaxies[p].H2gas / tdyn;
         } else {
             strdot = 0.0;
         }
