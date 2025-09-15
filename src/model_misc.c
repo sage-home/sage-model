@@ -441,7 +441,7 @@ float calculate_molecular_fraction_BR06(float gas_surface_density, float stellar
     
     // BR06 parameters from equation (13) for non-interacting galaxies
     // These are the exact values from the paper
-    const float P0 = 2.0e4;    // Reference pressure, K cm⁻³ (equation 13)
+    const float P0 = 4.3e4;    // Reference pressure, K cm⁻³ (equation 13)
     const float alpha = 0.92;  // Power law index (equation 13)
     
     // Apply pressure threshold - below this, no molecular gas forms

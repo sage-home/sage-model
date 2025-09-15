@@ -70,7 +70,7 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
 
         const double cold_crit = 0.19 * galaxies[p].Vvir * reff;
         if(galaxies[p].ColdGas > cold_crit) {
-            strdot = 0.7 * run_params->SfrEfficiency * galaxies[p].H2gas / tdyn;
+            strdot = run_params->SfrEfficiency * galaxies[p].H2gas / tdyn;
         } else {
             strdot = 0.0;
         }
