@@ -447,9 +447,10 @@ float calculate_molecular_fraction_BR06(float gas_surface_density, float stellar
     double f_mol = R_mol / (1.0 + R_mol);
     
     // Apply physical bounds
-    // Smooth cap instead of hard limit
-    if (f_mol > 0.8) {
-        f_mol = 0.8 + 0.15 * tanh((f_mol - 0.8) / 0.1);
+    // Apply aggressive capping for massive galaxies
+    // Cap at 40% for most galaxies, with smooth transition
+    if (f_mol > 0.4) {
+        f_mol = 0.4 + 0.2 * tanh((f_mol - 0.4) / 0.15);
     }
     
     return f_mol;
@@ -524,8 +525,11 @@ float calculate_molecular_fraction_darksage_pressure(float gas_surface_density_m
     double f_mol = X_H * f_H2_HI / (1.0 + f_H2_HI);
     
     // Apply physical bounds
-    if (f_mol > 0.95) f_mol = 0.95;
-    if (f_mol < 0.0 || !isfinite(f_mol)) f_mol = 0.0;
+    // Apply aggressive capping for massive galaxies
+    // Cap at 40% for most galaxies, with smooth transition
+    if (f_mol > 0.4) {
+        f_mol = 0.4 + 0.2 * tanh((f_mol - 0.4) / 0.15);
+    }
     
     return f_mol;
 }
