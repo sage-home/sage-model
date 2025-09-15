@@ -1,6 +1,21 @@
 # SAGE Performance Benchmarking Guide
 
+**Purpose**: Comprehensive guide to measuring and tracking SAGE performance using built-in benchmarking tools  
+**Audience**: Developers optimizing performance, researchers comparing configurations, CI/CD maintainers  
+**Status**: Active performance measurement system  
+
+---
+
+## Overview
+
 This guide explains how to use SAGE's performance benchmarking tools to measure and track the performance of the galaxy formation model over time.
+
+**Navigation**: Return to [Quick Reference](quick-reference.md) for other documentation sections.
+
+**ARCHITECTURAL PRINCIPLE ALIGNMENT**: Performance benchmarking supports core architectural principles ([detailed in Architectural Vision](architectural-vision.md)):
+
+- **Principle 6: Memory Efficiency and Safety** - Ensures memory usage is bounded, predictable, and safe, with automatic leak detection and prevention
+- **Principle 8: Type Safety and Validation** - Provides performance validation frameworks with fail-fast behavior on performance regressions and clear error reporting
 
 ## Overview
 

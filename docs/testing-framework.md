@@ -1,12 +1,23 @@
 # SAGE Testing Framework Documentation
 
-**Version**: 1.0  
-**Date**: January 2025  
-**Status**: Implemented and Ready for Use
+**Purpose**: Complete guide to SAGE's CMake-based testing system for validation and quality assurance  
+**Audience**: Developers working with SAGE tests, contributors adding new tests, CI/CD maintainers  
+**Status**: Implemented and Ready for Use  
+
+---
 
 ## Overview
 
 This document describes the CMake-based testing framework implemented for SAGE. The framework provides a structured approach to testing that supports both unit tests for individual components and end-to-end scientific validation.
+
+**Navigation**: Return to [Quick Reference](quick-reference.md) for other documentation sections.
+
+**ARCHITECTURAL PRINCIPLE ALIGNMENT**: The testing framework supports multiple core architectural principles ([detailed in Architectural Vision](architectural-vision.md)):
+
+- **Principle 1: Physics-Agnostic Core Infrastructure** - Core tests validate that infrastructure operates independently of physics implementations, enabling independent development and simplified testing
+- **Principle 3: Metadata-Driven Architecture** - Tests validate that system structure is defined by metadata rather than hardcoded implementations  
+- **Principle 6: Memory Efficiency and Safety** - Memory validation and leak detection ensure bounded, predictable memory usage that doesn't grow with simulation size
+- **Principle 8: Type Safety and Validation** - Comprehensive validation provides fail-fast behavior on errors with clear debugging information, covering both architecture and scientific accuracy
 
 ## Framework Architecture
 
@@ -22,18 +33,18 @@ This document describes the CMake-based testing framework implemented for SAGE. 
 The framework organizes tests into 5 main categories:
 
 #### 1. Core Infrastructure Tests (`core_tests`)
-Tests for physics-agnostic core components:
+Tests for **physics-agnostic core components** (Principle 1: Physics-Agnostic Core Infrastructure):
 - Pipeline execution system
 - Memory management and allocation
 - Configuration system and parameter validation
 - Property system core functionality
-- Core-physics separation validation
+- **Core-physics separation validation** (ensures core operates independently)
 - Galaxy data structures and arrays
 - Merger processing and event queues
 - FOF processing and orphan tracking
 
 #### 2. Property System Tests (`property_tests`)
-Tests for the metadata-driven property system:
+Tests for the **metadata-driven property system** (Principle 3: Metadata-Driven Architecture):
 - Property serialization and access patterns
 - Array property handling
 - HDF5 integration with properties
@@ -41,7 +52,7 @@ Tests for the metadata-driven property system:
 - Parameter system validation
 
 #### 3. I/O System Tests (`io_tests`)
-Tests for reading merger trees and writing galaxy catalogs:
+Tests for **format-agnostic I/O** (Principle 7: Format-Agnostic I/O):
 - Unified I/O interface functionality
 - Multiple tree format readers (LHalo, Gadget4, Genesis, ConsistentTrees)
 - HDF5 output handling and validation
@@ -50,13 +61,13 @@ Tests for reading merger trees and writing galaxy catalogs:
 - I/O validation frameworks
 
 #### 4. Module System Tests (`module_tests`)
-Tests for the modular plugin architecture:
+Tests for **runtime modularity** (Principle 2: Runtime Modularity):
 - Inter-module communication
 - Module callback systems
 - Complete module lifecycle management
 
 #### 5. Tree-Based Processing Tests (`tree_tests`)
-Tests for tree-based processing capabilities:
+Tests for **unified processing model** (Principle 5: Unified Processing Model):
 - Galaxy inheritance in tree processing mode
 
 ### End-to-End Scientific Validation

@@ -1,20 +1,32 @@
 # SAGE Property and Parameter Schema Reference
 
-**Version**: 2.1.0  
-**Purpose**: Comprehensive reference for SAGE's metadata-driven property and parameter system  
-**Audience**: Developers implementing code generation and module system  
+**Purpose**: Comprehensive reference for SAGE's property and parameter metadata definitions and organization  
+**Audience**: Developers working with properties/parameters, contributors adding new properties, system architects  
+**Status**: Current Infrastructure - Documents existing capabilities, not future implementation plans  
 
 ---
 
 ## Overview
 
-The SAGE schema system transforms the hardcoded property and parameter definitions into a metadata-driven architecture that enables:
+The SAGE schema system provides the foundational metadata that supports current property access and will enable future modular architecture transformations. **This document describes current capabilities and infrastructure, not future implementation plans.**
 
-- **Runtime modularity**: Properties and parameters available based on loaded physics modules
-- **Compile-time optimization**: Build configurations with only required properties
-- **Type safety**: Generated code with compile-time property access validation
-- **Memory efficiency**: Optimized memory layouts and bounded allocation
-- **Dynamic I/O**: Output formats that adapt to available properties
+**Navigation**: Return to [Quick Reference](quick-reference.md) for other documentation sections.
+
+Current schema capabilities:
+- **Property metadata definition**: YAML-based property definitions with module dependencies  
+- **Code generation foundation**: Metadata structure supporting type-safe code generation  
+- **Type safety infrastructure**: Generated property access macros (see build/src/core/property_access.h)  
+- **Multi-dimensional organization**: Properties organized by module, access pattern, and I/O requirements  
+
+Future capabilities enabled by this foundation:
+- **Runtime modularity**: Properties available based on loaded physics modules  
+- **Memory optimization**: Optimized memory layouts and bounded allocation  
+- **Dynamic I/O**: Output formats that adapt to available properties  
+
+**ARCHITECTURAL PRINCIPLE ALIGNMENT**: This schema system supports core architectural principles ([detailed in Architectural Vision](architectural-vision.md)):
+
+- **Principle 3: Metadata-Driven Architecture** - System structure is defined through metadata rather than hardcoded implementations, reducing code duplication and enabling build-time optimization
+- **Principle 4: Single Source of Truth** - Galaxy data has one authoritative representation with consistent access patterns, eliminating dual property systems and synchronization code
 
 ## Schema Architecture
 
@@ -463,32 +475,28 @@ CFLAGS += -DSAGE_PROPERTIES_VERSION=\"2.1.0\"
 
 ---
 
-## Migration Strategy
+## Current Implementation Status
 
-### Phase 1: Schema Definition (Current)
-- Create comprehensive property and parameter schemas
-- Document conventions and usage patterns
-- Validate schema completeness against existing code
+**Phase 1: Schema Definition** ✅ **COMPLETE**  
+- Comprehensive property and parameter schemas created  
+- Conventions and usage patterns documented  
+- Schema completeness validated against existing code  
 
-### Phase 2: Code Generation (Next)
-- Implement schema-based code generation
-- Generate type-safe property access
-- Create validation frameworks
+**Phase 2: Code Generation Infrastructure** ✅ **CURRENT**  
+- Basic schema-based code generation implemented (property_access.h generation)  
+- Type-safe property access macros generated  
+- Foundation for validation frameworks established  
 
-### Phase 3: Core Integration
-- Migrate core properties to new system
-- Update build system integration
-- Maintain backward compatibility
+**Future Phases** (see Master Plan Phase 2A-2D):  
+- **Phase 2A**: Core/Physics Separation (removing architectural violations)  
+- **Phase 2B**: Property Migration - Core Properties  
+- **Phase 2C**: Property Migration - Physics Properties  
+- **Phase 2D**: Runtime Module System  
 
-### Phase 4: Module Migration
-- Migrate physics modules to use generated code
-- Update I/O system for dynamic output
-- Implement runtime module loading
+**ARCHITECTURAL PRINCIPLE ALIGNMENT**: This phased approach supports core architectural principles ([detailed in Architectural Vision](architectural-vision.md)):
 
-### Phase 5: Optimization
-- Optimize memory layouts based on schema
-- Implement compile-time property optimization
-- Add advanced validation features
+- **Principle 1: Physics-Agnostic Core Infrastructure** - Core systems operate independently of physics implementations, enabling independent development and simplified testing
+- **Principle 2: Runtime Modularity** - Building toward physics module combinations configurable at runtime without recompilation, enabling scientific flexibility and easier experimentation
 
 ---
 
