@@ -43,6 +43,11 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
         // BR06 model
         const float h = run_params->Hubble_h;
         const float rs_pc = galaxies[p].DiskScaleRadius * 1.0e6 / h;
+        if (rs_pc <= 0.0) {
+            galaxies[p].H2gas = 0.0;
+            strdot = 0.0;
+            return;
+        }
         // float disk_area_pc2 = M_PI * rs_pc * rs_pc; 
         float disk_area_pc2 = M_PI * pow(3.0 * rs_pc, 2); // 3× scale radius captures ~95% of mass 
         float gas_surface_density = (galaxies[p].ColdGas * 1.0e10 / h) / disk_area_pc2; // M☉/pc²
@@ -82,6 +87,11 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
         
         const float h = run_params->Hubble_h;
         const float rs_pc = galaxies[p].DiskScaleRadius * 1.0e6 / h;
+        if (rs_pc <= 0.0) {
+            galaxies[p].H2gas = 0.0;
+            strdot = 0.0;
+            return;
+        }
         // float disk_area_pc2 = M_PI * rs_pc * rs_pc;
         float disk_area_pc2 = M_PI * pow(3.0 * rs_pc, 2);
         float gas_surface_density = (galaxies[p].ColdGas * 1.0e10 / h) / disk_area_pc2; // M☉/pc²
