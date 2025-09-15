@@ -9,64 +9,92 @@
 - At major phase completion archive as phase-[X].md and refresh for next phase
 -->
 
-# Current Phase: 2/7 (Property System Core) - Metadata-Driven Property Management
+# Current Phase: 2A/6 (Core/Physics Separation) - Physics-Agnostic Core Infrastructure
+
+## 🎯 Architectural Principles Addressed
+- **Principle 1**: Physics-Agnostic Core Infrastructure ⭐ **PRIMARY**
+- **Principle 5**: Unified Processing Model
 
 ## Phase Objectives
-- **PRIMARY**: Create metadata-driven property system to separate core from physics
-- **SECONDARY**: Enable compile-time type safety and runtime flexibility
-- Implement YAML-based property definitions
-- Build code generation pipeline
-- Migrate existing properties to new system while maintaining compatibility
+- **PRIMARY**: Remove all physics knowledge from core infrastructure
+- **SECONDARY**: Enable physics-free mode operation
+- **CRITICAL**: Establish foundation for all subsequent development
+- **COMPLIANCE**: Achieve Principle 1 (Physics-Agnostic Core) before any other major work
 
 ## Current Progress
 
-### Task 2.1: Property Metadata Design
-- [x] Create properties.yaml with core/physics separation
-- [x] Define parameters.yaml for simulation parameters
-- [x] Establish property categorization (core, physics, derived)
-- [x] Document metadata schema and conventions
+### Task 2A.1: Physics Module Interface Design
+- [ ] Design `physics_module_t` structure with execution phases
+- [ ] Define standard module lifecycle (init, execute, cleanup)
+- [ ] Create module registration and lookup functions
+- [ ] Add module capability declarations
+- [ ] Test interface compiles and supports basic operations
 
-### Task 2.2: Code Generation System
-- [x] Create generate_property_headers.py script
-- [x] Implement type-safe macro generation
-- [x] Generate property access functions
-- [x] Create property availability checking system
-- [x] Add property iteration support
+### Task 2A.2: Core Evolution Pipeline Abstraction
+- [ ] Remove direct `#include` of physics headers from core
+- [ ] Replace physics function calls with module interface calls
+- [ ] Create conditional execution based on loaded modules
+- [ ] Maintain identical execution order and logic
+- [ ] Verify core compiles without physics dependencies
 
-### Task 2.3: Property API Implementation
-- [ ] Create property.h/c with unified property interface
-- [ ] Implement compile-time property access macros
-- [ ] Add runtime property availability checking
-- [ ] Create property initialization/cleanup functions
-- [ ] Build property validation framework
+### Task 2A.3: Physics-Free Mode Implementation
+- [ ] Core processes merger trees without physics calculations
+- [ ] Galaxies have core properties only (halo inheritance, tracking)
+- [ ] Tree traversal and basic galaxy lifecycle functional
+- [ ] Scientific output limited to halo properties
+- [ ] Test physics-free mode runs complete tree processing
 
-### Task 2.4: Core Property Migration
-- [ ] Migrate essential galaxy properties (Type, GalaxyNr, HaloNr, etc.)
-- [ ] Migrate halo properties (Mvir, Rvir, Vvir, etc.)
-- [ ] Update core_allvars.h to use generated structures
-- [ ] Adapt core_build_model.c to new property access
-- [ ] Ensure backward compatibility during transition
+### Task 2A.4: Legacy Physics Module Wrapping
+- [ ] Create adapter modules for each physics function
+- [ ] Maintain identical physics calculations
+- [ ] Register modules using new interface
+- [ ] Preserve all existing scientific behavior
+- [ ] Verify physics calculations produce identical results
 
-### Task 2.5: Build System Integration
-- [ ] Integrate code generation into CMake build
-- [ ] Create build configurations for different property sets
-- [ ] Add property-based compilation flags
-- [ ] Set up IDE support for generated headers
-- [ ] Implement incremental generation optimization
+### Task 2A.5: Module Dependency Framework
+- [ ] Modules declare their dependencies
+- [ ] Simple topological sort for execution order
+- [ ] Error handling for missing dependencies
+- [ ] Support for optional module loading
+- [ ] Test module dependencies resolved correctly
 
 ## Completion Criteria
-**Phase 2 Complete When:**
-- Properties defined in YAML, not hardcoded C structs
-- Code generation produces type-safe property access
-- Core properties migrated to new system
-- All tests pass with identical scientific results
-- Build system automatically generates property code
+**Phase 2A Complete When:**
+- Core compiles and runs without physics modules loaded
+- Physics modules wrapped in interface, calculations unchanged
+- Module interface enables conditional physics execution
+- Physics-free mode processes merger trees successfully
+- All existing tests pass with wrapped physics modules
 
-**Phase 2 Status**: 2/5 tasks completed
+**Phase 2A Status**: 0/5 tasks completed
+
+## Validation Requirements
+- **Architecture Compliance**: Core has zero physics knowledge
+- **Scientific Accuracy**: Physics results identical to pre-modular
+- **Functionality**: Both physics-free and full-physics modes work
+- **Performance**: No significant runtime degradation
+
+## Why Phase 2A Must Come First
+This phase addresses the **fundamental architectural violation** identified in the legacy code:
+- `src/core/core_build_model.c` directly includes physics headers
+- Core makes direct calls to physics functions
+- Core cannot run without physics (violates Principle 1)
+
+**All subsequent work must build on architecturally compliant foundations.**
 
 ## Inter-Phase Dependencies
-- **From Phase 1**: ✅ CMake build system (for code generation integration)
-- **From Phase 1**: ✅ Memory abstraction (for property allocation)
-- **To Phase 3**: Property system needed for RAII memory management
-- **To Phase 4**: Property metadata enables configuration validation
-- **To Phase 5**: Property abstraction required for modular physics
+- **From Phase 1**: ✅ CMake build system (for module compilation)
+- **From Phase 1**: ✅ Memory abstraction (for module memory management)
+- **From Phase 1**: ✅ Property system infrastructure (Tasks 2.1-2.2)
+- **To Phase 2B**: Modular architecture needed before property migration
+- **To Phase 3**: Module-aware memory management requires established modules
+- **To Phase 4**: Runtime module system builds on basic module interface
+
+## Critical Success Factors
+1. **Physics-Agnostic Core**: Core must have zero physics knowledge
+2. **Interface Design**: Module interface must support all existing physics
+3. **Scientific Preservation**: Wrapped physics must produce identical results
+4. **Performance**: Module interface overhead must be minimal
+5. **Foundation Quality**: This enables all subsequent modular development
+
+**This phase establishes the architectural foundation that makes SAGE's vision achievable.**

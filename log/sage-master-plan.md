@@ -1,980 +1,548 @@
-# SAGE Master Implementation Plan
-**Version**: 1.0  
-**Date**: December 2024  
+# SAGE Master Implementation Plan v2.0
+**Version**: 2.0 (Architecturally-Aligned)  
+**Date**: September 2024  
 **Legacy Baseline**: commit ba652705a48b80eae3b6a07675f8c7c938bc1ff6  
+**Current State**: commit 2395ab2 (Property system infrastructure complete)
+
+---
+
+## ⚠️ CRITICAL ARCHITECTURAL COMPLIANCE
+
+This implementation plan has been restructured to strictly adhere to the **8 Core Architectural Principles** defined in `log/sage-architecture-vision.md`. Each phase explicitly states which principles it addresses and ensures no violations occur.
+
+### 🎯 Core Architectural Principles
+1. **Physics-Agnostic Core Infrastructure** - Core has zero physics knowledge
+2. **Runtime Modularity** - Module combinations configurable without recompilation  
+3. **Metadata-Driven Architecture** - Structure defined by metadata, not hardcoded
+4. **Single Source of Truth** - One authoritative data representation
+5. **Unified Processing Model** - Consistent merger tree processing
+6. **Memory Efficiency and Safety** - Bounded, predictable memory usage
+7. **Format-Agnostic I/O** - Multiple formats through unified interfaces
+8. **Type Safety and Validation** - Type-safe access with automatic validation
 
 ---
 
 ## Executive Summary
 
-This Master Implementation Plan guides the transformation of SAGE from a monolithic galaxy evolution model into a modern, modular architecture with a physics-agnostic core and runtime-configurable physics modules. The plan is structured in 7 phases, each delivering working functionality while preserving exact scientific accuracy.
+This Master Implementation Plan guides the transformation of SAGE from a monolithic galaxy evolution model into a modern, modular architecture with a **physics-agnostic core and runtime-configurable physics modules**, while strictly maintaining architectural principle compliance throughout development.
 
 ### Key Transformation Goals
-1. **Build System Modernization**: Replace Makefile with CMake for better IDE integration and dependency management
-2. **Type-Safe Property System**: Replace string-based property access with compile-time validated system
-3. **Memory Management**: Replace custom allocators with standard allocators + RAII-style cleanup
-4. **Unified Configuration**: Single JSON-based configuration system replacing dual .par/internal systems
+1. **Physics-Agnostic Core** (Principle 1): Core infrastructure with zero physics knowledge
+2. **Type-Safe Property System** (Principles 3,4,8): Metadata-driven, compile-time validated access
+3. **Runtime Module System** (Principle 2): Physics modules loaded/configured at runtime
+4. **Unified I/O Architecture** (Principle 7): Format-agnostic with property-based output
 
 ### Implementation Approach
-- **Incremental Migration**: Abstraction layers enable gradual transition
+- **Architecture-First**: Establish foundational principles before building complexity
 - **Scientific Preservation**: Every phase validates against reference results
-- **Risk Mitigation**: Critical areas addressed early with fallback options
-- **AI Development Ready**: Tasks sized for 1-3 day implementation sessions
+- **Principle Compliance**: No architectural violations tolerated during development
+- **Incremental Value**: Each phase delivers working, compliant functionality
 
 ---
 
 ## Phase Overview
 
-| Phase | Name | Duration | Entry Criteria | Exit Criteria | Critical Dependencies |
-|-------|------|----------|----------------|---------------|---------------------|
-| 1 | Infrastructure Foundation | 3 weeks | Legacy codebase analysis complete | CMake build system working, abstraction layers in place | None |
-| 2 | Property System Core | 4 weeks | Phase 1 complete, YAML design finalized | Type-safe property generation working | Phase 1 |
-| 3 | Memory Management | 3 weeks | Phase 2 complete | Standard allocators integrated, RAII patterns working | Phases 1, 2 |
-| 4 | Configuration Unification | 2 weeks | Phase 3 complete | Unified JSON config with legacy support | Phases 1, 2, 3 |
-| 5 | Module System Architecture | 4 weeks | Phase 4 complete | Self-registering modules with dependency resolution | Phases 1-4 |
-| 6 | I/O System Modernization | 3 weeks | Phase 5 complete | Unified I/O interface with property-based serialization | Phases 1-5 |
-| 7 | Validation & Polish | 2 weeks | Phase 6 complete | Full scientific validation, documentation complete | All phases |
+| Phase | Name | Principles | Duration | Entry Criteria | Exit Criteria |
+|-------|------|------------|----------|----------------|---------------|
+| 1 | Infrastructure Foundation | 6,7,8 | ✅ COMPLETE | Legacy analysis | CMake build, abstractions |
+| 2A | Core/Physics Separation | 1,5 | 3 weeks | Phase 1 complete | Physics-agnostic core operational |
+| 2B | Property System Integration | 3,4,8 | 4 weeks | Phase 2A complete | Properties applied in modular context |
+| 3 | Memory Management | 6 | 3 weeks | Phase 2B complete | RAII patterns, bounded memory |
+| 4 | Configuration & Module System | 2 | 4 weeks | Phase 3 complete | Runtime module configuration |
+| 5 | I/O Modernization | 7 | 3 weeks | Phase 4 complete | Property-based, module-aware I/O |
+| 6 | Validation & Polish | All | 2 weeks | Phase 5 complete | Full validation, documentation |
 
-**Total Duration**: ~21 weeks (5-6 months)
-
----
-
-## Critical Path Analysis
-
-### Primary Critical Path
-Phase 1 → Phase 2 → Phase 5 → Phase 6 → Phase 7
-
-**Reasoning**: The property system (Phase 2) is fundamental to the module system (Phase 5), which drives the I/O system (Phase 6). These cannot be parallelized effectively.
-
-### Parallelization Opportunities
-- **Phase 3** (Memory Management) can begin after Phase 2 core property access is working
-- **Phase 4** (Configuration) can start once Phase 1 provides JSON reading infrastructure
-- Documentation updates can proceed in parallel with implementation
-
-### Risk Points
-1. **Phase 2 Property Generation**: Complex metadata → code generation pipeline
-2. **Phase 5 Module Dependencies**: Dependency resolution algorithm complexity
-3. **Phase 6 I/O Validation**: Ensuring output compatibility with analysis tools
+**Total Duration**: ~19 weeks (4.5 months)
 
 ---
 
-## Phase 1: Infrastructure Foundation
+## 🚨 Phase 2A: Core/Physics Separation (NEW PHASE)
+
+### Architectural Principles Addressed
+- **Principle 1**: Physics-Agnostic Core Infrastructure ⭐ **PRIMARY**
+- **Principle 5**: Unified Processing Model
 
 ### Objectives
-- **Primary**: Establish CMake build system with out-of-tree builds
-- **Secondary**: Create abstraction layers for smooth migration
+- **Primary**: Remove all physics knowledge from core infrastructure
+- **Secondary**: Enable physics-free mode operation
+- **Critical**: Establish foundation for all subsequent development
 
 ### Entry Criteria
-- Development environment setup complete
-- Legacy codebase analysis documented
-- Team agreement on directory structure
+- ✅ CMake build system operational
+- ✅ Property system infrastructure complete (Tasks 2.1-2.2)
+- ✅ Core currently has hardcoded physics calls (violation to fix)
 
 ### Tasks
 
-#### Task 1.1: CMake Build System Setup
-- **Objective**: Replace Makefile with modern CMake configuration
-- **Implementation**: 
-  - Create root CMakeLists.txt with project configuration
-  - Set up source file discovery and compilation flags
-  - Configure HDF5 and MPI detection
-  - Enable out-of-tree builds
-- **Testing**: Build produces identical binary to Makefile version
-- **Documentation**: Update README with CMake build instructions
-- **Risk**: Team unfamiliar with CMake - provide templates and examples
-- **Effort**: 2 sessions (moderate complexity)
-- **Dependencies**: None
-
-#### Task 1.2: Directory Reorganization
-- **Objective**: Implement modern project structure per architecture guide
+#### Task 2A.1: Physics Module Interface Design
+- **Objective**: Create minimal interface for physics module communication
 - **Implementation**:
-  - Move source files to proper subdirectories (core/, physics/, io/)
-  - Set up docs/ with role-based navigation
-  - Create log/ directory for AI development support
-  - Establish tests/ structure for categorized testing
-- **Testing**: All files accessible, build system finds all sources
-- **Documentation**: Create directory structure documentation
-- **Risk**: Git history preservation - use git mv commands
-- **Effort**: 1 session (low complexity)
-- **Dependencies**: Task 1.1 partially complete
+  - Design `physics_module_t` structure with execution phases
+  - Define standard module lifecycle (init, execute, cleanup)
+  - Create module registration and lookup functions
+  - Add module capability declarations
+- **Principles**: Establishes foundation for Principle 1 compliance
+- **Testing**: Interface compiles and supports basic module operations
+- **Effort**: 2 sessions
 
-#### Task 1.3: Memory Abstraction Layer
-- **Objective**: Create sage_malloc/sage_free abstractions
+#### Task 2A.2: Core Evolution Pipeline Abstraction
+- **Objective**: Replace hardcoded physics calls with module interface
 - **Implementation**:
-  - Create memory.h with allocation macros
-  - Replace mymalloc calls with sage_malloc
-  - Keep existing mymalloc implementation initially
-  - Add allocation tracking for debugging
-- **Testing**: Memory tests pass, no leaks detected
-- **Documentation**: Document abstraction pattern and migration plan
-- **Risk**: Minimal - simple macro replacement initially
-- **Effort**: 1 session (low complexity)
-- **Dependencies**: Task 1.2 complete
+  - Remove direct `#include` of physics headers from core
+  - Replace physics function calls with module interface calls
+  - Create conditional execution based on loaded modules
+  - Maintain identical execution order and logic
+- **Principles**: Achieves Principle 1 compliance in core
+- **Testing**: Core compiles without physics dependencies
+- **Effort**: 3 sessions
 
-#### Task 1.4: Configuration Abstraction Layer
-- **Objective**: Create unified config reading interface
+#### Task 2A.3: Physics-Free Mode Implementation
+- **Objective**: Enable core to run without any physics modules
 - **Implementation**:
-  - Design config_t structure for unified access
-  - Create config_reader.c with JSON support
-  - Add legacy .par file reading to same interface
-  - Implement configuration validation framework
-- **Testing**: Both JSON and .par files read correctly
-- **Documentation**: Configuration format specification
-- **Risk**: JSON library selection - use proven solution
-- **Effort**: 2 sessions (moderate complexity)
-- **Dependencies**: Task 1.1 complete
+  - Core processes merger trees without physics calculations
+  - Galaxies have core properties only (halo inheritance, tracking)
+  - Tree traversal and basic galaxy lifecycle functional
+  - Scientific output limited to halo properties
+- **Principles**: Validates Principle 1 compliance
+- **Testing**: Physics-free mode runs complete merger tree processing
+- **Effort**: 2 sessions
 
-#### Task 1.5: Logging System Setup
-- **Objective**: Implement development logging for AI support
+#### Task 2A.4: Legacy Physics Module Wrapping
+- **Objective**: Wrap existing physics modules in new interface
 - **Implementation**:
-  - Create log/README.md with system description
-  - Set up template files for phases and decisions
-  - Implement log rotation/archiving system
-  - Create CLAUDE.md with project overview
-- **Testing**: Logging creates expected file structure
-- **Documentation**: Logging best practices guide
-- **Risk**: None - auxiliary system
-- **Effort**: 1 session (low complexity)
-- **Dependencies**: Task 1.2 complete
+  - Create adapter modules for each physics function
+  - Maintain identical physics calculations
+  - Register modules using new interface
+  - Preserve all existing scientific behavior
+- **Principles**: Maintains Principle 5 (unified processing)
+- **Testing**: Physics calculations produce identical results
+- **Effort**: 3 sessions
+
+#### Task 2A.5: Module Dependency Framework
+- **Objective**: Basic dependency resolution for module execution
+- **Implementation**:
+  - Modules declare their dependencies
+  - Simple topological sort for execution order
+  - Error handling for missing dependencies
+  - Support for optional module loading
+- **Principles**: Enables Principle 2 foundation
+- **Testing**: Module dependencies resolved correctly
+- **Effort**: 2 sessions
 
 ### Exit Criteria
-- CMake build produces working SAGE binary
-- All abstraction layers in place and tested
-- Legacy .par files still work
-- Development logging system operational
-- All tests pass with identical scientific results
+- ✅ Core compiles and runs without physics modules loaded
+- ✅ Physics modules wrapped in interface, calculations unchanged
+- ✅ Module interface enables conditional physics execution  
+- ✅ Physics-free mode processes merger trees successfully
+- ✅ All existing tests pass with wrapped physics modules
 
 ### Validation
-- Run test_sage.sh with both Makefile and CMake builds
-- Compare binary outputs byte-for-byte
-- Verify IDE integration works (VS Code, CLion)
-- Check debug builds with AddressSanitizer
+- **Architecture Compliance**: Core has zero physics knowledge
+- **Scientific Accuracy**: Physics results identical to pre-modular
+- **Functionality**: Both physics-free and full-physics modes work
+- **Performance**: No significant runtime degradation
 
 ---
 
-## Phase 2: Property System Core
+## Phase 2B: Property System Integration (REVISED)
+
+### Architectural Principles Addressed
+- **Principle 3**: Metadata-Driven Architecture ⭐ **PRIMARY**
+- **Principle 4**: Single Source of Truth
+- **Principle 8**: Type Safety and Validation
 
 ### Objectives
-- **Primary**: Implement metadata-driven property system with code generation
-- **Secondary**: Enable type-safe, compile-time validated property access
+- **Primary**: Apply property system within modular architecture
+- **Secondary**: Enable type-safe property access throughout codebase
+- **Foundation**: Property migration occurs in architecturally compliant context
 
 ### Entry Criteria
-- CMake build system fully operational
-- Directory structure reorganized
-- Python environment configured for code generation
+- ✅ Core/physics separation complete (Phase 2A)
+- ✅ Physics modules use interface, not direct coupling
+- ✅ Property system infrastructure ready (Tasks 2.1-2.2)
 
 ### Tasks
 
-#### Task 2.1: Property Metadata Design
-- **Objective**: Create YAML schema for property definitions
+#### Task 2B.1: Core Property Migration
+- **Objective**: Migrate core properties using property system
 - **Implementation**:
-  - Design properties.yaml structure
-  - Define core vs physics property categories
-  - Specify array properties with size parameters
-  - Include units, descriptions, output flags
-- **Testing**: YAML validates against schema
-- **Documentation**: Property definition guide
-- **Risk**: Over-engineering schema - keep it simple
-- **Effort**: 2 sessions (moderate complexity)
-- **Dependencies**: None
+  - Apply property macros to core files only
+  - Core properties: `SnapNum`, `Type`, `Pos`, `Mvir`, `Rvir`, etc.
+  - Update core_build_model.c, core_save.c using property access
+  - Maintain physics-agnostic property boundaries
+- **Principles**: Principle 4 - unified core property access
+- **Testing**: Core functionality identical with property macros
+- **Effort**: 2 sessions
 
-#### Task 2.2: Code Generation Framework
-- **Objective**: Build Python generator for property headers
+#### Task 2B.2: Physics Property Integration
+- **Objective**: Migrate physics properties within modular context
 - **Implementation**:
-  - Create generate_property_headers.py
-  - Generate type-safe getter/setter macros
-  - Create property enumeration and masks
-  - Implement compile-time availability checks
-- **Testing**: Generated code compiles without warnings
-- **Documentation**: Code generation design documentation
-- **Risk**: Complex template generation - use proven patterns
-- **Effort**: 3 sessions (high complexity)
-- **Dependencies**: Task 2.1 complete
+  - Physics modules use property macros for physics properties
+  - Properties: `ColdGas`, `StellarMass`, `HotGas`, etc.
+  - Property access only within appropriate modules
+  - Core never accesses physics properties directly
+- **Principles**: Maintains Principle 1 compliance during property migration
+- **Testing**: Physics calculations unchanged with property access
+- **Effort**: 3 sessions
 
-#### Task 2.3: Property Migration - Core Properties
-- **Objective**: Convert core GALAXY struct members to property system
+#### Task 2B.3: Property Availability System
+- **Objective**: Runtime property availability based on loaded modules
 - **Implementation**:
-  - Define core properties in YAML
-  - Update GALAXY struct to use generated definitions
-  - Replace direct member access with macros
-  - Maintain backward compatibility temporarily
-- **Testing**: Core property access works identically
-- **Documentation**: Migration guide for developers
-- **Risk**: Breaking existing code - use incremental approach
-- **Effort**: 2 sessions (moderate complexity)
-- **Dependencies**: Task 2.2 complete
+  - Property system adapts to loaded module set
+  - Core properties always available
+  - Physics properties conditional on module loading
+  - Type-safe access with compile-time checking
+- **Principles**: Principle 2 - runtime modularity for properties
+- **Testing**: Property access reflects loaded modules correctly
+- **Effort**: 2 sessions
 
-#### Task 2.4: Property Migration - Physics Properties
-- **Objective**: Convert physics-specific properties
+#### Task 2B.4: CMake Integration Enhancement
+- **Objective**: Integrate property generation with modular build
 - **Implementation**:
-  - Identify all physics-dependent properties
-  - Add conditional compilation for physics properties
-  - Update physics modules to use new access patterns
-  - Remove old property access code
-- **Testing**: Physics calculations produce same results
-- **Documentation**: Physics property usage examples
-- **Risk**: Missing property dependencies - thorough analysis needed
-- **Effort**: 3 sessions (high complexity)
-- **Dependencies**: Task 2.3 complete
-
-#### Task 2.5: CMake Integration
-- **Objective**: Integrate code generation into build system
-- **Implementation**:
-  - Add custom command for property generation
-  - Set up proper dependencies on YAML files
-  - Configure different property sets for build modes
-  - Enable regeneration on YAML changes
-- **Testing**: Build regenerates on YAML changes
-- **Documentation**: Build configuration documentation
-- **Risk**: CMake complexity - use standard patterns
-- **Effort**: 1 session (low complexity)
-- **Dependencies**: Tasks 2.2, 2.3 complete
+  - Property generation considers module configurations
+  - Different property sets for different build modes
+  - Automatic regeneration on YAML changes
+  - IDE support for generated property access
+- **Principles**: Principle 3 - build-time metadata processing
+- **Testing**: Build system regenerates properties correctly
+- **Effort**: 1 session
 
 ### Exit Criteria
-- All galaxy properties defined in YAML
-- Type-safe access throughout codebase
-- Code generation integrated into build
-- No string-based property lookups remain
-- Scientific results unchanged
-
-### Validation
-- Full regression test suite passes
-- No compiler warnings from generated code
-- IDE autocomplete works for all properties
-- Performance benchmarks show no degradation
+- ✅ All galaxy properties accessed via type-safe macros
+- ✅ Property availability adapts to loaded modules
+- ✅ Core uses core properties, physics modules use physics properties
+- ✅ Build system integrated with property generation
+- ✅ Scientific results unchanged from Phase 2A
 
 ---
 
-## Phase 3: Memory Management
+## Phase 3: Memory Management (ENHANCED)
+
+### Architectural Principles Addressed
+- **Principle 6**: Memory Efficiency and Safety ⭐ **PRIMARY**
 
 ### Objectives
-- **Primary**: Replace custom allocators with standard + RAII patterns
-- **Secondary**: Implement scoped memory management
+- **Primary**: Implement bounded, predictable memory usage
+- **Secondary**: Module-aware memory management with RAII patterns
+- **Foundation**: Memory management designed for modular architecture
 
 ### Entry Criteria
-- Property system fully operational
-- All galaxy data access type-safe
-- Memory abstraction layer in place
+- ✅ Modular architecture established
+- ✅ Property system operational within modules
+- ✅ Module interface supports memory lifecycle
 
 ### Tasks
 
-#### Task 3.1: RAII Pattern Implementation
-- **Objective**: Create C-style RAII memory management
+#### Task 3.1: Module-Aware Memory Scopes
+- **Objective**: RAII memory management respecting module boundaries
 - **Implementation**:
-  - Design memory_scope structure
-  - Implement cleanup handler stack
-  - Create scope entry/exit functions
-  - Add automatic cleanup registration
-- **Testing**: Memory freed on scope exit
-- **Documentation**: RAII pattern usage guide
-- **Risk**: C developers unfamiliar with pattern
-- **Effort**: 2 sessions (moderate complexity)
-- **Dependencies**: Phase 1 memory abstraction
+  - Memory scopes tied to module execution phases
+  - Automatic cleanup when modules complete
+  - Module-specific memory tracking
+  - Cross-module memory safety
+- **Principles**: Principle 6 with module awareness
+- **Testing**: Memory freed correctly per module
+- **Effort**: 2 sessions
 
-#### Task 3.2: Forest Processing Memory Scopes
-- **Objective**: Apply RAII to forest processing
+#### Task 3.2: Property-Based Memory Allocation
+- **Objective**: Memory allocation based on available properties
 - **Implementation**:
-  - Identify forest-level allocations
-  - Wrap forest processing in memory scope
-  - Register all allocations for cleanup
-  - Remove manual free calls
-- **Testing**: No memory leaks in forest processing
-- **Documentation**: Forest memory lifecycle
-- **Risk**: Missing some allocations - use tools
-- **Effort**: 2 sessions (moderate complexity)
-- **Dependencies**: Task 3.1 complete
+  - Allocate physics structs only if physics modules loaded
+  - Dynamic property memory sizing
+  - Property-aware memory layout optimization
+  - Conditional memory allocation
+- **Principles**: Integrates Principles 3,6
+- **Testing**: Memory usage adapts to module configuration
+- **Effort**: 2 sessions
 
-#### Task 3.3: Remove Custom Allocator
-- **Objective**: Replace mymalloc with standard allocators
+#### Task 3.3: Bounded Memory Architecture
+- **Objective**: Ensure memory usage doesn't grow with simulation size
 - **Implementation**:
-  - Update sage_malloc to use malloc directly
-  - Remove mymalloc.c/h files
-  - Update memory tracking if needed
-  - Verify all allocations still tracked
-- **Testing**: Valgrind shows no leaks
-- **Documentation**: Memory management architecture
-- **Risk**: Losing memory statistics - add new tracking
-- **Effort**: 1 session (low complexity)
-- **Dependencies**: Task 3.2 complete
-
-#### Task 3.4: Galaxy Array Management
-- **Objective**: Implement efficient galaxy array allocation
-- **Implementation**:
-  - Create galaxy array allocation functions
-  - Implement growth strategies for dynamic arrays
-  - Add bounds checking in debug mode
-  - Optimize for cache performance
-- **Testing**: Array operations perform correctly
-- **Documentation**: Array management patterns
-- **Risk**: Performance regression - benchmark carefully
-- **Effort**: 2 sessions (moderate complexity)
-- **Dependencies**: Tasks 3.1, 3.2 complete
-
-#### Task 3.5: Memory Profiling Integration
-- **Objective**: Add memory usage tracking and reporting
-- **Implementation**:
-  - Track allocations by category
-  - Report memory usage statistics
-  - Add peak memory tracking
-  - Create memory usage visualization
-- **Testing**: Reports accurate memory usage
-- **Documentation**: Memory profiling guide
-- **Risk**: Overhead concerns - make optional
-- **Effort**: 1 session (low complexity)
-- **Dependencies**: Task 3.3 complete
+  - Tree-scoped memory allocation
+  - Predictable memory growth patterns
+  - Memory pressure handling
+  - Large simulation memory bounds
+- **Principles**: Principle 6 - bounded memory
+- **Testing**: Memory usage constant over long runs
+- **Effort**: 2 sessions
 
 ### Exit Criteria
-- All custom allocators removed
-- RAII patterns used throughout
-- Standard debugging tools work perfectly
-- Memory usage bounded and predictable
-- No memory leaks detected
-
-### Validation
-- Full Valgrind test suite passes
-- AddressSanitizer reports no issues
-- Memory usage stays constant over long runs
-- Performance within 5% of legacy
+- ✅ Memory usage bounded and predictable
+- ✅ Module-aware memory lifecycle
+- ✅ Property-based memory allocation
+- ✅ Standard debugging tools compatible
 
 ---
 
-## Phase 4: Configuration Unification
+## Phase 4: Configuration & Module System (ENHANCED)
+
+### Architectural Principles Addressed
+- **Principle 2**: Runtime Modularity ⭐ **PRIMARY**
 
 ### Objectives
-- **Primary**: Create unified JSON configuration system
-- **Secondary**: Maintain backward compatibility with .par files
+- **Primary**: Runtime module configuration without recompilation
+- **Secondary**: Complete unified configuration system
+- **Foundation**: Full runtime modularity achieved
 
 ### Entry Criteria
-- Configuration abstraction layer in place
-- JSON parsing library integrated
-- Property system operational
+- ✅ Module interface mature from Phase 2A
+- ✅ Property system supports module-aware configurations
+- ✅ Memory management supports dynamic module loading
 
 ### Tasks
 
-#### Task 4.1: Configuration Schema Design
-- **Objective**: Design comprehensive JSON schema
+#### Task 4.1: Runtime Module Configuration
+- **Objective**: Load/configure modules based on configuration files
 - **Implementation**:
-  - Create schema for all configuration sections
-  - Define simulation, module, and build configs
-  - Add parameter validation rules
-  - Include legacy compatibility fields
-- **Testing**: Schema validates example configs
-- **Documentation**: Configuration reference guide
-- **Risk**: Over-complex schema - iterate with users
-- **Effort**: 2 sessions (moderate complexity)
-- **Dependencies**: None
+  - JSON-based module selection
+  - Module parameter configuration
+  - Runtime module loading/unloading
+  - Module combination validation
+- **Principles**: Achieves Principle 2 fully
+- **Testing**: Different module combinations work correctly
+- **Effort**: 3 sessions
 
-#### Task 4.2: JSON Configuration Parser
-- **Objective**: Implement robust JSON config reading
+#### Task 4.2: Module Dependency Resolution
+- **Objective**: Automatic dependency handling with validation
 - **Implementation**:
-  - Parse JSON into config_t structure
-  - Implement schema validation
-  - Add helpful error messages
-  - Support environment variable expansion
-- **Testing**: Valid and invalid configs handled correctly
-- **Documentation**: Configuration error troubleshooting
-- **Risk**: Poor error messages - focus on clarity
-- **Effort**: 2 sessions (moderate complexity)
-- **Dependencies**: Task 4.1 complete
+  - Enhanced dependency graph processing
+  - Circular dependency detection
+  - Missing dependency error handling
+  - Optimal execution order determination
+- **Principles**: Supports Principle 2 robustness
+- **Testing**: Complex dependency graphs resolved correctly
+- **Effort**: 2 sessions
 
-#### Task 4.3: Legacy Parameter Migration
-- **Objective**: Support existing .par files transparently
+#### Task 4.3: Configuration Validation Framework
+- **Objective**: Validate configurations against available modules
 - **Implementation**:
-  - Detect file format automatically
-  - Convert .par to internal config_t
-  - Provide migration warnings
-  - Create .par to JSON converter tool
-- **Testing**: All .par files work unchanged
-- **Documentation**: Migration guide from .par to JSON
-- **Risk**: Missing .par features - comprehensive testing
-- **Effort**: 2 sessions (moderate complexity)
-- **Dependencies**: Task 4.2 complete
-
-#### Task 4.4: Module Configuration Integration
-- **Objective**: Enable module-specific configuration
-- **Implementation**:
-  - Add module config sections to schema
-  - Pass config to module initialization
-  - Validate module parameters
-  - Support dynamic module loading config
-- **Testing**: Modules receive correct configuration
-- **Documentation**: Module configuration examples
-- **Risk**: Module interface changes - plan carefully
-- **Effort**: 1 session (low complexity)
-- **Dependencies**: Task 4.2 complete
+  - Schema validation for module configurations
+  - Parameter bounds checking
+  - Module compatibility validation
+  - Clear error reporting
+- **Principles**: Principle 8 - validation for modules
+- **Testing**: Invalid configurations caught with clear errors
+- **Effort**: 2 sessions
 
 ### Exit Criteria
-- Single configuration system throughout code
-- JSON primary format with .par compatibility
-- Schema validation catches errors early
-- Module configurations properly handled
-- Migration tools available
-
-### Validation
-- All existing .par files work
-- JSON configs produce identical results
-- Validation catches common errors
-- Error messages helpful and clear
+- ✅ Module combinations configurable at runtime
+- ✅ No recompilation needed for different physics
+- ✅ Dependency resolution robust and automatic
+- ✅ Configuration validation comprehensive
 
 ---
 
-## Phase 5: Module System Architecture
+## Phase 5: I/O Modernization (ENHANCED)
+
+### Architectural Principles Addressed
+- **Principle 7**: Format-Agnostic I/O ⭐ **PRIMARY**
 
 ### Objectives
-- **Primary**: Implement self-registering physics modules
-- **Secondary**: Enable runtime module configuration
+- **Primary**: Module-aware, property-based I/O system
+- **Secondary**: Unified I/O interface for all formats
+- **Foundation**: I/O adapts automatically to loaded modules
 
 ### Entry Criteria
-- Property system complete
-- Configuration system unified
-- Memory management modernized
+- ✅ Module system fully operational
+- ✅ Property system reflects loaded modules
+- ✅ Runtime module configuration working
 
 ### Tasks
 
-#### Task 5.1: Module Interface Design
-- **Objective**: Define module structure and lifecycle
-- **Implementation**:
-  - Create module_info_t structure
-  - Define initialization/shutdown interfaces
-  - Specify execution phase callbacks
-  - Add capability and dependency declarations
-- **Testing**: Module interface compiles
-- **Documentation**: Module development guide
-- **Risk**: Over-complex interface - start simple
-- **Effort**: 2 sessions (moderate complexity)
-- **Dependencies**: None
-
-#### Task 5.2: Module Registry Implementation
-- **Objective**: Build automatic module registration
-- **Implementation**:
-  - Create global module registry
-  - Use constructor attributes for registration
-  - Implement module lookup functions
-  - Add module listing capabilities
-- **Testing**: Modules register automatically
-- **Documentation**: Module registration internals
-- **Risk**: Platform compatibility - test thoroughly
-- **Effort**: 2 sessions (moderate complexity)
-- **Dependencies**: Task 5.1 complete
-
-#### Task 5.3: Core/Physics Separation
-- **Objective**: Move physics code into modules
-- **Implementation**:
-  - Identify physics vs core functions
-  - Create physics module files
-  - Move physics functions to modules
-  - Update build system for modules
-- **Testing**: Physics modules load correctly
-- **Documentation**: Core/physics boundary definition
-- **Risk**: Unclear boundaries - document decisions
-- **Effort**: 3 sessions (high complexity)
-- **Dependencies**: Task 5.2 complete
-
-#### Task 5.4: Pipeline Execution Engine
-- **Objective**: Build flexible execution pipeline
-- **Implementation**:
-  - Create pipeline structure
-  - Add modules based on configuration
-  - Implement phase-based execution
-  - Handle module communication
-- **Testing**: Pipeline executes all phases
-- **Documentation**: Pipeline architecture guide
-- **Risk**: Performance overhead - optimize critical path
-- **Effort**: 2 sessions (moderate complexity)
-- **Dependencies**: Task 5.3 complete
-
-#### Task 5.5: Dependency Resolution
-- **Objective**: Automatic module dependency handling
-- **Implementation**:
-  - Parse module dependencies
-  - Implement topological sort
-  - Detect circular dependencies
-  - Order pipeline by dependencies
-- **Testing**: Dependencies resolved correctly
-- **Documentation**: Dependency system explanation
-- **Risk**: Complex dependency graphs - limit depth
-- **Effort**: 2 sessions (moderate complexity)
-- **Dependencies**: Task 5.4 complete
-
-### Exit Criteria
-- All physics in self-contained modules
-- Modules register automatically
-- Pipeline adapts to module configuration
-- Dependencies resolved correctly
-- Core has zero physics knowledge
-
-### Validation
-- Physics-free mode runs successfully
-- Module combinations produce expected results
-- No hardcoded physics in core
-- Performance comparable to monolithic
-
----
-
-## Phase 6: I/O System Modernization
-
-### Objectives
-- **Primary**: Create unified I/O interface for all formats
-- **Secondary**: Implement property-based output generation
-
-### Entry Criteria
-- Module system operational
-- Property system complete
-- All file I/O identified
-
-### Tasks
-
-#### Task 6.1: I/O Interface Design
-- **Objective**: Define common I/O interface
-- **Implementation**:
-  - Create io_interface_t structure
-  - Define read/write operations
-  - Add format capability flags
-  - Include resource management
-- **Testing**: Interface supports all formats
-- **Documentation**: I/O interface specification
-- **Risk**: Missing format requirements - survey all
-- **Effort**: 1 session (low complexity)
-- **Dependencies**: None
-
-#### Task 6.2: Format Adapter Implementation
-- **Objective**: Wrap existing I/O in unified interface
-- **Implementation**:
-  - Create adapter for each format
-  - Implement interface methods
-  - Handle format-specific options
-  - Add error handling
-- **Testing**: All formats work through interface
-- **Documentation**: Format adapter patterns
-- **Risk**: Interface impedance mismatch - iterate
-- **Effort**: 3 sessions (high complexity)
-- **Dependencies**: Task 6.1 complete
-
-#### Task 6.3: Property-Based Output
-- **Objective**: Generate output from property metadata
+#### Task 5.1: Module-Aware Property Output
+- **Objective**: Output adapts automatically to loaded modules
 - **Implementation**:
   - Query available properties at runtime
-  - Create datasets for each property
-  - Handle array properties correctly
-  - Support property transformations
-- **Testing**: Output contains all properties
-- **Documentation**: Output customization guide
-- **Risk**: Output compatibility - validate carefully
-- **Effort**: 2 sessions (moderate complexity)
-- **Dependencies**: Task 6.2 complete
+  - Include only properties from loaded modules
+  - Automatic output field adaptation
+  - Module-specific output transformations
+- **Principles**: Integrates Principles 2,3,7
+- **Testing**: Output matches loaded module set
+- **Effort**: 2 sessions
 
-#### Task 6.4: HDF5 Hierarchical Output
-- **Objective**: Implement structured HDF5 output
+#### Task 5.2: Unified I/O Interface
+- **Objective**: Common interface for all input/output formats
 - **Implementation**:
-  - Design group hierarchy
-  - Add metadata attributes
-  - Implement chunking/compression
-  - Create property-based datasets
-- **Testing**: HDF5 files readable by tools
-- **Documentation**: HDF5 output format spec
-- **Risk**: Breaking analysis tools - test thoroughly
-- **Effort**: 2 sessions (moderate complexity)
-- **Dependencies**: Task 6.3 complete
+  - Format-agnostic I/O operations
+  - Property-based dataset creation
+  - Cross-format compatibility
+  - Module-aware format selection
+- **Principles**: Principle 7 - format agnostic
+- **Testing**: All formats work through unified interface
+- **Effort**: 3 sessions
 
-#### Task 6.5: Output Validation Tools
-- **Objective**: Update sagediff.py for new formats
+#### Task 5.3: HDF5 Hierarchical Output
+- **Objective**: Modern HDF5 output with module awareness
 - **Implementation**:
-  - Handle multiple output formats
-  - Compare property values
-  - Report differences clearly
-  - Add tolerance controls
-- **Testing**: Detects output differences
-- **Documentation**: Validation tool usage
-- **Risk**: Missing subtle differences - comprehensive tests
-- **Effort**: 1 session (low complexity)
-- **Dependencies**: Task 6.4 complete
+  - Hierarchical group structure
+  - Module-based dataset organization
+  - Property metadata in HDF5 attributes
+  - Compression and chunking optimization
+- **Principles**: Principle 7 with modern standards
+- **Testing**: HDF5 files compatible with analysis tools
+- **Effort**: 2 sessions
 
 ### Exit Criteria
-- Unified I/O interface operational
-- All formats supported
-- Property-based output working
-- Analysis tools compatible
-- Validation tools updated
-
-### Validation
-- All input formats read correctly
-- Output readable by analysis tools
-- Property values match legacy exactly
-- Performance acceptable
+- ✅ I/O system adapts to loaded modules automatically
+- ✅ All formats supported through unified interface
+- ✅ Output contains exactly the properties from loaded modules
+- ✅ Analysis tool compatibility maintained
 
 ---
 
-## Phase 7: Validation & Polish
+## Phase 6: Validation & Polish (ENHANCED)
+
+### Architectural Principles Addressed
+- **All Principles**: Comprehensive validation of complete system
 
 ### Objectives
-- **Primary**: Comprehensive scientific validation
-- **Secondary**: Documentation completion and optimization
-
-### Entry Criteria
-- All implementation phases complete
-- Basic testing passing
-- Documentation framework in place
+- **Primary**: Comprehensive scientific and architectural validation
+- **Secondary**: Performance optimization and documentation
+- **Foundation**: System ready for production use
 
 ### Tasks
 
-#### Task 7.1: Scientific Validation Suite
-- **Objective**: Ensure exact scientific accuracy
+#### Task 6.1: Scientific Validation Suite
+- **Objective**: Validate all module combinations scientifically
 - **Implementation**:
-  - Create comprehensive test cases
-  - Compare with legacy outputs
-  - Test all module combinations
-  - Validate edge cases
-- **Testing**: All results match legacy
-- **Documentation**: Validation report
-- **Risk**: Subtle differences - extensive testing
-- **Effort**: 3 sessions (high complexity)
-- **Dependencies**: All phases complete
+  - Test all supported module combinations
+  - Compare with legacy results for identical configurations
+  - Validate edge cases and error conditions
+  - Performance regression testing
+- **Principles**: Validates all principles working together
+- **Testing**: Scientific accuracy maintained across all configurations
+- **Effort**: 3 sessions
 
-#### Task 7.2: Performance Optimization
+#### Task 6.2: Architectural Principle Validation
+- **Objective**: Comprehensive compliance testing
+- **Implementation**:
+  - Test physics-agnostic core (Principle 1)
+  - Validate runtime modularity (Principle 2)
+  - Verify metadata-driven behavior (Principle 3)
+  - Test all remaining principles systematically
+- **Principles**: All 8 principles validated
+- **Testing**: Comprehensive principle compliance confirmed
+- **Effort**: 2 sessions
+
+#### Task 6.3: Performance Optimization
 - **Objective**: Achieve performance parity with legacy
 - **Implementation**:
-  - Profile critical paths
-  - Optimize property access
-  - Tune memory allocation
-  - Parallelize where beneficial
-- **Testing**: Performance benchmarks pass
-- **Documentation**: Performance analysis
-- **Risk**: Premature optimization - measure first
-- **Effort**: 2 sessions (moderate complexity)
-- **Dependencies**: Task 7.1 complete
-
-#### Task 7.3: Documentation Completion
-- **Objective**: Comprehensive user and developer docs
-- **Implementation**:
-  - Complete API documentation
-  - Write user guides
-  - Create migration guide
-  - Add architecture documentation
-- **Testing**: Documentation review
-- **Documentation**: All guides complete
-- **Risk**: Incomplete coverage - systematic review
-- **Effort**: 2 sessions (moderate complexity)
-- **Dependencies**: None
-
-#### Task 7.4: CI/CD Integration
-- **Objective**: Automated testing and validation
-- **Implementation**:
-  - Set up GitHub Actions
-  - Configure test matrix
-  - Add performance regression tests
-  - Create release automation
-- **Testing**: CI/CD pipeline works
-- **Documentation**: CI/CD maintenance guide
-- **Risk**: Complex test matrix - start simple
-- **Effort**: 1 session (low complexity)
-- **Dependencies**: Task 7.1 complete
-
-#### Task 7.5: Release Preparation
-- **Objective**: Prepare for production release
-- **Implementation**:
-  - Final code cleanup
-  - Update version numbers
-  - Create release notes
-  - Package for distribution
-- **Testing**: Release candidate testing
-- **Documentation**: Release documentation
-- **Risk**: Missing issues - beta testing
-- **Effort**: 1 session (low complexity)
-- **Dependencies**: All tasks complete
+  - Profile modular architecture performance
+  - Optimize critical paths
+  - Module interface performance tuning
+  - Memory access pattern optimization
+- **Principles**: Maintain performance while achieving modularity
+- **Testing**: Performance within 10% of legacy
+- **Effort**: 2 sessions
 
 ### Exit Criteria
-- All tests passing
-- Performance acceptable
-- Documentation complete
-- CI/CD operational
-- Release candidate ready
+- ✅ All 8 architectural principles fully validated
+- ✅ Scientific accuracy maintained across all module combinations
+- ✅ Performance parity with legacy implementation
+- ✅ System ready for production deployment
 
-### Validation
-- Full regression suite passes
-- Performance within 10% of legacy
-- Beta users provide positive feedback
-- No critical issues found
+---
+
+## Success Metrics & Validation
+
+### Architectural Compliance Metrics
+- **Principle 1**: Core runs successfully with zero physics modules loaded
+- **Principle 2**: 5+ different module combinations work without recompilation
+- **Principle 3**: All system structure generated from metadata
+- **Principle 4**: Single property access system throughout codebase
+- **Principle 5**: Unified merger tree processing for all configurations
+- **Principle 6**: Memory usage bounded regardless of simulation size
+- **Principle 7**: 3+ I/O formats supported through unified interface
+- **Principle 8**: Type-safe property access with compile-time validation
+
+### Scientific Validation Metrics
+- **Accuracy**: Bit-exact results for identical module configurations
+- **Completeness**: All legacy functionality accessible through modules
+- **Flexibility**: Multiple module combinations produce expected results
+- **Performance**: Runtime within 10% of legacy implementation
+
+### Development Quality Metrics
+- **Code Quality**: Professional standards maintained throughout
+- **Testing**: Comprehensive coverage of modular functionality
+- **Documentation**: Clear architecture and usage documentation
+- **Maintainability**: Clean module interfaces and dependencies
 
 ---
 
 ## Risk Assessment & Mitigation
 
-### Technical Risks
+### High-Priority Risks
 
-#### High Risk: Property System Complexity
-- **Impact**: Core functionality broken
-- **Probability**: Medium
-- **Mitigation**: 
-  - Incremental migration with fallbacks
-  - Extensive testing at each step
-  - Keep legacy access during transition
+#### Risk: Module Interface Performance Overhead
+- **Impact**: Degraded scientific performance
+- **Mitigation**: Design zero-cost abstractions, profile early
+- **Principle Impact**: Could affect adoption if performance suffers
 
-#### High Risk: Module Dependency Resolution
-- **Impact**: Incorrect physics execution order
-- **Probability**: Medium
-- **Mitigation**:
-  - Limit dependency depth
-  - Clear dependency rules
-  - Extensive testing of combinations
+#### Risk: Complex Module Dependencies
+- **Impact**: Runtime configuration failures
+- **Mitigation**: Limit dependency depth, clear error messages
+- **Principle Impact**: Could undermine Principle 2 (runtime modularity)
 
-#### Medium Risk: Output Format Compatibility
-- **Impact**: Breaking analysis workflows
-- **Probability**: Medium
-- **Mitigation**:
-  - Maintain legacy format support
-  - Extensive validation with real tools
-  - Beta testing with users
+### Medium-Priority Risks
 
-### Scientific Risks
+#### Risk: Property System Complexity
+- **Impact**: Developer adoption challenges
+- **Mitigation**: Excellent documentation, clear examples
+- **Principle Impact**: Affects Principle 3,4,8 usability
 
-#### Critical Risk: Numerical Differences
-- **Impact**: Invalid scientific results
-- **Probability**: Low
-- **Mitigation**:
-  - Bit-exact comparison testing
-  - Regression tests at each phase
-  - Scientific validation suite
-
-### Timeline Risks
-
-#### Medium Risk: Underestimated Complexity
-- **Impact**: Schedule delays
-- **Probability**: High
-- **Mitigation**:
-  - Conservative estimates
-  - Early spike investigations
-  - Regular retrospectives
-
----
-
-## Success Metrics
-
-### Phase-Level Metrics
-- **Build Time**: < 2 minutes for full build
-- **Test Coverage**: > 80% of new code
-- **Performance**: Within 10% of legacy
-- **Memory Usage**: No increase vs legacy
-
-### Project-Level Metrics
-- **Scientific Accuracy**: Bit-exact with legacy
-- **Developer Productivity**: 50% reduction in development time
-- **Maintenance Burden**: 70% reduction in bug reports
-- **Onboarding Time**: < 1 day for new developers
-
----
-
-## Resource Requirements
-
-### Development Resources
-- **Lead Developer**: 100% time for duration
-- **Supporting Developers**: 2 developers at 50% time
-- **Scientific Validation**: 1 scientist at 25% time
-
-### Infrastructure Resources
-- **CI/CD**: GitHub Actions runners
-- **Testing**: Access to reference datasets
-- **Development**: Modern IDEs and tools
+#### Risk: Scientific Validation Scope
+- **Impact**: Missed edge cases in module combinations
+- **Mitigation**: Systematic testing matrix, community beta testing
+- **Principle Impact**: Could undermine overall system reliability
 
 ---
 
 ## Implementation Guidelines
 
 ### Development Workflow
-1. **Phase Planning**: Update log/phase.md with specific tasks
-2. **Task Implementation**: Follow test-driven development
-3. **Code Review**: All changes reviewed before merge
-4. **Validation**: Run regression tests before commits
-5. **Documentation**: Update docs with code changes
+1. **Phase Start**: Review architectural principles for this phase
+2. **Task Implementation**: Validate principle compliance at each step
+3. **Testing**: Both scientific and architectural validation required
+4. **Phase End**: Comprehensive principle compliance review
 
-### Communication
-- **Weekly**: Team sync on progress
-- **Phase End**: Retrospective and plan adjustment
-- **Monthly**: Stakeholder updates
+### Architectural Compliance Checks
+- Each commit must maintain/improve architectural principle compliance
+- No regression in principle adherence tolerated
+- Scientific accuracy preserved throughout architectural improvements
 
 ### Quality Standards
-- **Code Style**: Consistent formatting enforced
-- **Testing**: Comprehensive unit and integration tests
-- **Documentation**: Code and user docs in sync
-- **Performance**: No regression without justification
+- **Architecture First**: No shortcuts that violate principles
+- **Scientific Rigor**: Results must match legacy when configuration identical
+- **Performance Aware**: Modular architecture shouldn't sacrifice performance
+- **Documentation**: Principle compliance and usage clearly documented
 
 ---
 
 ## Conclusion
 
-This Master Implementation Plan provides a clear, actionable path for transforming SAGE into a modern, maintainable system while preserving its scientific integrity. The phased approach minimizes risk while delivering value incrementally. Success depends on disciplined execution, thorough testing, and maintaining focus on both technical excellence and scientific accuracy.
+This restructured Master Implementation Plan establishes **architectural principle compliance as the foundation** rather than a late-stage goal. By implementing **Phase 2A (Core/Physics Separation)** first, all subsequent development occurs within an architecturally sound context.
 
-The transformation will enable SAGE to:
-- Support flexible physics configurations without recompilation
-- Provide robust, type-safe interfaces preventing common errors  
-- Integrate with modern development tools and workflows
-- Scale efficiently to larger simulations
-- Accelerate scientific discovery through improved maintainability
+The plan enables SAGE to achieve:
+- **Complete Physics-Agnostic Core**: Principle 1 compliance from Phase 2A onward
+- **Runtime Scientific Flexibility**: Different physics without recompilation
+- **Modern Development Practices**: Type-safe, modular, well-tested codebase
+- **Preserved Scientific Accuracy**: Identical results for identical configurations
 
-With careful execution of this plan, SAGE will evolve from a legacy monolithic system into a modern, modular framework ready for the next generation of galaxy evolution research.
-
----
-
-## Appendix A: Early Risk Investigation Tasks
-
-To de-risk the most complex areas before they become blockers, the following investigation tasks should be completed early:
-
-### Investigation 1: Property System Code Generation (Before Phase 2)
-- **Objective**: Validate the YAML → Python → C generation approach
-- **Tasks**:
-  - Create minimal proof-of-concept generator
-  - Test with 5-10 representative properties
-  - Verify IDE integration works correctly
-  - Confirm compile-time optimization occurs
-- **Duration**: 2-3 days
-- **Success Criteria**: Generated code compiles, runs, and provides autocomplete
-
-### Investigation 2: Module Self-Registration (Before Phase 5)
-- **Objective**: Confirm constructor attribute approach works across platforms
-- **Tasks**:
-  - Test `__attribute__((constructor))` on Linux, macOS
-  - Verify link order doesn't affect registration
-  - Test with static and shared libraries
-  - Investigate alternative approaches if needed
-- **Duration**: 1-2 days
-- **Success Criteria**: Modules register reliably on all platforms
-
-### Investigation 3: HDF5 Output Compatibility (Before Phase 6)
-- **Objective**: Ensure new property-based output is compatible with analysis tools
-- **Tasks**:
-  - Survey existing analysis scripts for output dependencies
-  - Create prototype property-based HDF5 output
-  - Test with common analysis tools
-  - Document any required tool updates
-- **Duration**: 2-3 days
-- **Success Criteria**: Key analysis tools read new output format
+Success will be measured by **both technical excellence and architectural integrity**, ensuring SAGE becomes a model for modern scientific software development while accelerating galaxy evolution research.
 
 ---
 
-## Appendix B: Incremental Migration Patterns
+## Appendix A: Architectural Principle Quick Reference
 
-### Pattern 1: Dual-Mode Property Access
-During Phase 2 transition, support both old and new access patterns:
+| Principle | Phase | Status | Validation Method |
+|-----------|-------|--------|-------------------|
+| 1. Physics-Agnostic Core | 2A | 🎯 PRIMARY | Core runs without physics modules |
+| 2. Runtime Modularity | 4 | 🎯 PRIMARY | Module configs without recompilation |
+| 3. Metadata-Driven | 2B | 🎯 PRIMARY | System structure from YAML |
+| 4. Single Source of Truth | 2B | Applied | Unified property access |
+| 5. Unified Processing | 2A | Applied | Consistent tree processing |
+| 6. Memory Efficiency | 3 | 🎯 PRIMARY | Bounded memory usage |
+| 7. Format-Agnostic I/O | 5 | 🎯 PRIMARY | Multiple formats, unified interface |
+| 8. Type Safety | 2B | Applied | Compile-time property validation |
 
-```c
-// Temporary dual support
-#ifdef USE_NEW_PROPERTY_SYSTEM
-    #define GET_MVIR(g) GALAXY_GET_MVIR(g)
-#else
-    #define GET_MVIR(g) ((g)->Mvir)
-#endif
-```
-
-### Pattern 2: Configuration Compatibility Layer
-During Phase 4, read both formats transparently:
-
-```c
-config_t* read_config(const char* filename) {
-    if (has_json_extension(filename)) {
-        return read_json_config(filename);
-    } else {
-        return convert_par_to_config(filename);
-    }
-}
-```
-
-### Pattern 3: Module Gradual Extraction
-During Phase 5, use forwarding functions:
-
-```c
-// In core code
-void calculate_cooling(galaxy* g) {
-    #ifdef MODULAR_PHYSICS
-        cooling_module->execute(g);
-    #else
-        model_cooling_heating(g);  // Legacy function
-    #endif
-}
-```
-
----
-
-## Appendix C: Validation Checkpoints
-
-### Scientific Validation Matrix
-
-| Phase | Validation Test | Expected Result | Critical? |
-|-------|----------------|-----------------|-----------|
-| 1 | Binary comparison | Identical to Makefile build | Yes |
-| 2 | Property values | Bit-exact with legacy | Yes |
-| 3 | Memory usage | No increase vs legacy | No |
-| 4 | Parameter parsing | Same values loaded | Yes |
-| 5 | Module execution order | Same as monolithic | Yes |
-| 6 | Output file content | Identical values | Yes |
-| 7 | Full simulation | Matches reference | Yes |
-
-### Performance Benchmarks
-
-Each phase must maintain performance within these bounds:
-- **Initialization**: < 5% slower than legacy
-- **Tree Processing**: < 10% slower than legacy  
-- **Galaxy Evolution**: < 5% slower than legacy
-- **I/O Operations**: < 10% slower than legacy
-- **Total Runtime**: < 10% slower than legacy
-
----
-
-## Appendix D: Task Estimation Confidence
-
-### Estimation Methodology
-- **Low Complexity**: Well-understood, clear implementation path (1 session)
-- **Moderate Complexity**: Some unknowns, may need iteration (2 sessions)
-- **High Complexity**: Significant unknowns, likely needs research (3 sessions)
-
-### Confidence Adjustments
-- Tasks with external dependencies: +50% time buffer
-- Tasks modifying core algorithms: +100% time buffer
-- Tasks with platform-specific code: +50% time buffer
-
-### Historical Adjustment Factors
-Based on similar refactoring projects:
-- First phase typically takes 20% longer than estimated
-- Middle phases benefit from momentum (on-target)
-- Final validation phase often needs 50% more time
-
----
-
-## Appendix E: Module Development Template
-
-For consistency, all physics modules should follow this template:
-
-```c
-// module_[name].c
-#include "module_interface.h"
-
-// Module metadata
-static const char* dependencies[] = {"core", "properties", NULL};
-static const module_metadata_t metadata = {
-    .name = "module_name",
-    .version = "1.0.0",
-    .author = "Developer Name",
-    .description = "Module purpose"
-};
-
-// Module implementation
-static int module_init(const config_t* config) {
-    // Initialize module state
-    return SUCCESS;
-}
-
-static int module_execute(pipeline_context_t* ctx) {
-    // Perform physics calculations
-    return SUCCESS;
-}
-
-// Self-registration
-static void __attribute__((constructor)) register_module(void) {
-    static module_info_t module = {
-        .metadata = &metadata,
-        .dependencies = dependencies,
-        .init = module_init,
-        .execute = module_execute,
-    };
-    module_register(&module);
-}
-```
-
-This ensures consistent structure across all modules and simplifies review and maintenance.
+This plan ensures no architectural violations occur during development, creating a robust foundation for long-term SAGE evolution.

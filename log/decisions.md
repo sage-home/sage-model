@@ -28,3 +28,9 @@
 - **Decision**: Changed cJSON dependency messages from WARNING to STATUS level
 - **Rationale**: Dependency resolution is informational, not error condition; reduces noise in build output
 - **Impact**: Cleaner build experience; maintains proper severity levels for actual errors vs. status updates
+
+2025-09-15: [Phase 2A] Master Plan Restructuring - Architecture-First Development
+- **Decision**: Rewound to commit 2395ab2 and restructured master plan to implement Core/Physics Separation (Phase 2A) before property migration
+- **Rationale**: Legacy plan violated Principle 1 (Physics-Agnostic Core) by applying properties within monolithic architecture; identified direct physics calls in core requiring immediate fix
+- **Impact**: Establishes architectural compliance foundation; prevents technical debt accumulation; enables all subsequent modular development on sound principles
+

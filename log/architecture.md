@@ -79,16 +79,18 @@ CMake Build Flow
 ```
 
 ### Galaxy Evolution Pipeline
-Current monolithic processing model with direct physics calls:
+**CRITICAL ARCHITECTURAL ISSUE IDENTIFIED (September 2024)**
+
+Current legacy system violates **Principle 1 (Physics-Agnostic Core)**:
 
 ```
-Galaxy Evolution Flow
+Legacy Violating Architecture (TO BE FIXED)
 ┌─────────────────┐
-│ evolve_galaxies │
+│ evolve_galaxies │ ❌ CORE WITH PHYSICS KNOWLEDGE
 └─────┬───────────┘
       │
-      ├─▶ model_infall
-      ├─▶ model_cooling_heating  
+      ├─▶ model_infall           ❌ DIRECT PHYSICS CALLS
+      ├─▶ model_cooling_heating  ❌ HARDCODED IN CORE  
       ├─▶ model_starformation_and_feedback
       ├─▶ model_disk_instability
       ├─▶ model_mergers
@@ -96,11 +98,30 @@ Galaxy Evolution Flow
       └─▶ model_misc
 ```
 
-**Current Limitations:**
-- Hardcoded physics sequence in core
-- No runtime modularity
-- Physics knowledge embedded in core infrastructure
-- Direct coupling between core and physics modules
+**Target Architecture (Phase 2A Implementation)**:
+
+```
+Physics-Agnostic Core Architecture
+┌─────────────────┐
+│ evolve_galaxies │ ✅ CORE - ZERO PHYSICS KNOWLEDGE
+└─────┬───────────┘
+      │
+      ▼
+┌─────────────────┐
+│ Module Interface│ ✅ ABSTRACTION LAYER
+└─────┬───────────┘
+      │
+      ├─▶ [cooling_module]     ✅ CONDITIONAL LOADING
+      ├─▶ [starformation_module] ✅ RUNTIME CONFIGURATION
+      ├─▶ [merger_module]      ✅ DEPENDENCY RESOLUTION
+      └─▶ [other_modules...]
+```
+
+**Current Violations (MUST FIX BEFORE CONTINUING):**
+- Core directly includes physics headers in `src/core/core_build_model.c`
+- Core makes direct function calls to physics modules
+- Core cannot run without physics (violates fundamental principle)
+- Physics knowledge embedded throughout core infrastructure
 
 ### Data Structures
 **NEW: Metadata-Driven Property System (Task 2.2 Complete)**
@@ -121,12 +142,14 @@ struct GALAXY {
 };
 ```
 
-**Property System Features:**
-- YAML metadata drives C code generation (scripts/generate_property_headers.py)
-- Type-safe macros: `GALAXY_GET_SNAPNUM(gal)`, `GALAXY_SET_MVIR(gal, val)`
-- Compile-time availability checking with BUILD_BUG_OR_ZERO assertions
-- Runtime modularity support with module-aware property masks
-- Memory optimization with cache-aligned core structure (64-byte aligned)
+**Property System Infrastructure Status (Tasks 2.1-2.2 Complete):**
+- ✅ YAML metadata drives C code generation (scripts/generate_property_headers.py)
+- ✅ Type-safe macros: `GALAXY_GET_SNAPNUM(gal)`, `GALAXY_SET_MVIR(gal, val)`
+- ✅ Compile-time availability checking with BUILD_BUG_OR_ZERO assertions
+- ✅ Runtime modularity support with module-aware property masks
+- ✅ Memory optimization with cache-aligned core structure (64-byte aligned)
+- ⚠️ **Property application deferred until modular architecture (Phase 2B)**
+- ⚠️ **Must NOT apply properties in monolithic context (architectural violation)**
 
 ## I/O System
 
