@@ -239,7 +239,6 @@ int32_t prepare_galaxy_for_output(struct GALAXY *g, struct GALAXY_OUTPUT *o, str
         return EXIT_FAILURE;
     }
     o->Type = g->Type;
-    o->Regime = g->Regime;
 
     o->GalaxyIndex = g->GalaxyIndex;
     o->CentralGalaxyIndex = g->CentralGalaxyIndex;

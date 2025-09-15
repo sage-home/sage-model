@@ -18,7 +18,6 @@ extern "C" {
 #else
       int Type;
 #endif
-      int Regime;
 
       long long   GalaxyIndex;
       long long   CentralGalaxyIndex;

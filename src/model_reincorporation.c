@@ -8,15 +8,11 @@
 
 #include "model_reincorporation.h"
 #include "model_misc.h"
-#include "model_infall.h"
 
 void reincorporate_gas(const int centralgal, const double dt, struct GALAXY *galaxies, const struct params *run_params)
 {
 
-    // Early return if reincorporation is disabled
-    if(run_params->ReIncorporationFactor <= 0.0) {
-        printf("DEBUG REINCORP: Early return - ReIncorporationFactor <= 0, setting ReincorporatedGas=0\n");
-        galaxies[centralgal].ReincorporatedGas = 0.0;
+    if(run_params->CGMrecipeOn > 0) {
         return;
     }
 
@@ -37,6 +33,6 @@ void reincorporate_gas(const int centralgal, const double dt, struct GALAXY *gal
         galaxies[centralgal].MetalsCGMgas -= metallicity * reincorporated;
         galaxies[centralgal].HotGas += reincorporated;
         galaxies[centralgal].MetalsHotGas += metallicity * reincorporated;
-        galaxies[centralgal].ReincorporatedGas = reincorporated;
     }
+
 }

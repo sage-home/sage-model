@@ -45,24 +45,25 @@ BoxSize         62.5 % Size of the simulation box in Mpc/h.
 %----- SAGE recipe options ----------------
 %------------------------------------------
 
-SFprescription        2   %0: original Croton et al. 2006; 1: H2 Stars (GD14); 2: H2 Stars (BR06); 3: H2 Stars (DarkSAGE)
+SFprescription        2   %0: original Croton et al. 2006; 1: BR06 H2 Stars; 2: DarkSAGE H2 Stars
 AGNrecipeOn           2   %0: switch off; 1: empirical model; 2: Bondi-Hoyle model; 3: cold cloud accretion model
 SupernovaRecipeOn     1   %0: switch off
 ReionizationOn        1   %0: switch off
 DiskInstabilityOn     1   %0: switch off; 1: bulge and BH growth through instabilities w. instability starbursts
-MassLoadingOn         1   %0: FeedbackReheatingEpsilon; 1: Muratov mass loading
 CGMrecipeOn           1   %0: switch off
+FIREMassLoading       1   %0: switch off
+FIREejection          1   %0: switch off
 
 %------------------------------------------
 %----- SAGE model parameters --------------
 %------------------------------------------
 
-SfrEfficiency          0.05  %efficiency of SF (SFprescription=0)
+SfrEfficiency           0.05  %efficiency of SF (SFprescription=0)
 
-FeedbackReheatingEpsilon    1.0   %mass of cold gas reheated due to SF (see Martin 1999) (SupernovaRecipeOn=1)
-FeedbackEjectionEfficiency  1.0   %mixing efficiency of SN energy with hot gas to unbind and eject some (SupernovaRecipeOn=1)
+FeedbackReheatingEpsilon    3.0   %mass of cold gas reheated due to SF (see Martin 1999) (SupernovaRecipeOn=1)
+FeedbackEjectionEfficiency  0.6   %mixing efficiency of SN energy with hot gas to unbind and eject some (SupernovaRecipeOn=1)
 
-ReIncorporationFactor   0.0    %fraction of ejected mass reincorporated per dynamical time to hot
+ReIncorporationFactor   0.15    %fraction of ejected mass reincorporated per dynamical time to hot
 
 RadioModeEfficiency     0.08  %AGN radio mode efficiency (AGNrecipeOn=2)
 QuasarModeEfficiency    0.005 %AGN quasar mode wind heating efficiency (AGNrecipeOn>0)
@@ -80,8 +81,6 @@ Reionization_zr         7.0   %using the analytic fit of Kravtsov et al. 2004 (R
 
 EnergySN                1.0e51  %energy per supernova
 EtaSN                   5.0e-3  %supernova efficiency
-
-DynamicalTimeResolutionFactor    2      %Optimal balance: 2 timesteps per dynamical time
 
 %------------------------------------------
 %----- Other code-related information -----

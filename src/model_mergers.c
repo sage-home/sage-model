@@ -10,10 +10,6 @@
 #include "model_misc.h"
 #include "model_starformation_and_feedback.h"
 #include "model_disk_instability.h"
-#include "model_h2_formation.h"
-#include "core_cool_func.h"
-#include "model_cooling_heating.h"
-#include "model_infall.h"
 
 double estimate_merging_time(const int sat_halo, const int mother_halo, const int ngal, struct halo_data *halos, struct GALAXY *galaxies, const struct params *run_params)
 {
@@ -67,12 +63,6 @@ void deal_with_galaxy_merger(const int p, const int merger_centralgal, const int
         ma = galaxies[p].StellarMass + galaxies[p].ColdGas;
     }
 
-    if (run_params->SFprescription > 0) {
-        // In SF prescription, also include H2 and HI gas in mass ratio calculation
-        ensure_h2_consistency(&galaxies[p], run_params); // Ensure consistency before calculation
-        ensure_h2_consistency(&galaxies[merger_centralgal], run_params); // Ensure consistency before calculation
-    }
-
     if(ma > 0) {
         mass_ratio = mi / ma;
     } else {
@@ -118,22 +108,12 @@ void grow_black_hole(const int merger_centralgal, const double mass_ratio, struc
             BHaccrete = galaxies[merger_centralgal].ColdGas;
         }
 
-        if (run_params->SFprescription > 0) {
-            // In SF prescription, also include H2 and HI gas in disk mass
-            ensure_h2_consistency(&galaxies[merger_centralgal], run_params); // Ensure consistency before calculation
-        }
-
         metallicity = get_metallicity(galaxies[merger_centralgal].ColdGas, galaxies[merger_centralgal].MetalsColdGas);
         galaxies[merger_centralgal].BlackHoleMass += BHaccrete;
         galaxies[merger_centralgal].ColdGas -= BHaccrete;
         galaxies[merger_centralgal].MetalsColdGas -= metallicity * BHaccrete;
 
         galaxies[merger_centralgal].QuasarModeBHaccretionMass += BHaccrete;
-
-        if (run_params->SFprescription > 0) {
-            // In SF prescription, also include H2 and HI gas in disk mass
-            ensure_h2_consistency(&galaxies[merger_centralgal], run_params); // Ensure consistency before calculation
-        }
 
         quasar_mode_wind(merger_centralgal, BHaccrete, galaxies, run_params);
     }
@@ -160,11 +140,6 @@ void quasar_mode_wind(const int gal, const double BHaccrete, struct GALAXY *gala
 
                 galaxies[gal].ColdGas = 0.0;
                 galaxies[gal].MetalsColdGas = 0.0;
-
-                if (run_params->SFprescription > 0) {
-                    // In SF prescription, also include H2 and HI gas in disk mass
-                    ensure_h2_consistency(&galaxies[gal], run_params); // Ensure consistency before calculation
-                }
             }
             
         } else {
@@ -177,11 +152,6 @@ void quasar_mode_wind(const int gal, const double BHaccrete, struct GALAXY *gala
 
                 galaxies[gal].ColdGas = 0.0;
                 galaxies[gal].MetalsColdGas = 0.0;
-
-                if (run_params->SFprescription > 0) {
-                    // In SF prescription, also include H2 and HI gas in disk mass
-                    ensure_h2_consistency(&galaxies[gal], run_params); // Ensure consistency before calculation
-                }
             }
 
             // For hot gas ejection, it stays in HotGas (no movement needed)
@@ -198,11 +168,6 @@ void quasar_mode_wind(const int gal, const double BHaccrete, struct GALAXY *gala
 
             galaxies[gal].ColdGas = 0.0;
             galaxies[gal].MetalsColdGas = 0.0;
-
-            if (run_params->SFprescription > 0) {
-                    // In SF prescription, also include H2 and HI gas in disk mass
-                    ensure_h2_consistency(&galaxies[gal], run_params); // Ensure consistency before calculation
-                }
         }
 
         // compare quasar wind and cold+hot gas energies and eject hot
@@ -223,22 +188,7 @@ void add_galaxies_together(const int t, const int p, struct GALAXY *galaxies, co
     
     // Always add these components directly (no regime dependence)
     galaxies[t].ColdGas += galaxies[p].ColdGas;
-    if (run_params->SFprescription > 0) {
-        // In SF prescription, also update H2 and HI fractions
-        ensure_h2_consistency(&galaxies[t], run_params);
-    }
     galaxies[t].MetalsColdGas += galaxies[p].MetalsColdGas;
-
-    // if (run_params->SFprescription > 0) {
-    //     update_gas_components(&galaxies[t], run_params);
-    // }
-
-    // Add H2 and HI gas components when using H2-based star formation
-    // if (run_params->SFprescription > 0) {
-    //     update_gas_components(&galaxies[p], run_params);
-    //     galaxies[t].H2_gas += galaxies[p].H2_gas;
-    //     galaxies[t].HI_gas += galaxies[p].HI_gas;
-    // }
 
     galaxies[t].StellarMass += galaxies[p].StellarMass;
     galaxies[t].MetalsStellarMass += galaxies[p].MetalsStellarMass;
@@ -293,6 +243,7 @@ void add_galaxies_together(const int t, const int p, struct GALAXY *galaxies, co
 
 
 
+
 void make_bulge_from_burst(const int p, struct GALAXY *galaxies)
 {
     // generate bulge
@@ -321,12 +272,6 @@ void collisional_starburst_recipe(const double mass_ratio, const int merger_cent
     // This is the major and minor merger starburst recipe of Somerville et al. 2001.
     // The coefficients in eburst are taken from TJ Cox's PhD thesis and should be more accurate then previous.
 
-    // Update the gas components to ensure H2 and HI are correctly calculated
-    if (run_params->SFprescription > 0) {
-        // update_gas_components(&galaxies[merger_centralgal], run_params);
-        ensure_h2_consistency(&galaxies[merger_centralgal], run_params); // Ensure consistency before calculation
-    }
-
     // the bursting fraction
     if(mode == 1) {
         eburst = mass_ratio;
@@ -334,73 +279,70 @@ void collisional_starburst_recipe(const double mass_ratio, const int merger_cent
         eburst = 0.56 * pow(mass_ratio, 0.7);
     }
 
-    if(run_params->SFprescription == 1 || run_params->SFprescription == 2 || run_params->SFprescription == 3) {
-        stars = eburst * galaxies[merger_centralgal].H2_gas;
-    } else {
-        stars = eburst * galaxies[merger_centralgal].ColdGas;
-
-        if (run_params->SFprescription > 0) {
-                    // In SF prescription, also include H2 and HI gas in disk mass
-                    ensure_h2_consistency(&galaxies[merger_centralgal], run_params); // Ensure consistency before calculation
-                }
-    }
+    stars = eburst * galaxies[merger_centralgal].ColdGas;
     if(stars < 0.0) {
         stars = 0.0;
     }
 
     // this bursting results in SN feedback on the cold/hot gas
-    if(run_params->SupernovaRecipeOn == 1) {
-        if(run_params->MassLoadingOn) {
-            double z = run_params->ZZ[galaxies[merger_centralgal].SnapNum];
-            reheated_mass = run_params->FeedbackReheatingEpsilon * calculate_muratov_mass_loading(merger_centralgal, z, galaxies) * stars;
-        } else {
-            reheated_mass = run_params->FeedbackReheatingEpsilon * stars;
-        }
-    } else {
-        reheated_mass = 0.0;
-    }
+    reheated_mass = 0.0;
+    double z = run_params->ZZ[galaxies[merger_centralgal].SnapNum];
+    double vmax = galaxies[merger_centralgal].Vmax;
 
-    XASSERT(reheated_mass >= 0.0, -1,
-            "Error: Reheated mass = %g should be >= 0.0", reheated_mass);
+    if(run_params->SupernovaRecipeOn == 1) {
+        if(run_params->FIREMassLoading == 1) {
+            // Use Muratov mass loading calculation
+            reheated_mass = calculate_muratov_mass_loading(merger_centralgal, galaxies, z) * stars;
+            } else {
+                // Use traditional feedback parameter
+                reheated_mass = run_params->FeedbackReheatingEpsilon * stars;
+            }
+        }
+
+	XASSERT(reheated_mass >= 0.0, -1,
+            "Error: Reheated mass = %g should be >= 0.0",
+            reheated_mass);
 
     // can't use more cold gas than is available! so balance SF and feedback
     if((stars + reheated_mass) > galaxies[merger_centralgal].ColdGas) {
         fac = galaxies[merger_centralgal].ColdGas / (stars + reheated_mass);
-        if (run_params->SFprescription > 0) {
-                    // In SF prescription, also include H2 and HI gas in disk mass
-                    ensure_h2_consistency(&galaxies[merger_centralgal], run_params); // Ensure consistency before calculation
-                }
         stars *= fac;
         reheated_mass *= fac;
     }
 
-    // determine ejection using FIRE method (equations 15 & 8)
+    // determine ejection
     if(run_params->SupernovaRecipeOn == 1) {
         if(galaxies[centralgal].Vvir > 0.0) {
-            double z = run_params->ZZ[galaxies[merger_centralgal].SnapNum];
-            double vmax = galaxies[merger_centralgal].Vmax;
-            
-            if(run_params->MassLoadingOn) {
+            if (run_params->FIREejection == 1) {
+                // Implement FIRE ejection calculation
                 double alpha = (vmax < 60.0) ? -3.2 : -1.0;
-                double fire_scaling = pow(1.0 + z, 1.25) * pow(vmax / 60.0, alpha);
+                double fire_scaling = pow(1.0 + z, 1.3) * pow(vmax / 60.0, alpha);
                 
                 double E_FB = run_params->FeedbackEjectionEfficiency * fire_scaling * 
                             0.5 * stars * run_params->EtaSNcode * run_params->EnergySNcode;
-                
-                double energy_used_reheating = 0.5 * reheated_mass * galaxies[centralgal].Vvir * galaxies[centralgal].Vvir;
+
+                double energy_used_reheating = 0.5 * reheated_mass * galaxies[merger_centralgal].Vvir * galaxies[merger_centralgal].Vvir;
                 double available_energy = E_FB - energy_used_reheating;
                 
                 if(available_energy > 0.0) {
-                    ejected_mass = available_energy / (0.5 * galaxies[centralgal].Vvir * galaxies[centralgal].Vvir);
+                    ejected_mass = available_energy / (0.5 * galaxies[merger_centralgal].Vvir * galaxies[merger_centralgal].Vvir);
                 } else {
                     ejected_mass = 0.0;
                 }
             } else {
-                ejected_mass = (run_params->FeedbackEjectionEfficiency * 
-                            (run_params->EtaSNcode * run_params->EnergySNcode) / 
-                            (galaxies[centralgal].Vvir * galaxies[centralgal].Vvir) - 
-                            run_params->FeedbackReheatingEpsilon) * stars;
-            }
+                if (run_params->FIREMassLoading == 1) {
+                    // Use Muratov mass loading calculation
+                    double alpha = (vmax < 60.0) ? -3.2 : -1.0;
+                    double fire_scaling = pow(1.0 + z, 1.3) * pow(vmax / 60.0, alpha);
+                    ejected_mass = ((run_params->FeedbackEjectionEfficiency * (run_params->EtaSNcode * run_params->EnergySNcode) / (galaxies[merger_centralgal].Vvir * galaxies[merger_centralgal].Vvir) -
+                    calculate_muratov_mass_loading(merger_centralgal, galaxies, z)) * stars) * fire_scaling;
+                } else {
+                    // Use traditional feedback parameter
+                    ejected_mass =
+                    (run_params->FeedbackEjectionEfficiency * (run_params->EtaSNcode * run_params->EnergySNcode) / (galaxies[merger_centralgal].Vvir * galaxies[merger_centralgal].Vvir) -
+                     run_params->FeedbackReheatingEpsilon) * stars;
+                }
+        }
         } else {
             ejected_mass = 0.0;
         }
@@ -425,10 +367,6 @@ void collisional_starburst_recipe(const double mass_ratio, const int merger_cent
 
     // recompute the metallicity of the cold phase
     metallicity = get_metallicity(galaxies[merger_centralgal].ColdGas, galaxies[merger_centralgal].MetalsColdGas);
-    if (run_params->SFprescription > 0) {
-                    // In SF prescription, also include H2 and HI gas in disk mass
-                    ensure_h2_consistency(&galaxies[merger_centralgal], run_params); // Ensure consistency before calculation
-                }
 
     // update from feedback
     update_from_feedback(merger_centralgal, centralgal, reheated_mass, ejected_mass, metallicity, galaxies, run_params);
@@ -440,40 +378,35 @@ void collisional_starburst_recipe(const double mass_ratio, const int merger_cent
         }
     }
 
-    // formation of new metals - instantaneous recycling approximation - only SNII
-    if(galaxies[merger_centralgal].ColdGas > 1e-8 && mass_ratio < run_params->ThreshMajorMerger) {
-        const double FracZleaveDiskVal = run_params->FracZleaveDisk * exp(-1.0 * galaxies[merger_centralgal].Mvir / 30.0);
-        galaxies[merger_centralgal].MetalsColdGas += run_params->Yield * (1.0 - FracZleaveDiskVal) * stars;
-        
-        // Regime-aware metal deposition for metals that leave the disk
-        if(run_params->CGMrecipeOn == 1) {
-            if(galaxies[merger_centralgal].Regime == 0) {
-                // CGM regime: metals go to CGM
-                galaxies[merger_centralgal].MetalsCGMgas += run_params->Yield * FracZleaveDiskVal * stars;
-            } else {
-                // HOT regime: metals go to hot gas  
-                galaxies[merger_centralgal].MetalsHotGas += run_params->Yield * FracZleaveDiskVal * stars;
+    if (run_params->CGMrecipeOn > 0) {
+        if (galaxies[merger_centralgal].Regime == 0) {
+            if(galaxies[merger_centralgal].ColdGas > 1.0e-8) {
+            const double FracZleaveDiskVal = run_params->FracZleaveDisk * exp(-1.0 * galaxies[centralgal].Mvir / 30.0);  // Krumholz & Dekel 2011 Eq. 22
+            galaxies[merger_centralgal].MetalsColdGas += run_params->Yield * (1.0 - FracZleaveDiskVal) * stars;
+            galaxies[centralgal].MetalsCGMgas += run_params->Yield * FracZleaveDiskVal * stars;
+        } else {
+            galaxies[centralgal].MetalsCGMgas += run_params->Yield * stars;
             }
         } else {
-            // Original behavior: metals go to hot gas
-            galaxies[merger_centralgal].MetalsHotGas += run_params->Yield * FracZleaveDiskVal * stars;
+            if(galaxies[merger_centralgal].ColdGas > 1.0e-8) {
+            const double FracZleaveDiskVal = run_params->FracZleaveDisk * exp(-1.0 * galaxies[centralgal].Mvir / 30.0);  // Krumholz & Dekel 2011 Eq. 22
+            galaxies[merger_centralgal].MetalsColdGas += run_params->Yield * (1.0 - FracZleaveDiskVal) * stars;
+            galaxies[centralgal].MetalsHotGas += run_params->Yield * FracZleaveDiskVal * stars;
+        } else {
+            galaxies[centralgal].MetalsHotGas += run_params->Yield * stars;
+            }
         }
     } else {
-        // When no cold gas or major merger, all metals leave the disk
-        if(run_params->CGMrecipeOn == 1) {
-            if(galaxies[merger_centralgal].Regime == 0) {
-                // CGM regime: metals go to CGM
-                galaxies[merger_centralgal].MetalsCGMgas += run_params->Yield * stars;
-            } else {
-                // HOT regime: metals go to hot gas
-                galaxies[merger_centralgal].MetalsHotGas += run_params->Yield * stars;
-            }
+        if(galaxies[merger_centralgal].ColdGas > 1.0e-8) {
+            const double FracZleaveDiskVal = run_params->FracZleaveDisk * exp(-1.0 * galaxies[centralgal].Mvir / 30.0);  // Krumholz & Dekel 2011 Eq. 22
+            galaxies[merger_centralgal].MetalsColdGas += run_params->Yield * (1.0 - FracZleaveDiskVal) * stars;
+            galaxies[centralgal].MetalsHotGas += run_params->Yield * FracZleaveDiskVal * stars;
+            // galaxies[centralgal].MetalsCGMgas += run_params->Yield * FracZleaveDiskVal * stars;
         } else {
-            // Original behavior: metals go to hot gas
-            galaxies[merger_centralgal].MetalsHotGas += run_params->Yield * stars;
+            galaxies[centralgal].MetalsHotGas += run_params->Yield * stars;
+            // galaxies[centralgal].MetalsCGMgas += run_params->Yield * stars;
         }
     }
-
 }
 
 
@@ -486,12 +419,7 @@ void disrupt_satellite_to_ICS(const int centralgal, const int gal, struct GALAXY
             // CGM regime: NO HotGas allowed, only CGMgas
             galaxies[centralgal].ColdGas += galaxies[gal].ColdGas;
             galaxies[centralgal].MetalsColdGas += galaxies[gal].MetalsColdGas;
-
-            if (run_params->SFprescription > 0) {
-                    // In SF prescription, also include H2 and HI gas in disk mass
-                    ensure_h2_consistency(&galaxies[gal], run_params); // Ensure consistency before calculation
-                }
-            
+        
             // ALL hot-type gas becomes CGMgas
             galaxies[centralgal].CGMgas += galaxies[gal].HotGas + galaxies[gal].CGMgas;
             galaxies[centralgal].MetalsCGMgas += galaxies[gal].MetalsHotGas + galaxies[gal].MetalsCGMgas;
@@ -501,11 +429,6 @@ void disrupt_satellite_to_ICS(const int centralgal, const int gal, struct GALAXY
             // HOT regime: NO CGMgas allowed, only HotGas
             galaxies[centralgal].ColdGas += galaxies[gal].ColdGas;
             galaxies[centralgal].MetalsColdGas += galaxies[gal].MetalsColdGas;
-
-            if (run_params->SFprescription > 0) {
-                    // In SF prescription, also include H2 and HI gas in disk mass
-                    ensure_h2_consistency(&galaxies[gal], run_params); // Ensure consistency before calculation
-                }
             
             // ALL hot-type gas becomes HotGas
             galaxies[centralgal].HotGas += galaxies[gal].HotGas + galaxies[gal].CGMgas;
@@ -517,11 +440,6 @@ void disrupt_satellite_to_ICS(const int centralgal, const int gal, struct GALAXY
     // Original behavior when CGM recipe is off
     galaxies[centralgal].HotGas += galaxies[gal].ColdGas + galaxies[gal].HotGas;
     galaxies[centralgal].MetalsHotGas += galaxies[gal].MetalsColdGas + galaxies[gal].MetalsHotGas;
-
-    if (run_params->SFprescription > 0) {
-                    // In SF prescription, also include H2 and HI gas in disk mass
-                    ensure_h2_consistency(&galaxies[gal], run_params); // Ensure consistency before calculation
-                }
 
     galaxies[centralgal].CGMgas += galaxies[gal].CGMgas;
     galaxies[centralgal].MetalsCGMgas += galaxies[gal].MetalsCGMgas;

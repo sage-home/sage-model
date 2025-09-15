@@ -211,7 +211,6 @@ int join_galaxies_of_progenitors(const int halonr, const int ngalstart, int *gal
                     galaxies[ngal].Heating = 0.0;
                     galaxies[ngal].QuasarModeBHaccretionMass = 0.0;
                     galaxies[ngal].OutflowRate = 0.0;
-                    galaxies[ngal].ReincorporatedGas = 0.0;
 
                     for(int step = 0; step < STEPS; step++) {
                         galaxies[ngal].SfrDisk[step] = galaxies[ngal].SfrBulge[step] = 0.0;
@@ -333,43 +332,15 @@ int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals
 
     int nsteps;
     double actual_dt;
-
-    // REGIME DIAGNOSTICS - Static counter to track total galaxies processed
-    static int total_galaxies_processed = 0;
-    static int cgm_regime_count = 0;
-    static int hot_regime_count = 0; 
-
-    static int *previous_regimes = NULL;
-    static int max_stored_galaxies = 0;
-
-    // Initialize regimes ONCE before main evolution loop
-    if(run_params->CGMrecipeOn > 0) {
-        // Allocate/reallocate regime storage if needed
-        if(ngal > max_stored_galaxies) {
-            if(previous_regimes != NULL) {
-                free(previous_regimes);
-            }
-            previous_regimes = malloc(ngal * sizeof(int));
-            max_stored_galaxies = ngal;
-        }
-        
-        // Determine and cache regimes
-        determine_and_cache_regime(ngal, galaxies, run_params);
-        
-        // // Store initial regimes and apply initial cleanup
-        // for(int p = 0; p < ngal; p++) {
-        //     previous_regimes[p] = galaxies[p].Regime;
-        //     handle_regime_transition(p, galaxies, run_params);
-        // }
-    }
+    
 
     if (Vvir > 0.0 && Rvir > 0.0) {
-        // Calculate dynamical time: t_dyn = 0.1 * R_vir / V_vir
-        const double t_dyn = 0.1 * Rvir / Vvir;
+        // Calculate dynamical time: t_dyn = R_vir / V_vir
+        const double t_dyn = Rvir / Vvir;
         
         // Target: no time step should be longer than t_dyn/N
         // where N is the resolution factor (5, 10, 20, etc.)
-        const int resolution_factor = run_params->DynamicalTimeResolutionFactor;  // 10 steps per dynamical time
+        const int resolution_factor = 10;  // 2 steps per dynamical time
         
         // Maximum allowed time step
         const double max_allowed_dt = t_dyn / resolution_factor;
@@ -396,111 +367,13 @@ int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals
         actual_dt = deltaT / STEPS;
     }
 
+    if (run_params->CGMrecipeOn > 0) {
+        // Determine the CGM regime at the start of the timestep
+        determine_and_store_regime(ngal, galaxies);
+    }
 
     // We integrate things forward by using a number of intervals equal to nsteps
     for(int step = 0; step < nsteps; step++) {
-
-        // Check for regime changes ONLY
-        if(run_params->CGMrecipeOn > 0) {
-            determine_and_cache_regime(ngal, galaxies, run_params);
-            
-            // Apply transitions ONLY when regime actually changes
-            for(int p = 0; p < ngal; p++) {
-                if(galaxies[p].Regime != previous_regimes[p]) {
-                    handle_regime_transition(p, galaxies, run_params);
-                    previous_regimes[p] = galaxies[p].Regime;  // Update stored regime
-                }
-            }
-        }
-
-        // REGIME DIAGNOSTICS - Print every 50,000th galaxy
-    for(int p = 0; p < ngal; p++) {
-        if(galaxies[p].mergeType > 0) continue; // Skip merged galaxies
-        
-        total_galaxies_processed++;
-        
-        // Count regimes
-        if(run_params->CGMrecipeOn > 0) {
-            if(galaxies[p].Regime == 0) {
-                cgm_regime_count++;
-            } else {
-                hot_regime_count++;
-            }
-        }
-
-        // Check for regime violations
-        if(run_params->CGMrecipeOn > 0) {
-            int violation = 0;
-            if(galaxies[p].Regime == 0 && galaxies[p].HotGas > 1e-10) {
-                printf("WARNING: CGM galaxy %d has HotGas=%.2e\n", p, galaxies[p].HotGas);
-                violation = 1;
-            }
-            if(galaxies[p].Regime == 1 && galaxies[p].CGMgas > 1e-10) {
-                printf("WARNING: HOT galaxy %d has CGMgas=%.2e\n", p, galaxies[p].CGMgas);
-                violation = 1;
-            }
-            
-            if(violation) {
-                double Tvir = 35.9 * galaxies[p].Vvir * galaxies[p].Vvir;
-                double Tvir_threshold = 2.5e5;
-                double rcool_ratio = calculate_rcool_to_rvir_ratio(p, galaxies, run_params);
-                printf("  Galaxy %d: Regime=%s, r_cool/R_vir=%.3f, Tmax/Tvir=%.3f, Mvir=%.2e\n", 
-                    p, (galaxies[p].Regime == 0) ? "CGM" : "HOT", 
-                    rcool_ratio, Tvir_threshold / Tvir, galaxies[p].Mvir); 
-            }
-        }
-        
-        // Print diagnostics every 50,000 galaxies
-        // if(total_galaxies_processed % 100000 == 0) {
-        //     printf("\n=== REGIME DIAGNOSTICS (Galaxy #%d) ===\n", total_galaxies_processed);
-            
-        //     if(run_params->CGMrecipeOn > 0) {
-        //         double rcool_ratio = calculate_rcool_to_rvir_ratio(p, galaxies, run_params);
-        //         double Tvir = 35.9 * galaxies[p].Vvir * galaxies[p].Vvir;
-        //         double Tvir_threshold = 2.5e5;
-                
-        //         printf("Galaxy %d: ", p);
-        //         printf("Regime=%s ", (galaxies[p].Regime == 0) ? "CGM" : "HOT");
-        //         printf("r_cool/R_vir=%.3f ", rcool_ratio);
-        //         printf("Tmax/Tvir=%.3f ", Tvir_threshold/Tvir);
-        //         printf("Mvir=%.2e ", galaxies[p].Mvir);
-        //         printf("Vvir=%.1f ", galaxies[p].Vvir);
-        //         printf("\n");
-                
-        //         printf("  Gas masses: ");
-        //         printf("CGMgas=%.2e ", galaxies[p].CGMgas);
-        //         printf("HotGas=%.2e ", galaxies[p].HotGas);
-        //         printf("ColdGas=%.2e ", galaxies[p].ColdGas);
-        //         printf("Total=%.2e", galaxies[p].CGMgas + galaxies[p].HotGas + galaxies[p].ColdGas);
-        //         printf("\n");
-                
-        //         // Summary statistics
-        //         double cgm_fraction = (double)cgm_regime_count / (cgm_regime_count + hot_regime_count);
-        //         printf("  Regime stats: ");
-        //         printf("CGM=%d (%.1f%%) ", cgm_regime_count, cgm_fraction * 100.0);
-        //         printf("HOT=%d (%.1f%%) ", hot_regime_count, (1.0 - cgm_fraction) * 100.0);
-        //         printf("\n");
-                
-        //         // Check for potential issues
-        //         if(galaxies[p].CGMgas > 0.0 && galaxies[p].HotGas > 0.0) {
-        //             printf("  WARNING: Galaxy has both CGMgas AND HotGas!\n");
-        //         }
-                
-        //         if(galaxies[p].Regime == 0 && galaxies[p].HotGas > 1e-10) {
-        //             printf("  WARNING: CGM regime galaxy has HotGas=%.2e\n", galaxies[p].HotGas);
-        //         }
-                
-        //         if(galaxies[p].Regime == 1 && galaxies[p].CGMgas > 1e-10) {
-        //             printf("  WARNING: HOT regime galaxy has CGMgas=%.2e\n", galaxies[p].CGMgas);
-        //         }
-                
-        //     } else {
-        //         printf("Galaxy %d: CGM recipe OFF, HotGas=%.2e\n", p, galaxies[p].HotGas);
-        //     }
-            
-        //     printf("========================================\n\n");
-        // }
-    }
 
         // Loop over all galaxies in the halo
         for(int p = 0; p < ngal; p++) {
@@ -510,7 +383,7 @@ int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals
             }
 
             // const double deltaT = run_params->Age[galaxies[p].SnapNum] - halo_age;
-            const double time = run_params->Age[galaxies[p].SnapNum] - (step + 0.5) * actual_dt;
+            const double time = run_params->Age[galaxies[p].SnapNum] - (step + 0.5) * (actual_dt);
 
             if(galaxies[p].dT < 0.0) {
                 galaxies[p].dT = deltaT;
@@ -518,56 +391,29 @@ int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals
 
             // For the central galaxy only
             if(p == centralgal) {
-                
-                if(run_params->CGMrecipeOn > 0) {
-                    double infall_amount = infallingGas * actual_dt / deltaT;
-                    
-                    if(galaxies[p].Regime == 0) {
-                        // Low-mass regime: r_cool > R_vir, all gas goes to CGM
-                        add_infall_to_cgm(centralgal, infall_amount, galaxies);
-                    } else {
-                        // High-mass regime: r_cool < R_vir, all gas goes to hot halo (pure)
-                        add_infall_to_hot_pure(centralgal, infall_amount, galaxies);
-                    }
-                } else {
-                    // Original SAGE behavior: all gas goes to hot halo (with CGM interaction for backwards compatibility)
-                    add_infall_to_hot(centralgal, infallingGas * actual_dt / deltaT, galaxies);
-                }
+
+                add_infall_to_hot(centralgal, infallingGas * actual_dt / deltaT, galaxies, run_params);
 
                 if(run_params->ReIncorporationFactor > 0.0) {
                     reincorporate_gas(centralgal, actual_dt, galaxies, run_params);
                 }
             } else {
-                if(galaxies[p].Type == 1) {
-                    if(run_params->CGMrecipeOn > 0) {
-                        // CGM recipe: check regime-appropriate gas reservoir
-                        if((galaxies[p].Regime == 0 && galaxies[p].CGMgas > 0.0) ||
-                        (galaxies[p].Regime == 1 && galaxies[p].HotGas > 0.0)) {
-                            strip_from_satellite(centralgal, p, Zcurr, galaxies, run_params);
-                        }
-                    } else {
-                        // Original SAGE behavior: only check HotGas (backwards compatibility)
-                        if(galaxies[p].HotGas > 0.0) {
-                            strip_from_satellite(centralgal, p, Zcurr, galaxies, run_params);
-                        }
-                    }
+                if(galaxies[p].Type == 1 && galaxies[p].HotGas > 0.0) {
+                    strip_from_satellite(centralgal, p, Zcurr, galaxies, run_params);
                 }
             }
 
             // Determine the cooling gas given the halo properties
             double coolingGas;
             if(run_params->CGMrecipeOn == 1) {
-                // CGM inflow model: called for all systems to accumulate CGM mass 
-                // based on local conditions (only accumulates if CGM regime)
-                cgm_inflow_model(p, actual_dt, galaxies, run_params);
-                
+
                 coolingGas = cooling_recipe_regime_aware(p, actual_dt, galaxies, run_params);
-                cool_gas_onto_galaxy_regime_aware(p, coolingGas, galaxies, run_params);
+                cool_gas_onto_galaxy_regime_aware(p, coolingGas, galaxies);
             } else {
                 coolingGas = cooling_recipe(p, actual_dt, galaxies, run_params);
                 cool_gas_onto_galaxy(p, coolingGas, galaxies);
             }
-
+            
             // stars form and then explode!
             starformation_and_feedback(p, centralgal, time, actual_dt, halonr, step, galaxies, run_params);
         }
@@ -605,18 +451,15 @@ int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals
                             disrupt_satellite_to_ICS(merger_centralgal, p, galaxies, run_params);
                         } else {
                             // a merger has occured!
-                            double time = run_params->Age[galaxies[p].SnapNum] - (step + 0.5) * actual_dt;
+                            double time = run_params->Age[galaxies[p].SnapNum] - (step + 0.5) * (actual_dt);
                             deal_with_galaxy_merger(p, merger_centralgal, centralgal, time, actual_dt, halonr, step, galaxies, run_params);
                         }
                     }
                 }
+
             }
         }
     } // Go on to the next STEPS substep
-
-    if(run_params->CGMrecipeOn > 0) {
-        final_regime_mass_enforcement(ngal, galaxies, run_params);
-    }
 
     // Extra miscellaneous stuff before finishing this halo
     galaxies[centralgal].TotalSatelliteBaryons = 0.0;
@@ -639,6 +482,7 @@ int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals
                 (galaxies[p].StellarMass + galaxies[p].BlackHoleMass + galaxies[p].ColdGas + galaxies[p].HotGas);
         }
     }
+
 
     // Attach final galaxy list to halo
     for(int p = 0, currenthalo = -1; p < ngal; p++) {
@@ -681,13 +525,6 @@ int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals
         }
 
         if(galaxies[p].mergeType == 0) {
-
-            // Calculate and store r_cool/R_vir ratio for output
-            if(run_params->CGMrecipeOn > 0) {
-                galaxies[p].RcoolToRvir = calculate_rcool_to_rvir_ratio(p, galaxies, run_params);
-            } else {
-                galaxies[p].RcoolToRvir = -1.0;  // Indicate not calculated
-            }
             /* realloc if needed */
             if(*numgals == (*maxgals - 1)) {
                 *maxgals += 10000;
@@ -703,41 +540,15 @@ int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals
                     "This would result in invalid memory access...exiting\n",
                     *numgals, *maxgals);
 
-
-            // FINAL REGIME CONSISTENCY CHECK BEFORE OUTPUT (UPDATED FOR VVIR)
-            if(run_params->CGMrecipeOn > 0) {
-
-                // double final_rcool_ratio = calculate_rcool_to_rvir_ratio(p, galaxies, run_params);
-                // const double Vvir_threshold = 90.0;  // km/s
-                // const double rcool_to_rvir = calculate_rcool_to_rvir_ratio(p, galaxies, run_params);
-                const double Tvir = 35.9 * galaxies[p].Vvir * galaxies[p].Vvir; // in Kelvin
-                const double Tvir_threshold = 2.5e5; // K, corresponds to Vvir ~52.7 km/s
-                const double Tvir_to_Tmax_ratio = Tvir_threshold / Tvir;
-
-                
-                // The ENFORCED regime should be based on velocity threshold
-                int velocity_based_regime = (Tvir_to_Tmax_ratio > 1.0) ? 0 : 1;
-
-                // Check for violations against the ENFORCED regime (velocity-based)
-                if(galaxies[p].Regime != velocity_based_regime) {
-                    printf("ENFORCEMENT FAILURE: Galaxy %d cached_regime=%d expected_velocity_regime=%d Vvir=%.1f\n", 
-                        p, galaxies[p].Regime, velocity_based_regime, galaxies[p].Vvir);
-                }
-                
-                // Check for gas violations against the ENFORCED regime
-                if(galaxies[p].Regime == 0 && galaxies[p].HotGas > 1e-10) {
-                    printf("FINAL VIOLATION: CGM regime galaxy has HotGas=%.2e\n", galaxies[p].HotGas);
-                }
-                if(galaxies[p].Regime == 1 && galaxies[p].CGMgas > 1e-10) {
-                    printf("FINAL VIOLATION: HOT regime galaxy has CGMgas=%.2e\n", galaxies[p].CGMgas);
-                }
-            }
-
             galaxies[p].SnapNum = halos[currenthalo].SnapNum;
             halogal[*numgals] = galaxies[p];
             (*numgals)++;
             haloaux[currenthalo].NGalaxies++;
         }
+    }
+
+    if(run_params->CGMrecipeOn > 0) {
+        final_regime_check(ngal, galaxies, run_params);
     }
 
     return EXIT_SUCCESS;

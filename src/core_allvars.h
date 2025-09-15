@@ -93,7 +93,7 @@ struct GALAXY
 {
     int32_t   SnapNum;
     int32_t  Type;
-    int32_t  Regime;
+    int32_t  Regime; // 0 = CGM, 1 = HOT
 
     int32_t   GalaxyNr;
     int32_t   CentralGal;
@@ -123,14 +123,13 @@ struct GALAXY
 
     /* baryonic reservoirs */
     float ColdGas;
+    float H2gas;
     float StellarMass;
     float BulgeMass;
     float HotGas;
     float CGMgas;
     float BlackHoleMass;
     float ICS;
-    float H2_gas;  
-    float HI_gas;
 
     /* metals */
     float MetalsColdGas;
@@ -159,15 +158,12 @@ struct GALAXY
     float TimeOfLastMinorMerger;
     float OutflowRate;
     float TotalSatelliteBaryons;
+    float RcoolToRvir;
 
     /* infall properties */
     float infallMvir;
     float infallVvir;
     float infallVmax;
-
-    float MassLoading;
-    float ReincorporatedGas; // Mass of gas reincorporated into the galaxy
-    float RcoolToRvir; // Ratio of cooling radius to virial radius, calculated at each snapshot for output
 };
 
 
@@ -432,10 +428,10 @@ struct params
     int32_t    AGNrecipeOn;
     int32_t    SupernovaRecipeOn;
     int32_t    ReionizationOn;
-    int32_t    DiskInstabilityOn;
-    int32_t    MassLoadingOn;
+    int32_t   DiskInstabilityOn;
     int32_t    CGMrecipeOn;
-    int32_t    DynamicalTimeResolutionFactor; 
+    int32_t    FIREMassLoading;
+    int32_t    FIREejection;
 
     double RecycleFraction;
     double Yield;

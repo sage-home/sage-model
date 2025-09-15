@@ -9,7 +9,6 @@
 #include "model_disk_instability.h"
 #include "model_misc.h"
 #include "model_mergers.h"
-#include "model_h2_formation.h"
 
 void check_disk_instability(const int p, const int centralgal, const int halonr, const double time, const double dt, const int step,
                             struct GALAXY *galaxies, struct params *run_params)
@@ -19,10 +18,6 @@ void check_disk_instability(const int p, const int centralgal, const int halonr,
 
     // Disk mass has to be > 0.0
     const double diskmass = galaxies[p].ColdGas + (galaxies[p].StellarMass - galaxies[p].BulgeMass);
-    if (run_params->SFprescription > 0) {
-        // In SF prescription, also include H2 and HI gas in disk mass
-        ensure_h2_consistency(&galaxies[p], run_params); // Ensure consistency before calculation
-    }
     if(diskmass > 0.0) {
         // calculate critical disk mass
         double Mcrit = galaxies[p].Vmax * galaxies[p].Vmax * (3.0 * galaxies[p].DiskScaleRadius) / run_params->G;
@@ -32,27 +27,9 @@ void check_disk_instability(const int p, const int centralgal, const int halonr,
 
         // use disk mass here
         const double gas_fraction   = galaxies[p].ColdGas / diskmass;
-        if (run_params->SFprescription > 0) {
-            // In SF prescription, also include H2 and HI gas in disk mass
-            ensure_h2_consistency(&galaxies[p], run_params); // Ensure consistency before calculation
-        }
         const double unstable_gas   = gas_fraction * (diskmass - Mcrit);
         const double star_fraction  = 1.0 - gas_fraction;
         const double unstable_stars = star_fraction * (diskmass - Mcrit);
-
-        // Move ReincorporatedGas according to CGM regime logic
-        if(run_params->CGMrecipeOn == 1) {
-            if(galaxies[p].Regime == 0) {
-                galaxies[p].CGMgas += galaxies[p].ReincorporatedGas;
-                galaxies[p].ReincorporatedGas = 0.0;
-            } else {
-                galaxies[p].HotGas += galaxies[p].ReincorporatedGas;
-                galaxies[p].ReincorporatedGas = 0.0;
-            }
-        } else {
-            galaxies[p].HotGas += galaxies[p].ReincorporatedGas;
-            galaxies[p].ReincorporatedGas = 0.0;
-        }
 
         // add excess stars to the bulge
         if(unstable_stars > 0.0) {
@@ -87,10 +64,6 @@ void check_disk_instability(const int p, const int centralgal, const int halonr,
 #endif
 
             const double unstable_gas_fraction = unstable_gas / galaxies[p].ColdGas;
-            if (run_params->SFprescription > 0) {
-                // In SF prescription, also update H2 and HI fractions
-                ensure_h2_consistency(&galaxies[p], run_params); // Ensure consistency before calculation
-            }
             if(run_params->AGNrecipeOn > 0) {
                 grow_black_hole(p, unstable_gas_fraction, galaxies, run_params);
             }
