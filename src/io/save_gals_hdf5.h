@@ -85,6 +85,7 @@ struct HDF5_GALAXY_OUTPUT
     float *TimeOfLastMinorMerger;
     float *OutflowRate;
     float *RcoolToRvir;
+    float *MassLoading;
     
     /* infall properties */
     float *infallMvir;

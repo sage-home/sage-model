@@ -130,6 +130,7 @@ struct GALAXY
     float CGMgas;
     float BlackHoleMass;
     float ICS;
+    float MassLoading;
 
     /* metals */
     float MetalsColdGas;

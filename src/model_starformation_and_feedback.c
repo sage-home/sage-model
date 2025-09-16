@@ -195,6 +195,9 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
         if(run_params->FIREMassLoading == 1) {
             // Use Muratov mass loading calculation
             reheated_mass = calculate_muratov_mass_loading(p, galaxies, z) * stars;
+            // Store mass-loading of the galaxy
+            galaxies[p].MassLoading = calculate_muratov_mass_loading(p, galaxies, z);
+
             } else {
                 // Use traditional feedback parameter
                 reheated_mass = run_params->FeedbackReheatingEpsilon * stars;
@@ -279,20 +282,20 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
     if (run_params->CGMrecipeOn > 0) {
         if (galaxies[p].Regime == 0) {
             if(galaxies[p].ColdGas > 1.0e-8) {
-            const double FracZleaveDiskVal = run_params->FracZleaveDisk * exp(-1.0 * galaxies[centralgal].Mvir / 30.0);  // Krumholz & Dekel 2011 Eq. 22
-            galaxies[p].MetalsColdGas += run_params->Yield * (1.0 - FracZleaveDiskVal) * stars;
-            galaxies[centralgal].MetalsCGMgas += run_params->Yield * FracZleaveDiskVal * stars;
-        } else {
-            galaxies[centralgal].MetalsCGMgas += run_params->Yield * stars;
-            }
+                const double FracZleaveDiskVal = run_params->FracZleaveDisk * exp(-1.0 * galaxies[centralgal].Mvir / 30.0);  // Krumholz & Dekel 2011 Eq. 22
+                galaxies[p].MetalsColdGas += run_params->Yield * (1.0 - FracZleaveDiskVal) * stars;
+                galaxies[centralgal].MetalsCGMgas += run_params->Yield * FracZleaveDiskVal * stars;
+            } else {
+                galaxies[centralgal].MetalsCGMgas += run_params->Yield * stars;
+                }
         } else {
             if(galaxies[p].ColdGas > 1.0e-8) {
-            const double FracZleaveDiskVal = run_params->FracZleaveDisk * exp(-1.0 * galaxies[centralgal].Mvir / 30.0);  // Krumholz & Dekel 2011 Eq. 22
-            galaxies[p].MetalsColdGas += run_params->Yield * (1.0 - FracZleaveDiskVal) * stars;
-            galaxies[centralgal].MetalsHotGas += run_params->Yield * FracZleaveDiskVal * stars;
-        } else {
-            galaxies[centralgal].MetalsHotGas += run_params->Yield * stars;
-            }
+                const double FracZleaveDiskVal = run_params->FracZleaveDisk * exp(-1.0 * galaxies[centralgal].Mvir / 30.0);  // Krumholz & Dekel 2011 Eq. 22
+                galaxies[p].MetalsColdGas += run_params->Yield * (1.0 - FracZleaveDiskVal) * stars;
+                galaxies[centralgal].MetalsHotGas += run_params->Yield * FracZleaveDiskVal * stars;
+            } else {
+                galaxies[centralgal].MetalsHotGas += run_params->Yield * stars;
+                }
         }
     } else {
         if(galaxies[p].ColdGas > 1.0e-8) {

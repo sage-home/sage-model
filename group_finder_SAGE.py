@@ -1071,8 +1071,7 @@ def load_sage_hdf5(filename, snapshot=None):
                     'BulgeMass': 'BulgeMass',
                     'BlackHoleMass': 'BlackHoleMass',
                     'ColdGas': 'ColdGas',
-                    'HI_gas': 'HI_gas',  # H1Gas
-                    'H2_gas': 'H2_gas',  # H2Gas
+                    'H2gas': 'H2gas',  # H2Gas
                     'MetalsColdGas': 'MetalsColdGas',
                     'HotGas': 'HotGas',
                     'IntraClusterStars': 'IntraClusterStars',
@@ -1104,7 +1103,7 @@ def load_sage_hdf5(filename, snapshot=None):
                 # Define which fields need unit conversion
                 mass_fields = {
                     'StellarMass', 'Mvir', 'CentralMvir', 'BulgeMass', 'BlackHoleMass',
-                    'ColdGas', 'HI_gas', 'H2_gas', 'MetalsColdGas', 'HotGas',
+                    'ColdGas', 'H2gas', 'MetalsColdGas', 'HotGas',
                     'IntraClusterStars', 'infallMvir', 'OutflowRate', 'CGMgas'
                 }  # These get * 1.0e10 / Hubble_h
                 
@@ -1255,7 +1254,7 @@ def create_sample_data(n_galaxies=10000, n_groups=1000):
     black_hole_masses = stellar_masses * np.random.lognormal(-6, 1, n_galaxies)  # ~10^-6 M_BH/M_*
     cold_gas = stellar_masses * np.random.lognormal(-0.3, 0.8, n_galaxies)  # Cold gas
     hi_gas = cold_gas * np.random.uniform(0.3, 0.8, n_galaxies)  # HI fraction of cold gas
-    h2_gas = cold_gas - hi_gas  # H2 is remainder
+    H2gas = cold_gas - hi_gas  # H2 is remainder
     metals_cold_gas = cold_gas * np.random.uniform(0.01, 0.03, n_galaxies)  # ~2% metals
     hot_gas = halo_masses * np.random.uniform(0.05, 0.15, n_galaxies)  # Hot gas fraction
     intracluster_stars = stellar_masses * np.random.uniform(0, 0.1, n_galaxies)
@@ -1305,7 +1304,7 @@ def create_sample_data(n_galaxies=10000, n_groups=1000):
         'BlackHoleMass': black_hole_masses,
         'ColdGas': cold_gas,
         'HI_gas': hi_gas,
-        'H2_gas': h2_gas,
+        'H2gas': H2gas,
         'MetalsColdGas': metals_cold_gas,
         'HotGas': hot_gas,
         'IntraClusterStars': intracluster_stars,
@@ -1546,7 +1545,7 @@ def plot_group_property_evolution(group_evolution, snapshots, output_dir='./', s
         {'name': 'Total Stellar Mass', 'field': 'Sig_M', 'unit': 'M_sun', 'log': True, 'is_log': True, 'source': 'group'},
         {'name': 'Hot Gas Mass', 'field': 'HotGas', 'unit': 'M_sun', 'log': True, 'source': 'galaxy_sum'},
         {'name': 'Cold Gas Mass', 'field': 'ColdGas', 'unit': 'M_sun', 'log': True, 'source': 'galaxy_sum'},
-        {'name': 'H2 Gas Mass', 'field': 'H2_gas', 'unit': 'M_sun', 'log': True, 'source': 'galaxy_sum'},
+        {'name': 'H2 Gas Mass', 'field': 'H2gas', 'unit': 'M_sun', 'log': True, 'source': 'galaxy_sum'},
         {'name': 'sSFR', 'field': 'sSFR', 'unit': 'yr^-1', 'log': True, 'source': 'galaxy_calc'}
     ]
     
@@ -2390,7 +2389,7 @@ def save_results(data_merged, group_catalog, output_dir='./'):
         'GalaxyIndex', 'CentralGalaxyIndex', 'SAGEHaloIndex', 'Type', 'SnapNum',
         'Posx', 'Posy', 'Posz', 'Velx', 'Vely', 'Velz', 'VelDisp',
         'StellarMass', 'Mvir', 'CentralMvir', 'BulgeMass', 'BlackHoleMass',
-        'ColdGas', 'HI_gas', 'H2_gas', 'MetalsColdGas', 'HotGas', 
+        'ColdGas', 'H2gas', 'MetalsColdGas', 'HotGas', 
         'IntraClusterStars', 'infallMvir', 'OutflowRate', 'CGMgas',
         'Rvir', 'DiskRadius', 'Vvir', 'Vmax', 'SfrDisk', 'SfrBulge',
         'MassLoading', 'Cooling'
@@ -2451,7 +2450,7 @@ def create_group_aggregated_properties(data_merged, group_catalog, output_dir='.
     # Properties to sum (additive properties)
     sum_properties = [
         'StellarMass', 'BulgeMass', 'BlackHoleMass', 'ColdGas', 'HotGas', 
-        'HI_gas', 'H2_gas', 'MetalsColdGas', 'IntraClusterStars', 
+         'H2gas', 'MetalsColdGas', 'IntraClusterStars', 
         'OutflowRate', 'CGMgas', 'SfrDisk', 'SfrBulge', 'Cooling', 'Mvir'
     ]
     
@@ -2541,11 +2540,11 @@ def create_group_aggregated_properties(data_merged, group_catalog, output_dir='.
             else:
                 row['cold_gas_fraction'] = np.nan
                 
-        if 'total_ColdGas' in row and 'total_HI_gas' in row and 'total_H2_gas' in row:
+        if 'total_ColdGas' in row and 'total_HI_gas' in row and 'total_H2gas' in row:
             total_gas = row['total_ColdGas']
             if total_gas > 0:
                 row['HI_fraction'] = row['total_HI_gas'] / total_gas
-                row['H2_fraction'] = row['total_H2_gas'] / total_gas
+                row['H2_fraction'] = row['total_H2gas'] / total_gas
             else:
                 row['HI_fraction'] = np.nan
                 row['H2_fraction'] = np.nan
@@ -2623,7 +2622,7 @@ def create_group_aggregated_evolution(group_evolution, snapshot_data, output_dir
     # Properties to aggregate - same as before but organized
     sum_properties = [
         'StellarMass', 'BulgeMass', 'BlackHoleMass', 'ColdGas', 'HotGas', 
-        'HI_gas', 'H2_gas', 'MetalsColdGas', 'IntraClusterStars', 
+         'H2gas', 'MetalsColdGas', 'IntraClusterStars', 
         'OutflowRate', 'CGMgas', 'SfrDisk', 'SfrBulge', 'Cooling', 'Mvir'
     ]
     
@@ -2714,12 +2713,12 @@ def create_group_aggregated_evolution(group_evolution, snapshot_data, output_dir
                 else:
                     row['cold_gas_fraction'] = np.nan
             
-            if 'total_ColdGas' in row and 'total_HI_gas' in row and 'total_H2_gas' in row:
+            if 'total_ColdGas' in row and 'total_HI_gas' in row and 'total_H2gas' in row:
                 total_gas = row['total_ColdGas']
                 if total_gas > 0:
                     row['HI_fraction'] = row['total_HI_gas'] / total_gas
-                    row['H2_fraction'] = row['total_H2_gas'] / total_gas
-                    row['molecular_gas_ratio'] = row['total_H2_gas'] / row['total_HI_gas'] if row['total_HI_gas'] > 0 else np.nan
+                    row['H2_fraction'] = row['total_H2gas'] / total_gas
+                    row['molecular_gas_ratio'] = row['total_H2gas'] / row['total_HI_gas'] if row['total_HI_gas'] > 0 else np.nan
                 else:
                     row['HI_fraction'] = np.nan
                     row['H2_fraction'] = np.nan
@@ -3197,7 +3196,7 @@ def main():
                 print(f"SAGE SFR properties included: {', '.join(sage_sfr_props)}")
                 
             sage_gas_props = [col for col in data_merged.columns if col in 
-                             ['HI_gas', 'H2_gas', 'CGMgas', 'MetalsColdGas']]
+                             [ 'H2gas', 'CGMgas', 'MetalsColdGas']]
             if sage_gas_props:
                 print(f"SAGE gas properties included: {', '.join(sage_gas_props)}")
             

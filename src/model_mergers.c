@@ -421,8 +421,8 @@ void disrupt_satellite_to_ICS(const int centralgal, const int gal, struct GALAXY
             galaxies[centralgal].MetalsColdGas += galaxies[gal].MetalsColdGas;
         
             // ALL hot-type gas becomes CGMgas
-            galaxies[centralgal].CGMgas += galaxies[gal].HotGas + galaxies[gal].CGMgas;
-            galaxies[centralgal].MetalsCGMgas += galaxies[gal].MetalsHotGas + galaxies[gal].MetalsCGMgas;
+            galaxies[centralgal].CGMgas += galaxies[gal].CGMgas;
+            galaxies[centralgal].MetalsCGMgas += galaxies[gal].MetalsCGMgas;
             
             // No HotGas added (strict CGM regime)
         } else {
@@ -431,8 +431,8 @@ void disrupt_satellite_to_ICS(const int centralgal, const int gal, struct GALAXY
             galaxies[centralgal].MetalsColdGas += galaxies[gal].MetalsColdGas;
             
             // ALL hot-type gas becomes HotGas
-            galaxies[centralgal].HotGas += galaxies[gal].HotGas + galaxies[gal].CGMgas;
-            galaxies[centralgal].MetalsHotGas += galaxies[gal].MetalsHotGas + galaxies[gal].MetalsCGMgas;
+            galaxies[centralgal].HotGas += galaxies[gal].HotGas;
+            galaxies[centralgal].MetalsHotGas += galaxies[gal].MetalsHotGas;
             
             // No CGMgas added (strict Hot regime)
         }

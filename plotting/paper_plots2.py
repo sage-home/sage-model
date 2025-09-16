@@ -1861,8 +1861,8 @@ def plot_h2_fraction_vs_stellar_mass(sim_configs, snapshot, output_dir):
             # Calculate H2 fraction: f_H2 = M_H2 / (M_H2 + M_HI)
             stellar_mass_sel = StellarMass[w]
             h2_gas_sel = H2Gas[w] 
-            hi_gas_sel = ColdGas[w] - H2Gas[w]
             cold_gas_sel = ColdGas[w]
+            hi_gas_sel = ColdGas[w] - H2Gas[w]
             
             # Calculate molecular fraction
             h2_fraction = h2_gas_sel / (h2_gas_sel + hi_gas_sel)
@@ -2015,13 +2015,13 @@ def plot_h2_fraction_vs_halo_mass(sim_configs, snapshot, output_dir):
             StellarMass = read_hdf_ultra_optimized(snap_num=snapshot, param='StellarMass', directory=directory) * 1.0e10 / hubble_h
             H2_Gas = read_hdf_ultra_optimized(snap_num=snapshot, param='H2gas', directory=directory) * 1.0e10 / hubble_h
             ColdGas = read_hdf_ultra_optimized(snap_num=snapshot, param='ColdGas', directory=directory) * 1.0e10 / hubble_h
-            HI_Gas = ColdGas - H2_Gas  # Assuming HI = ColdGas - H2Gas
-            HI_Gas_broken = ColdGas - H2_Gas  # Assuming HI = ColdGas - H2Gas
             H2_Gas_broken = read_hdf_ultra_optimized(snap_num=snapshot, param='H2gas', directory=directory) * 1.0e10 / hubble_h
             SfrDisk = read_hdf_ultra_optimized(snap_num=snapshot, param='SfrDisk', directory=directory)
             SfrBulge = read_hdf_ultra_optimized(snap_num=snapshot, param='SfrBulge', directory=directory)
             Type = read_hdf_ultra_optimized(snap_num=snapshot, param='Type', directory=directory)
             Mvir = read_hdf_ultra_optimized(snap_num=snapshot, param='Mvir', directory=directory) * 1.0e10 / hubble_h
+            HI_Gas = ColdGas - H2_Gas  # Assuming HI = ColdGas - H2Gas
+            HI_Gas_broken = ColdGas - H2_Gas  # Assuming HI = ColdGas - H2Gas
             
             logger.info(f'  Total galaxies: {len(StellarMass)}')
             
@@ -2286,13 +2286,13 @@ def plot_h1_fraction_vs_halo_mass(sim_configs, snapshot, output_dir):
             # Read required galaxy properties
             StellarMass = read_hdf_ultra_optimized(snap_num=snapshot, param='StellarMass', directory=directory) * 1.0e10 / hubble_h
             H2Gas = read_hdf_ultra_optimized(snap_num=snapshot, param='H2gas', directory=directory) * 1.0e10 / hubble_h
-            HI_Gas = ColdGas - H2Gas  # Assuming HI = ColdGas - H2Gas
-            HI_Gas_broken = ColdGas - H2Gas  # Assuming HI = ColdGas - H2Gas
             ColdGas = read_hdf_ultra_optimized(snap_num=snapshot, param='ColdGas', directory=directory) * 1.0e10 / hubble_h
             SfrDisk = read_hdf_ultra_optimized(snap_num=snapshot, param='SfrDisk', directory=directory)
             SfrBulge = read_hdf_ultra_optimized(snap_num=snapshot, param='SfrBulge', directory=directory)
             Type = read_hdf_ultra_optimized(snap_num=snapshot, param='Type', directory=directory)
             Mvir = read_hdf_ultra_optimized(snap_num=snapshot, param='Mvir', directory=directory) * 1.0e10 / hubble_h
+            HI_Gas = ColdGas - H2Gas  # Assuming HI = ColdGas - H2Gas
+            HI_Gas_broken = ColdGas - H2Gas  # Assuming HI = ColdGas - H2Gas
             
             logger.info(f'  Total galaxies: {len(StellarMass)}')
             
@@ -3790,174 +3790,174 @@ if __name__ == '__main__':
     model_files = get_file_list(DirName)
     logger.info(f'Found {len(model_files)} model files')
 
-    # # Read galaxy properties with ultra-optimized function
-    # logger.info('Loading Vvir...')
-    # Vvir = read_hdf_ultra_optimized(snap_num=Snapshot, param='Vvir')
-    # logger.info('Loading StellarMass...')
-    # StellarMass = read_hdf_ultra_optimized(snap_num=Snapshot, param='StellarMass') * 1.0e10 / Main_Hubble_h
-    # logger.info('Loading Type...')
-    # Type = read_hdf_ultra_optimized(snap_num=Snapshot, param='Type')
-    # logger.info('Loading Mass loading factors...')
-    # MassLoading = read_hdf_ultra_optimized(snap_num=Snapshot, param='MassLoading')
-    # log_stellarmass = np.log10(StellarMass)
+    # Read galaxy properties with ultra-optimized function
+    logger.info('Loading Vvir...')
+    Vvir = read_hdf_ultra_optimized(snap_num=Snapshot, param='Vvir')
+    logger.info('Loading StellarMass...')
+    StellarMass = read_hdf_ultra_optimized(snap_num=Snapshot, param='StellarMass') * 1.0e10 / Main_Hubble_h
+    logger.info('Loading Type...')
+    Type = read_hdf_ultra_optimized(snap_num=Snapshot, param='Type')
+    logger.info('Loading Mass loading factors...')
+    MassLoading = read_hdf_ultra_optimized(snap_num=Snapshot, param='MassLoading')
+    log_stellarmass = np.log10(StellarMass)
 
-    # logger.info(f'Total galaxies: {len(Vvir)}')
+    logger.info(f'Total galaxies: {len(Vvir)}')
     
-    # if len(Vvir) > 0:
-    #     logger.info(f'Vvir range: {np.min(Vvir):.1f} - {np.max(Vvir):.1f} km/s')
+    if len(Vvir) > 0:
+        logger.info(f'Vvir range: {np.min(Vvir):.1f} - {np.max(Vvir):.1f} km/s')
 
-    #     # Vectorized filtering for better performance
-    #     valid_mask = (Vvir > 0) & (log_stellarmass > 8) & np.isfinite(Vvir) & np.isfinite(StellarMass)
-    #     Vvir_valid = Vvir[valid_mask]
-    #     StellarMass_valid = StellarMass[valid_mask]
-    #     MassLoading_valid = MassLoading[valid_mask]
-    #     logger.info(f'Mass loading factors: {MassLoading_valid}')
-    #     logger.info(f'Valid galaxies: {len(Vvir_valid)}')
+        # Vectorized filtering for better performance
+        valid_mask = (Vvir > 0) & (log_stellarmass > 8) & np.isfinite(Vvir) & np.isfinite(StellarMass)
+        Vvir_valid = Vvir[valid_mask]
+        StellarMass_valid = StellarMass[valid_mask]
+        MassLoading_valid = MassLoading[valid_mask]
+        logger.info(f'Mass loading factors: {MassLoading_valid}')
+        logger.info(f'Valid galaxies: {len(Vvir_valid)}')
 
-    #     # Calculate mass loading for all valid galaxies (vectorized)
-    #     mass_loading = calculate_muratov_mass_loading(Vvir_valid, z=0.0)
-    #     # mass_loading_sage = MassLoading_valid
+        # Calculate mass loading for all valid galaxies (vectorized)
+        mass_loading = calculate_muratov_mass_loading(Vvir_valid, z=0.0)
+        # mass_loading_sage = MassLoading_valid
         
-    #     # Create theoretical curves for comparison
-    #     vvir_theory = np.logspace(1, 3, 100)  # 10 to 1000 km/s
-    #     mass_loading_theory = calculate_muratov_mass_loading(vvir_theory, z=0.0)
+        # Create theoretical curves for comparison
+        vvir_theory = np.logspace(1, 3, 100)  # 10 to 1000 km/s
+        mass_loading_theory = calculate_muratov_mass_loading(vvir_theory, z=0.0)
         
-    #     # Also create curves for different redshifts
-    #     mass_loading_z1 = calculate_muratov_mass_loading(vvir_theory, z=1.0)
-    #     mass_loading_z2 = calculate_muratov_mass_loading(vvir_theory, z=2.0)
+        # Also create curves for different redshifts
+        mass_loading_z1 = calculate_muratov_mass_loading(vvir_theory, z=1.0)
+        mass_loading_z2 = calculate_muratov_mass_loading(vvir_theory, z=2.0)
 
-    #     shark_ml = pd.read_csv('./data/SHARK_v2_ml.csv', header=None, delimiter='\t')
-    #     shark_x = shark_ml[0]  # First column
-    #     shark_y = shark_ml[1]  # Second column
+        shark_ml = pd.read_csv('./data/SHARK_v2_ml.csv', header=None, delimiter='\t')
+        shark_x = shark_ml[0]  # First column
+        shark_y = shark_ml[1]  # Second column
 
-    #     chisholm_ml = pd.read_csv('./data/Chisholm_17_ml.csv', header=None, delimiter='\t')
-    #     chisholm_x = chisholm_ml[0]  # First column
-    #     chisholm_y = chisholm_ml[1]  # Second column
+        chisholm_ml = pd.read_csv('./data/Chisholm_17_ml.csv', header=None, delimiter='\t')
+        chisholm_x = chisholm_ml[0]  # First column
+        chisholm_y = chisholm_ml[1]  # Second column
 
-    #     heckman_ml = pd.read_csv('./data/Heckman_15_ml.csv', header=None, delimiter='\t')
-    #     heckman_x = heckman_ml[0]  # First column
-    #     heckman_y = heckman_ml[1]  # Second column
+        heckman_ml = pd.read_csv('./data/Heckman_15_ml.csv', header=None, delimiter='\t')
+        heckman_x = heckman_ml[0]  # First column
+        heckman_y = heckman_ml[1]  # Second column
 
-    #     rupke_ml = pd.read_csv('./data/Rupke_05_ml.csv', header=None, delimiter='\t')
-    #     rupke_x = rupke_ml[0]  # First column
-    #     rupke_y = rupke_ml[1]  # Second column
+        rupke_ml = pd.read_csv('./data/Rupke_05_ml.csv', header=None, delimiter='\t')
+        rupke_x = rupke_ml[0]  # First column
+        rupke_y = rupke_ml[1]  # Second column
 
-    #     sugahara_ml = pd.read_csv('./data/Sugahara_17_ml.csv', header=None, delimiter='\t')
-    #     sugahara_x = sugahara_ml[0]  # First column
-    #     sugahara_y = sugahara_ml[1]  # Second column  
+        sugahara_ml = pd.read_csv('./data/Sugahara_17_ml.csv', header=None, delimiter='\t')
+        sugahara_x = sugahara_ml[0]  # First column
+        sugahara_y = sugahara_ml[1]  # Second column  
 
-    #     # Create the plot with standardized styling
-    #     fig, ax = create_figure()
+        # Create the plot with standardized styling
+        fig, ax = create_figure()
         
-    #     # Plot theoretical curves with standardized colors
-    #     ax.loglog(vvir_theory, mass_loading_theory, color='black', linewidth=3, 
-    #               label='z=0', alpha=0.9)
-    #     ax.loglog(vvir_theory, mass_loading_z1, color=PLOT_COLORS['model_main'], 
-    #               linewidth=2, linestyle='--', label='z=1', alpha=0.8)
-    #     ax.loglog(vvir_theory, mass_loading_z2, color=PLOT_COLORS['observations'], 
-    #               linewidth=2, linestyle='--', label='z=2', alpha=0.8)
+        # Plot theoretical curves with standardized colors
+        ax.loglog(vvir_theory, mass_loading_theory, color='black', linewidth=3, 
+                  label='z=0', alpha=0.9)
+        ax.loglog(vvir_theory, mass_loading_z1, color=PLOT_COLORS['model_main'], 
+                  linewidth=2, linestyle='--', label='z=1', alpha=0.8)
+        ax.loglog(vvir_theory, mass_loading_z2, color=PLOT_COLORS['observations'], 
+                  linewidth=2, linestyle='--', label='z=2', alpha=0.8)
 
-    #     # Sample galaxies for plotting if there are too many
-    #     if len(Vvir_valid) > dilute:
-    #         indices = sample(range(len(Vvir_valid)), dilute)
-    #         Vvir_plot = Vvir_valid[indices]
-    #         mass_loading_plot = mass_loading[indices]
-    #         MassLoading_plot = MassLoading_valid[indices]
-    #         StellarMass_plot = StellarMass_valid[indices]
-    #     else:
-    #         Vvir_plot = Vvir_valid
-    #         mass_loading_plot = mass_loading
-    #         MassLoading_plot = MassLoading_valid
-    #         StellarMass_plot = StellarMass_valid
+        # Sample galaxies for plotting if there are too many
+        if len(Vvir_valid) > dilute:
+            indices = sample(range(len(Vvir_valid)), dilute)
+            Vvir_plot = Vvir_valid[indices]
+            mass_loading_plot = mass_loading[indices]
+            MassLoading_plot = MassLoading_valid[indices]
+            StellarMass_plot = StellarMass_valid[indices]
+        else:
+            Vvir_plot = Vvir_valid
+            mass_loading_plot = mass_loading
+            MassLoading_plot = MassLoading_valid
+            StellarMass_plot = StellarMass_valid
 
-    #     # ax.scatter(Vvir, MassLoading, c='lightblue', s=5, alpha=0.7, rasterized=True)
+        # ax.scatter(Vvir, MassLoading, c='lightblue', s=5, alpha=0.7, rasterized=True)
 
-    #     ax.scatter(shark_x, shark_y, color='grey', marker='^', s=50, label='SHARK v2')
-    #     ax.scatter(chisholm_x, chisholm_y, color='grey', marker='o', s=50, label='Chisholm et al. 2017')
-    #     ax.scatter(heckman_x, heckman_y, color='grey', marker='x', s=50, label='Heckman et al. 2015')
-    #     ax.scatter(rupke_x, rupke_y, color='grey', marker='s', s=50, label='Rupke et al. 2005')
-    #     ax.scatter(sugahara_x, sugahara_y, color='grey', marker='d', s=50, label='Sugahara et al. 2017')
+        ax.scatter(shark_x, shark_y, color='grey', marker='^', s=50, label='SHARK v2')
+        ax.scatter(chisholm_x, chisholm_y, color='grey', marker='o', s=50, label='Chisholm et al. 2017')
+        ax.scatter(heckman_x, heckman_y, color='grey', marker='x', s=50, label='Heckman et al. 2015')
+        ax.scatter(rupke_x, rupke_y, color='grey', marker='s', s=50, label='Rupke et al. 2005')
+        ax.scatter(sugahara_x, sugahara_y, color='grey', marker='d', s=50, label='Sugahara et al. 2017')
         
-    #     # Color SAGE galaxies by stellar mass
-    #     scatter = ax.scatter(Vvir_plot, MassLoading_plot, c=np.log10(StellarMass_plot), 
-    #                        s=5, alpha=0.7, marker='o', 
-    #                        label='SAGE25 galaxies', zorder=5, cmap='plasma')
+        # Color SAGE galaxies by stellar mass
+        scatter = ax.scatter(Vvir_plot, MassLoading_plot, c=np.log10(StellarMass_plot), 
+                           s=5, alpha=0.7, marker='o', 
+                           label='SAGE25 galaxies', zorder=5, cmap='plasma')
         
-    #     # Add colorbar for stellar mass
-    #     cbar = plt.colorbar(scatter, ax=ax, pad=0.02, shrink=0.8)
-    #     cbar.set_label(r'$\log_{10}(M_* / M_{\odot})$', fontsize=16)
-    #     cbar.ax.tick_params(labelsize=14)
+        # Add colorbar for stellar mass
+        cbar = plt.colorbar(scatter, ax=ax, pad=0.02, shrink=0.8)
+        cbar.set_label(r'$\log_{10}(M_* / M_{\odot})$', fontsize=16)
+        cbar.ax.tick_params(labelsize=14)
         
-    #     # Add vertical line at critical velocity
-    #     ax.axvline(x=60, color='gray', linestyle=':', linewidth=2, alpha=0.7, 
-    #                label='$V_{\\mathrm{crit}} = 60$ km/s')
+        # Add vertical line at critical velocity
+        ax.axvline(x=60, color='gray', linestyle=':', linewidth=2, alpha=0.7, 
+                   label='$V_{\\mathrm{crit}} = 60$ km/s')
         
-    #     # Add reference galaxy types with standardized styling
-    #     # Milky Way: Vvir ~ 160 km/s
-    #     mw_vvir = 160
-    #     mw_eta = calculate_muratov_mass_loading(np.array([mw_vvir]), z=0.0)[0]
-    #     ax.scatter(mw_vvir, mw_eta, marker='*', s=300, c='gold', 
-    #                edgecolors='black', linewidth=2, label='Milky Way-type', zorder=10)
+        # Add reference galaxy types with standardized styling
+        # Milky Way: Vvir ~ 160 km/s
+        mw_vvir = 160
+        mw_eta = calculate_muratov_mass_loading(np.array([mw_vvir]), z=0.0)[0]
+        ax.scatter(mw_vvir, mw_eta, marker='*', s=300, c='gold', 
+                   edgecolors='black', linewidth=2, label='Milky Way-type', zorder=10)
         
-    #     # Low-mass dwarf: Vvir ~ 25 km/s
-    #     dwarf_vvir = 25
-    #     dwarf_eta = calculate_muratov_mass_loading(np.array([dwarf_vvir]), z=0.0)[0]
-    #     ax.scatter(dwarf_vvir, dwarf_eta, marker='D', s=100, c='purple', 
-    #                edgecolors='black', linewidth=1.5, label='Dwarf galaxy', zorder=10)
+        # Low-mass dwarf: Vvir ~ 25 km/s
+        dwarf_vvir = 25
+        dwarf_eta = calculate_muratov_mass_loading(np.array([dwarf_vvir]), z=0.0)[0]
+        ax.scatter(dwarf_vvir, dwarf_eta, marker='D', s=100, c='purple', 
+                   edgecolors='black', linewidth=1.5, label='Dwarf galaxy', zorder=10)
         
-    #     # Massive cluster central: Vvir ~ 500 km/s
-    #     cluster_vvir = 500
-    #     cluster_eta = calculate_muratov_mass_loading(np.array([cluster_vvir]), z=0.0)[0]
-    #     ax.scatter(cluster_vvir, cluster_eta, marker='d', s=100, c='orange', 
-    #                edgecolors='black', linewidth=1.5, label='Cluster', zorder=10)
+        # Massive cluster central: Vvir ~ 500 km/s
+        cluster_vvir = 500
+        cluster_eta = calculate_muratov_mass_loading(np.array([cluster_vvir]), z=0.0)[0]
+        ax.scatter(cluster_vvir, cluster_eta, marker='d', s=100, c='orange', 
+                   edgecolors='black', linewidth=1.5, label='Cluster', zorder=10)
         
-    #     # Formatting with standardized styling
-    #     ax.set_xlabel('Virial Velocity [km/s]')
-    #     ax.set_ylabel('Mass Loading $\eta_{\\mathrm{Muratov}}$', fontsize=16)
+        # Formatting with standardized styling
+        ax.set_xlabel('Virial Velocity [km/s]')
+        ax.set_ylabel('Mass Loading $\eta_{\\mathrm{Muratov}}$', fontsize=16)
     
-    #     # Set axis limits
-    #     ax.set_xlim(10, 1000)
-    #     ax.set_ylim(0.01, 200)
+        # Set axis limits
+        ax.set_xlim(10, 1000)
+        ax.set_ylim(0.01, 200)
 
-    #     # Set x-axis to show actual values instead of scientific notation
-    #     ax.xaxis.set_major_formatter(ScalarFormatter())
-    #     ax.xaxis.get_major_formatter().set_scientific(False)
+        # Set x-axis to show actual values instead of scientific notation
+        ax.xaxis.set_major_formatter(ScalarFormatter())
+        ax.xaxis.get_major_formatter().set_scientific(False)
         
-    #     # Set specific x-ticks for better readability
-    #     x_ticks = [10, 20, 50, 100, 200, 500, 1000]
-    #     ax.set_xticks(x_ticks)
-    #     ax.set_xticklabels([f'{tick:g}' for tick in x_ticks])
+        # Set specific x-ticks for better readability
+        x_ticks = [10, 20, 50, 100, 200, 500, 1000]
+        ax.set_xticks(x_ticks)
+        ax.set_xticklabels([f'{tick:g}' for tick in x_ticks])
         
-    #     # Set y-axis to show actual values instead of scientific notation
-    #     ax.yaxis.set_major_formatter(ScalarFormatter())
-    #     ax.yaxis.get_major_formatter().set_scientific(False)
+        # Set y-axis to show actual values instead of scientific notation
+        ax.yaxis.set_major_formatter(ScalarFormatter())
+        ax.yaxis.get_major_formatter().set_scientific(False)
         
-    #     # Set specific y-ticks for better readability
-    #     y_ticks = [0.01, 0.1, 1, 10, 100]
-    #     ax.set_yticks(y_ticks)
-    #     ax.set_yticklabels([f'{tick:g}' for tick in y_ticks])
+        # Set specific y-ticks for better readability
+        y_ticks = [0.01, 0.1, 1, 10, 100]
+        ax.set_yticks(y_ticks)
+        ax.set_yticklabels([f'{tick:g}' for tick in y_ticks])
         
-    #     # Standardized legend
-    #     style_legend(ax, loc='lower left')
+        # Standardized legend
+        style_legend(ax, loc='lower left')
         
-    #     # Save the plot with standardized function
-    #     output_filename = OutputDir + 'mass_loading_vs_vvir' + OutputFormat
-    #     finalize_plot(fig, output_filename)
+        # Save the plot with standardized function
+        output_filename = OutputDir + 'mass_loading_vs_vvir' + OutputFormat
+        finalize_plot(fig, output_filename)
         
-    #     # Print some statistics
-    #     logger.info(f'Statistics:')
-    #     logger.info(f'Median mass loading (all): {np.median(mass_loading):.2f}')
-    #     logger.info(f'Mean mass loading (all): {np.mean(mass_loading):.2f}')
-    #     logger.info(f'Mass loading range: {np.min(mass_loading):.3f} - {np.max(mass_loading):.1f}')
+        # Print some statistics
+        logger.info(f'Statistics:')
+        logger.info(f'Median mass loading (all): {np.median(mass_loading):.2f}')
+        logger.info(f'Mean mass loading (all): {np.mean(mass_loading):.2f}')
+        logger.info(f'Mass loading range: {np.min(mass_loading):.3f} - {np.max(mass_loading):.1f}')
         
-    #     # Statistics by velocity bins
-    #     low_v_mask = Vvir_valid < 60
-    #     high_v_mask = Vvir_valid >= 60
+        # Statistics by velocity bins
+        low_v_mask = Vvir_valid < 60
+        high_v_mask = Vvir_valid >= 60
         
-    #     if np.any(low_v_mask):
-    #         logger.info(f'Low velocity (<60 km/s): median η = {np.median(mass_loading[low_v_mask]):.2f}')
-    #     if np.any(high_v_mask):
-    #         logger.info(f'High velocity (≥60 km/s): median η = {np.median(mass_loading[high_v_mask]):.2f}')
+        if np.any(low_v_mask):
+            logger.info(f'Low velocity (<60 km/s): median η = {np.median(mass_loading[low_v_mask]):.2f}')
+        if np.any(high_v_mask):
+            logger.info(f'High velocity (≥60 km/s): median η = {np.median(mass_loading[high_v_mask]):.2f}')
 
     # -----------------------------------------------------------------------
     # Reionization Models Comparison Plot with standardized styling

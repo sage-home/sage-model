@@ -59,6 +59,7 @@ void init_galaxy(const int p, const int halonr, int *galaxycounter, const struct
     galaxies[p].MetalsCGMgas = 0.0;
     galaxies[p].MetalsICS = 0.0;
     galaxies[p].RcoolToRvir = 0.0;
+    galaxies[p].MassLoading = 0.0;
 
     for(int step = 0; step < STEPS; step++) {
         galaxies[p].SfrDisk[step] = 0.0;

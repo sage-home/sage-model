@@ -593,6 +593,7 @@ if __name__ == '__main__':
 
     plt.figure(figsize=(10, 8))
     ax = plt.subplot(111)
+    min_halo_mass = 1e10  # Minimum halo mass to consider for SMF
 
     # Define redshift bins to match the figure
     z_bins = [
@@ -729,20 +730,26 @@ if __name__ == '__main__':
                 sfr_total = SfrDiskFull[snap_idx] + SfrBulgeFull[snap_idx]
                 stellar_mass = StellarMassFull[snap_idx]
                 galtype = TypeFull[snap_idx]
-                # Only consider galaxies with positive stellar mass and SFR
-                w = np.where((stellar_mass > 0.0) & (sfr_total > 0.0))[0]
+                
+                # Include ALL galaxies with positive stellar mass (like the local script)
+                w = np.where(stellar_mass > 0.0)[0]
                 if len(w) > 0:
                     masses = np.log10(stellar_mass[w])
-                    sSFR = np.log10(sfr_total[w] / stellar_mass[w])
+                    # Calculate sSFR in linear units, then compare to 10^sSFRcut (like local script)
+                    sSFR_linear = sfr_total[w] / stellar_mass[w]
                     gtype = galtype[w]
+                    
+                    # Identify quiescent galaxies using the same method as local script
+                    quenched = sSFR_linear < 10.0**sSFRcut
+                    
                     # All galaxies
-                    quenched = sSFR < sSFRcut
                     all_frac = np.full(len(mass_centers), np.nan)
                     for j in range(len(mass_centers)):
                         mask = (masses >= mass_bins[j]) & (masses < mass_bins[j+1])
                         if np.sum(mask) > 0:
                             all_frac[j] = np.sum(quenched[mask]) / np.sum(mask)
                     all_snapshots.append(all_frac)
+                    
                     # Centrals
                     cen_mask = gtype == 0
                     cen_frac = np.full(len(mass_centers), np.nan)
@@ -752,6 +759,7 @@ if __name__ == '__main__':
                             cen_quenched = quenched[mask]
                             cen_frac[j] = np.sum(cen_quenched) / np.sum(mask)
                     central_snapshots.append(cen_frac)
+                    
                     # Satellites
                     sat_mask = gtype == 1
                     sat_frac = np.full(len(mass_centers), np.nan)
@@ -761,21 +769,26 @@ if __name__ == '__main__':
                             sat_quenched = quenched[mask]
                             sat_frac[j] = np.sum(sat_quenched) / np.sum(mask)
                     satellite_snapshots.append(sat_frac)
+                    
         if len(all_snapshots) == 0:
             continue
+            
         all_snapshots_arr = np.array(all_snapshots)
         central_snapshots_arr = np.array(central_snapshots)
         satellite_snapshots_arr = np.array(satellite_snapshots)
         all_frac_mean = np.nanmean(all_snapshots_arr, axis=0)
         cen_frac_mean = np.nanmean(central_snapshots_arr, axis=0)
         sat_frac_mean = np.nanmean(satellite_snapshots_arr, axis=0)
+        
         # 1-sigma for centrals
         cen_frac_std = np.nanstd(central_snapshots_arr, axis=0)
         valid_all = ~np.isnan(all_frac_mean)
         valid_cen = ~np.isnan(cen_frac_mean)
         valid_sat = ~np.isnan(sat_frac_mean)
+        
         label = f'{z_min:.1f} < z < {z_max:.1f}'
         # ax.plot(mass_centers[valid_all], all_frac_mean[valid_all], color=colors[i], linewidth=2, label=label+' (All)')
+        
         # Plot centrals with 1-sigma shading
         ax.plot(mass_centers[valid_cen], cen_frac_mean[valid_cen], color=colors[i], linestyle='-', linewidth=2, label=label)
         ax.fill_between(
@@ -783,6 +796,7 @@ if __name__ == '__main__':
             (cen_frac_mean - cen_frac_std)[valid_cen],
             (cen_frac_mean + cen_frac_std)[valid_cen],
             color=colors[i], alpha=0.18, linewidth=0)
+        
         # Plot satellites
         ax.plot(mass_centers[valid_sat], sat_frac_mean[valid_sat], color=colors[i], linestyle=':', linewidth=2, alpha=0.25)
 
