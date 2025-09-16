@@ -209,7 +209,7 @@ void determine_and_store_regime(const int ngal, struct GALAXY *galaxies)
 
 void final_regime_check(const int ngal, struct GALAXY *galaxies, const struct params *run_params)
 {
-    if(run_params->CGMrecipeOn > 0) {
+    if(run_params->CGMrecipeOn == 0) {
         return;
     }
     
