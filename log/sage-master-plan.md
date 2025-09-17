@@ -108,15 +108,18 @@ This Master Implementation Plan guides the transformation of SAGE from a monolit
 - **Effort**: 2 sessions
 
 #### Task 2A.4: Legacy Physics Module Wrapping
-- **Objective**: Wrap existing physics modules in new interface
+- **Objective**: Wrap existing physics modules in new interface + create shared physics utilities
 - **Implementation**:
+  - Create `src/physics/physics_essential_functions.c/h` for shared physics utilities
+  - Move `get_disk_radius()`, `estimate_merging_time()` to essential functions
   - Create adapter modules for each physics function
+  - Modules handle all physics property initialization and normalization
   - Maintain identical physics calculations
   - Register modules using new interface
   - Preserve all existing scientific behavior
 - **Principles**: Maintains Principle 5 (unified processing)
 - **Testing**: Physics calculations produce identical results
-- **Effort**: 3 sessions
+- **Effort**: 3 sessions (enhanced scope)
 
 #### Task 2A.5: Module Dependency Framework
 - **Objective**: Basic dependency resolution for module execution

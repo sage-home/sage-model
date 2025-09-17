@@ -39,6 +39,7 @@ _sage_cffi.*
 *.swo
 .idea/
 .claude/
+debug_commands.txt
 
 # Large Data Files & Output
 # -------------------------

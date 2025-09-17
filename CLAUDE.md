@@ -53,3 +53,4 @@ SAGE (Semi-Analytic Galaxy Evolution) is a C-based galaxy formation model that r
 - Ask before committing to git
 - Archive files to `scrap/` instead of deleting
 - Use logs for continuity - assume no persistent memory
+- Use lldb for debugging: input commands into lldb from a file (end with "quit"), e.g. `lldb --batch -s debug_commands.txt ./sage`
