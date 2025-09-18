@@ -61,7 +61,7 @@
 - Created comprehensive property header generation with compile-time assertions, module availability checking, memory layout optimization, and CMake integration
 - Achieved clean build with zero warnings through proper BUILD_BUG_OR_ZERO documentation and appropriate CMake message severity levels
 - Established foundation for runtime modularity enabling core/physics separation with backward compatibility for legacy GALAXY struct access
-- **Files Created**: scripts/generate_property_headers.py, build/src/core/property_generated.h, build/src/core/property_enums.h, build/src/core/property_access.h
+- **Files Created**: src/scripts/generate_property_headers.py, build/src/core/property_generated.h, build/src/core/property_enums.h, build/src/core/property_access.h
 - **Files Modified**: CMakeLists.txt (added property generation system), src/core/macros.h (documented BUILD_BUG_OR_ZERO), src/core/core_read_parameter_file.c (removed unused legacy function)
 
 2025-09-15: [Task 2A.1] Physics Module Interface Design Complete

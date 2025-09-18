@@ -348,7 +348,7 @@ endif()
 
 # Define paths for property system
 set(PROPERTY_SCHEMA_FILE ${CMAKE_SOURCE_DIR}/schema/properties.yaml)
-set(PROPERTY_GENERATOR ${CMAKE_SOURCE_DIR}/scripts/generate_property_headers.py)
+set(PROPERTY_GENERATOR ${CMAKE_SOURCE_DIR}/src/scripts/generate_property_headers.py)
 set(PROPERTY_OUTPUT_DIR ${CMAKE_BINARY_DIR}/src/core)
 
 # Generated property header files

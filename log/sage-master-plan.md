@@ -90,6 +90,7 @@ This Master Implementation Plan guides the transformation of SAGE from a monolit
 - **Implementation**:
   - Remove direct `#include` of physics headers from core
   - Replace physics function calls with module interface calls
+  - **CRITICAL**: Use `CORE_PROP_*` naming for core property access (NOT `GALAXY_PROP_*`)
   - Create conditional execution based on loaded modules
   - Maintain identical execution order and logic
 - **Principles**: Achieves Principle 1 compliance in core

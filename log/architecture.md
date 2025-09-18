@@ -146,7 +146,7 @@ struct GALAXY {
 ```
 
 **Property System Infrastructure Status (Tasks 2.1-2.2 Complete):**
-- ✅ YAML metadata drives C code generation (scripts/generate_property_headers.py)
+- ✅ YAML metadata drives C code generation (src/scripts/generate_property_headers.py)
 - ✅ Type-safe macros: `GALAXY_GET_SNAPNUM(gal)`, `GALAXY_SET_MVIR(gal, val)`
 - ✅ Compile-time availability checking with BUILD_BUG_OR_ZERO assertions
 - ✅ Runtime modularity support with module-aware property masks

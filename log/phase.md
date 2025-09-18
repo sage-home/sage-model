@@ -34,6 +34,7 @@
 - [ ] Remove direct `#include` of physics headers from core
 - [ ] Replace physics function calls with module interface calls
 - [ ] Remove ALL physics property handling from core (initialization, normalization, calculations)
+- [ ] **CRITICAL**: Use `CORE_PROP_*` naming for core property access (NOT `GALAXY_PROP_*`)
 - [ ] Move physics utility functions to physics_essential_functions.c/h (for Task 2A.4)
 - [ ] Create conditional execution based on loaded modules
 - [ ] Maintain identical execution order and logic

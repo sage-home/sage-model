@@ -14,11 +14,6 @@
 
 *Recent critical decisions - historical decisions archived in `archive/decisions-phase*.md`*
 
-2025-XX-XX: [Phase 1.X] This is an example entry that should be followed
-- **Decision**: Brief description of the decision made
-- **Rationale**: Why this decision was made (technical/scientific reasons)
-- **Impact**: Effect on current and future development
-
 2025-09-11: [Phase 2.2] Python-based property header code generation system
 - **Decision**: Implemented YAML-to-C code generation with BUILD_BUG_OR_ZERO compile-time assertions
 - **Rationale**: Enables metadata-driven property system with type safety and runtime modularity while maintaining compatibility
@@ -39,3 +34,13 @@
 - **Decision**: Implemented auto-registration using constructor attributes rather than explicit registration calls
 - **Rationale**: Eliminates manual registration overhead, ensures modules are always available when library loads, follows C library patterns
 - **Impact**: Simplified module development workflow; robust module discovery; foundation for future dynamic loading systems
+
+2025-09-18: [Phase 2A] Property Generation Script Relocation to src/scripts/
+- **Decision**: Moved generate_property_headers.py from scripts/ to src/scripts/ directory
+- **Rationale**: Property generation is integral to source compilation, not an external tool; src/scripts/ better reflects its code-generation role versus external utilities
+- **Impact**: Cleaner project organization; aligns with source-centric architecture; maintains schema/ separation while recognizing code generation as core infrastructure
+
+2025-09-18: [Phase 2A] CORE_PROP_* Property Naming Convention
+- **Decision**: Enhanced branch will use CORE_PROP_* naming for core property access instead of GALAXY_PROP_* (used in refactor branch)
+- **Rationale**: GALAXY_PROP_* is architecturally misleading since galaxy properties include both core AND physics properties, but core code should only access core properties
+- **Impact**: Clearer architectural boundaries; prevents core code from accidentally accessing physics properties; improves code readability and maintains Principle 1 compliance
