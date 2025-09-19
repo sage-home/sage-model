@@ -115,6 +115,10 @@ yy*
 src-legacy
 obsidian-inbox
 
+build/
+sage-model-refactor-dir
+scrap/
+
 # sage_analysis Package Stuff #
 *.egg-info
 *__pycache__*
