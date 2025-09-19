@@ -53,10 +53,6 @@ trees_*
 *.tar.gz
 millennium.a_list
 
-# Benchmark Results
-# -----------------
-benchmarks/
-
 # Temporary & Runtime Files
 # -------------------------
 tmp*
