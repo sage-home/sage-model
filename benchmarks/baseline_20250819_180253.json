@@ -1,0 +1,33 @@
+{
+  "timestamp": "2025-08-19T08:02:59Z",
+  "version": "54bffb3",
+  "system": {
+    "uname": "Darwin HAW10012892 24.6.0 Darwin Kernel Version 24.6.0: Mon Jul 14 11:30:55 PDT 2025; root:xnu-11417.140.69~1/RELEASE_ARM64_T6031 arm64",
+    "platform": "Darwin",
+    "architecture": "arm64",
+    "cpu_count": "32"
+  },
+  "test_case": {
+    "name": "Mini-Millennium",
+    "output_format": "binary",
+    "num_processes": 1,
+    "mpi_command": "none"
+  },
+  "configuration": {
+    "build_type": "Debug",
+    "cmake_build": true,
+    "sage_executable": "/Users/dcroton/Local/git-repos/sage-repos/sage-model/build/sage"
+  },
+  "overall_performance": {
+    "wall_time_seconds": 4.106482000,
+    "max_memory_mb": 94.73,
+    "output_file_size_bytes": 8593540
+  },
+  "phase_timing": {
+    "note": "Detailed phase timing not implemented - requires SAGE code instrumentation",
+    "halo_phase": { "time": "N/A", "percentage": "N/A" },
+    "galaxy_phase": { "time": "N/A", "percentage": "N/A" },
+    "post_phase": { "time": "N/A", "percentage": "N/A" },
+    "final_phase": { "time": "N/A", "percentage": "N/A" }
+  }
+}
