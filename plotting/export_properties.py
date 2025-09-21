@@ -115,6 +115,7 @@ if __name__ == '__main__':
     # Galaxy classification
     CentralGalaxyIndex = read_hdf(snap_num=Snapshot, param='CentralGalaxyIndex')
     Type = read_hdf(snap_num=Snapshot, param='Type')
+    GalaxyID = read_hdf(snap_num=Snapshot, param='GalaxyIndex')
     
     # Spatial coordinates
     Posx = read_hdf(snap_num=Snapshot, param='Posx')
@@ -169,6 +170,7 @@ if __name__ == '__main__':
         
         CentralGalaxyIndex = CentralGalaxyIndex[mass_mask]
         Type = Type[mass_mask]
+        GalaxyID = GalaxyID[mass_mask]
         
         Posx = Posx[mass_mask]
         Posy = Posy[mass_mask]
@@ -248,7 +250,11 @@ if __name__ == '__main__':
         'Pos_x': Posx,
         'Pos_y': Posy,  
         'Pos_z': Posz,
-        
+
+        'Vel_x': Velx,
+        'Vel_y': Vely,
+        'Vel_z': Velz,
+
         # Halo properties
         'Mvir': Mvir,
         'CentralMvir': CentralMvir,
@@ -344,7 +350,7 @@ if __name__ == '__main__':
     print('FIRST 5 GALAXIES (by stellar mass)')
     print('='*60)
     
-    display_cols = ['GalaxyID', 'Type', 'StellarMass', 'Mvir', 'SFR_Total', 'sSFR', 'Central']
+    display_cols = ['GalaxyID', 'CentralGalaxyIndex', 'Type', 'Mvir', 'SFR_Total', 'Central', 'Pos_x', 'Pos_y', 'Pos_z', 'Vel_x', 'Vel_y', 'Vel_z']
     print(df[display_cols].head().to_string(index=False, float_format='%.3e'))
     
     print(f'\nCSV export completed successfully!')

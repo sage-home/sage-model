@@ -413,37 +413,32 @@ void collisional_starburst_recipe(const double mass_ratio, const int merger_cent
 
 void disrupt_satellite_to_ICS(const int centralgal, const int gal, struct GALAXY *galaxies, const struct params *run_params)
 {
+    // Always add cold gas and stellar components (no regime dependence)
+    galaxies[centralgal].ColdGas += galaxies[gal].ColdGas;
+    galaxies[centralgal].MetalsColdGas += galaxies[gal].MetalsColdGas;
+
     // Regime-aware satellite disruption
     if (run_params->CGMrecipeOn == 1) {
         if (galaxies[centralgal].Regime == 0) {
-            // CGM regime: NO HotGas allowed, only CGMgas
-            galaxies[centralgal].ColdGas += galaxies[gal].ColdGas;
-            galaxies[centralgal].MetalsColdGas += galaxies[gal].MetalsColdGas;
-        
-            // ALL hot-type gas becomes CGMgas
-            galaxies[centralgal].CGMgas += galaxies[gal].CGMgas;
-            galaxies[centralgal].MetalsCGMgas += galaxies[gal].MetalsCGMgas;
+            // CGM regime: ALL hot-type gas becomes CGMgas
+            // FIXED: Combine both reservoirs to prevent mass loss
+            galaxies[centralgal].CGMgas += galaxies[gal].CGMgas + galaxies[gal].HotGas;
+            galaxies[centralgal].MetalsCGMgas += galaxies[gal].MetalsCGMgas + galaxies[gal].MetalsHotGas;
             
-            // No HotGas added (strict CGM regime)
         } else {
-            // HOT regime: NO CGMgas allowed, only HotGas
-            galaxies[centralgal].ColdGas += galaxies[gal].ColdGas;
-            galaxies[centralgal].MetalsColdGas += galaxies[gal].MetalsColdGas;
-            
-            // ALL hot-type gas becomes HotGas
-            galaxies[centralgal].HotGas += galaxies[gal].HotGas;
-            galaxies[centralgal].MetalsHotGas += galaxies[gal].MetalsHotGas;
-            
-            // No CGMgas added (strict Hot regime)
+            // HOT regime: ALL hot-type gas becomes HotGas
+            // FIXED: Combine both reservoirs to prevent mass loss
+            galaxies[centralgal].HotGas += galaxies[gal].HotGas + galaxies[gal].CGMgas;
+            galaxies[centralgal].MetalsHotGas += galaxies[gal].MetalsHotGas + galaxies[gal].MetalsCGMgas;
         }
     } else {
-    // Original behavior when CGM recipe is off
-    galaxies[centralgal].HotGas += galaxies[gal].ColdGas + galaxies[gal].HotGas;
-    galaxies[centralgal].MetalsHotGas += galaxies[gal].MetalsColdGas + galaxies[gal].MetalsHotGas;
+        // Original behavior when CGM recipe is off
+        galaxies[centralgal].HotGas += galaxies[gal].ColdGas + galaxies[gal].HotGas;
+        galaxies[centralgal].MetalsHotGas += galaxies[gal].MetalsColdGas + galaxies[gal].MetalsHotGas;
 
-    galaxies[centralgal].CGMgas += galaxies[gal].CGMgas;
-    galaxies[centralgal].MetalsCGMgas += galaxies[gal].MetalsCGMgas;
-}
+        galaxies[centralgal].CGMgas += galaxies[gal].CGMgas;
+        galaxies[centralgal].MetalsCGMgas += galaxies[gal].MetalsCGMgas;
+    }
 
     // Always add ICS and stellar mass to ICS (no regime dependence)
     galaxies[centralgal].ICS += galaxies[gal].ICS;

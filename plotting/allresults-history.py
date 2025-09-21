@@ -201,7 +201,7 @@ if __name__ == '__main__':
     ######
 
     plt.yscale('log')
-    plt.axis([8.0, 12.2, 1.0e-6, 1.0e-1])
+    plt.axis([7.0, 12.2, 1.0e-6, 1.0e-1])
 
     # Set the x-axis minor ticks
     ax.xaxis.set_minor_locator(plt.MultipleLocator(0.1))

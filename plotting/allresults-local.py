@@ -1163,3 +1163,69 @@ if __name__ == '__main__':
     plt.savefig(outputFile)
     print('Saved file to', outputFile, '\n')
     plt.close()
+
+    # -------------------------------------------------------
+
+    print('Plotting CGM gas fraction vs stellar mass')
+
+    plt.figure()
+
+    w = np.where((Mvir > 0.0) & (StellarMass > 0.0))[0]
+    if(len(w) > dilute): w = sample(list(w), dilute)
+
+    log10_stellar_mass = np.log10(StellarMass[w])
+
+    # Calculate total hot-type gas and CGM fraction
+    total_hot_gas = CGMgas[w] + HotGas[w]
+    # Avoid division by zero
+    mask = total_hot_gas > 0
+    f_CGM = np.zeros_like(total_hot_gas)
+    f_CGM[mask] = CGMgas[w][mask] / total_hot_gas[mask]
+
+    # Only plot where there's actually gas
+    valid = mask & (f_CGM >= 0) & (f_CGM <= 1)
+
+    plt.scatter(log10_stellar_mass[valid], f_CGM[valid], c='purple', s=5, alpha=0.6)
+
+    plt.xlabel(r'$\log_{10} M_{\mathrm{stars}}\ (M_{\odot})$')
+    plt.ylabel(r'$f_{\mathrm{CGM}} = M_{\mathrm{CGM}}/(M_{\mathrm{CGM}} + M_{\mathrm{hot}})$')
+    plt.xlim(8, 12)
+    plt.ylim(0, 1)
+
+    outputFile = OutputDir + '17.cgm_gas_fraction' + OutputFormat
+    plt.savefig(outputFile)
+    plt.close()
+
+    # -------------------------------------------------------
+
+    print('Plotting Black Hole Mass vs Stellar Mass')
+
+    # In your plotting script
+    plt.figure()
+    w = np.where((Mvir > 0.0) & (StellarMass > 0.0) & (BlackHoleMass > 0))[0]
+    if(len(w) > dilute): w = sample(list(w), dilute)
+
+    log10_stellar_mass = np.log10(StellarMass[w])
+    log10_BH_mass = np.log10(BlackHoleMass[w])
+
+    # Calculate total hot-type gas and CGM fraction
+    total_hot_gas = CGMgas[w] + HotGas[w]
+    # Avoid division by zero
+    mask = total_hot_gas > 0
+    f_CGM = np.zeros_like(total_hot_gas)
+    f_CGM[mask] = CGMgas[w][mask] / total_hot_gas[mask]
+
+    # Only plot where there's actually gas
+    valid = mask & (f_CGM >= 0) & (f_CGM <= 1)
+
+    plt.scatter(log10_stellar_mass[valid], log10_BH_mass[valid], c=f_CGM[valid], s=5, cmap='plasma')
+    plt.colorbar(label='f_CGM')
+    plt.xlabel(r'$\log_{10} M_{\mathrm{stars}}\ (M_{\odot})$')
+    plt.ylabel(r'$\log_{10} M_{\mathrm{BH}}\ (M_{\odot})$')
+
+    plt.xlim(8, 12)
+    plt.ylim(4, 10)
+
+    outputFile = OutputDir + '18.BH_mass_vs_stellar_mass' + OutputFormat
+    plt.savefig(outputFile)
+    plt.close()

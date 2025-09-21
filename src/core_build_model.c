@@ -332,6 +332,11 @@ int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals
 
     int nsteps;
     double actual_dt;
+
+    // if (run_params->CGMrecipeOn > 0) {
+    //     // Determine the CGM regime at the start of the timestep
+    //     determine_and_store_regime(ngal, galaxies, run_params);
+    // }
     
 
     if (Vvir > 0.0 && Rvir > 0.0) {
@@ -367,11 +372,6 @@ int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals
         actual_dt = deltaT / STEPS;
     }
 
-    if (run_params->CGMrecipeOn > 0) {
-        // Determine the CGM regime at the start of the timestep
-        determine_and_store_regime(ngal, galaxies);
-    }
-
     // We integrate things forward by using a number of intervals equal to nsteps
     for(int step = 0; step < nsteps; step++) {
 
@@ -387,6 +387,11 @@ int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals
 
             if(galaxies[p].dT < 0.0) {
                 galaxies[p].dT = deltaT;
+            }
+
+            if (run_params->CGMrecipeOn > 0) {
+                // Determine the CGM regime at the start of the timestep
+                determine_and_store_regime(ngal, galaxies, run_params);
             }
 
             // For the central galaxy only

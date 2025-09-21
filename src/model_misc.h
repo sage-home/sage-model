@@ -14,7 +14,7 @@ extern "C" {
     extern double get_virial_mass(const int halonr, const struct halo_data *halos, const struct params *run_params);
     extern double get_disk_radius(const int halonr, const int p, const struct halo_data *halos, const struct GALAXY *galaxies);
     extern double dmax(const double x, const double y);
-    extern void determine_and_store_regime(const int gal, struct GALAXY *galaxies);
+    extern void determine_and_store_regime(const int gal, struct GALAXY *galaxies, const struct params *run_params);
     extern void final_regime_check(const int gal, struct GALAXY *galaxies, const struct params *run_params);
     extern double calculate_rcool_to_rvir_ratio(const int gal, struct GALAXY *galaxies, const struct params *run_params);
     extern float calculate_muratov_mass_loading(const int gal, struct GALAXY *galaxies, const double z);

@@ -240,7 +240,7 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
                     double alpha = (vmax < 60.0) ? -3.2 : -1.0;
                     double fire_scaling = pow(1.0 + z, 1.3) * pow(vmax / 60.0, alpha);
                     ejected_mass = ((run_params->FeedbackEjectionEfficiency * (run_params->EtaSNcode * run_params->EnergySNcode) / (galaxies[centralgal].Vvir * galaxies[centralgal].Vvir) -
-                    calculate_muratov_mass_loading(centralgal, galaxies, z)) * stars) * fire_scaling;
+                    calculate_muratov_mass_loading(centralgal, galaxies, z)) * stars);
                 } else {
                     // Use traditional feedback parameter
                     ejected_mass =
@@ -258,6 +258,9 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
     } else {
         ejected_mass = 0.0;
     }
+
+    // printf("DEBUG: stars=%.3e, reheated=%.3e, ejected=%.3e\n", 
+    //    stars, reheated_mass, ejected_mass);
 
     // update the star formation rate
     galaxies[p].SfrDisk[step] += stars / dt;
@@ -335,13 +338,6 @@ void update_from_feedback(const int p, const int centralgal, const double reheat
             "Error: Reheated mass = %g should be <= the coldgas mass of the galaxy = %g",
             reheated_mass, galaxies[p].ColdGas);
 
-    XASSERT(reheated_mass >= 0.0, -1,
-            "Error: For galaxy = %d (halonr = %d, centralgal = %d) with MostBoundID = %lld, the reheated mass = %g should be >=0.0",
-            p, galaxies[p].HaloNr, centralgal, galaxies[p].MostBoundID, reheated_mass);
-    XASSERT(reheated_mass <= galaxies[p].ColdGas, -1,
-            "Error: Reheated mass = %g should be <= the coldgas mass of the galaxy = %g",
-            reheated_mass, galaxies[p].ColdGas);
-
     if(run_params->SupernovaRecipeOn == 1) {
         // Remove gas from cold reservoir (always from galaxy p)
         galaxies[p].ColdGas -= reheated_mass;
@@ -357,14 +353,14 @@ void update_from_feedback(const int p, const int centralgal, const double reheat
                 galaxies[centralgal].MetalsCGMgas += metallicity * reheated_mass;
                 
                 // Ejection from central's CGM reservoir
-                if(ejected_mass > galaxies[centralgal].CGMgas) {
-                    ejected_mass = galaxies[centralgal].CGMgas;
-                    }
-                if(ejected_mass > 0.0) {
-                    const double metallicityCGM = get_metallicity(galaxies[centralgal].CGMgas, galaxies[centralgal].MetalsCGMgas);
-                    galaxies[centralgal].CGMgas -= ejected_mass;
-                    galaxies[centralgal].MetalsCGMgas -= metallicityCGM * ejected_mass;
-                    }
+                // if(ejected_mass > galaxies[centralgal].CGMgas) {
+                //     ejected_mass = galaxies[centralgal].CGMgas;
+                //     }
+                // if(ejected_mass > 0.0) {
+                //     const double metallicityCGM = get_metallicity(galaxies[centralgal].CGMgas, galaxies[centralgal].MetalsCGMgas);
+                //     galaxies[centralgal].CGMgas -= ejected_mass;
+                //     galaxies[centralgal].MetalsCGMgas -= metallicityCGM * ejected_mass;
+                //     }
                 
             } else {
                 // CENTRAL is HOT REGIME: Reheated gas goes to central's HotGas  
@@ -372,14 +368,14 @@ void update_from_feedback(const int p, const int centralgal, const double reheat
                 galaxies[centralgal].MetalsHotGas += metallicity * reheated_mass;
 
                 // Ejection from central's HotGas reservoir
-                if(ejected_mass > galaxies[centralgal].HotGas) {
-                    ejected_mass = galaxies[centralgal].HotGas;
-                    }
-                if(ejected_mass > 0.0) {
-                    const double metallicityHot = get_metallicity(galaxies[centralgal].HotGas, galaxies[centralgal].MetalsHotGas);
-                    galaxies[centralgal].HotGas -= ejected_mass;
-                    galaxies[centralgal].MetalsHotGas -= metallicityHot * ejected_mass;
-                }
+                // if(ejected_mass > galaxies[centralgal].HotGas) {
+                //     ejected_mass = galaxies[centralgal].HotGas;
+                //     }
+                // if(ejected_mass > 0.0) {
+                //     const double metallicityHot = get_metallicity(galaxies[centralgal].HotGas, galaxies[centralgal].MetalsHotGas);
+                //     galaxies[centralgal].HotGas -= ejected_mass;
+                //     galaxies[centralgal].MetalsHotGas -= metallicityHot * ejected_mass;
+                // }
             }
         } else {
             // Original behavior: reheated gas goes to HotGas

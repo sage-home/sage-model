@@ -166,44 +166,20 @@ double get_virial_radius(const int halonr, const struct halo_data *halos, const 
   return cbrt(get_virial_mass(halonr, halos, run_params) * fac);
 }
 
-void determine_and_store_regime(const int ngal, struct GALAXY *galaxies)
+void determine_and_store_regime(const int ngal, struct GALAXY *galaxies, const struct params *run_params)
 {
     for(int p = 0; p < ngal; p++) {
         if(galaxies[p].mergeType > 0) continue;
         
-        // const double rcool_to_rvir = calculate_rcool_to_rvir_ratio(p, galaxies, run_params);
-        
-        // Use Vvir threshold instead of mass threshold
-        // const double Vvir_threshold = 90.0;  // km/s, corresponds to ~1e11.5 M☉ and T_vir ~1e5 K
+        // THIS IS LIKELY THE BUG - check these calculations
+        const double z = run_params->ZZ[galaxies[p].SnapNum];
         const double Tvir = 35.9 * galaxies[p].Vvir * galaxies[p].Vvir; // in Kelvin
-        const double Tvir_threshold = 2.5e5; // K, corresponds to Vvir ~52.7 km/s
-        const double Tvir_to_Tmax_ratio = Tvir_threshold / Tvir;
-
-        // FIXED: Determine regime based on BOTH cooling radius AND virial velocity
-        // CGM regime (0): BOTH rcool > Rvir AND Vvir < 90 km/s
-        // HOT regime (1): EITHER rcool <= Rvir OR Vvir >= 90 km/s
-
-        // galaxies[p].Regime = (rcool_to_rvir > 1.0 && galaxies[p].Vvir < Vvir_threshold) ? 0 : 1;
-        galaxies[p].Regime = (Tvir_to_Tmax_ratio >= 1.0 ) ? 0 : 1;
-
-        // ALSO enforce the regime immediately to prevent inconsistencies
-        if(galaxies[p].Regime == 0) {
-            // CGM regime: transfer all HotGas to CGM
-            if(galaxies[p].HotGas > 1e-20) {
-                galaxies[p].CGMgas += galaxies[p].HotGas;
-                galaxies[p].MetalsCGMgas += galaxies[p].MetalsHotGas;
-                galaxies[p].HotGas = 0.0;
-                galaxies[p].MetalsHotGas = 0.0;
-            }
-        } else {
-            // HOT regime: transfer all CGMgas to HotGas
-            if(galaxies[p].CGMgas > 1e-20) {
-                galaxies[p].HotGas += galaxies[p].CGMgas;
-                galaxies[p].MetalsHotGas += galaxies[p].MetalsCGMgas;
-                galaxies[p].CGMgas = 0.0;
-                galaxies[p].MetalsCGMgas = 0.0;
-            }
-        }
+        const double Tvir_threshold_z0 = 8.0e5;
+        const double z_scaling = pow(1.0 + z, 1.2);
+        const double Tvir_threshold = Tvir_threshold_z0 * z_scaling;
+        const double Tvir_to_Tmax_ratio = Tvir_threshold / Tvir;  // BUG HERE?
+        
+        galaxies[p].Regime = (Tvir_to_Tmax_ratio >= 1.0) ? 0 : 1;
     }
 }
 
@@ -241,27 +217,27 @@ void final_regime_check(const int ngal, struct GALAXY *galaxies, const struct pa
         // ENFORCE VELOCITY THRESHOLD: Vvir < 90 km/s -> CGM, Vvir >= 90 km/s -> HOT
         // This is the final arbiter that overrides physics-based regime determination
 
-        if(Tvir_to_Tmax_ratio >= 1.0) {
-            // LOW-VELOCITY: Must be in CGM regime regardless of rcool/Rvir
-            if(galaxies[p].HotGas > 1e-20) {
-                galaxies[p].CGMgas += galaxies[p].HotGas;
-                galaxies[p].MetalsCGMgas += galaxies[p].MetalsHotGas;
-                galaxies[p].HotGas = 0.0;
-                galaxies[p].MetalsHotGas = 0.0;
-                // gas_moved = 1;
-            }
-            galaxies[p].Regime = 0;
-        } else {
-            // HIGH-VELOCITY: Must be in HOT regime regardless of rcool/Rvir
-            if(galaxies[p].CGMgas > 1e-20) {
-                galaxies[p].HotGas += galaxies[p].CGMgas;
-                galaxies[p].MetalsHotGas += galaxies[p].MetalsCGMgas;
-                galaxies[p].CGMgas = 0.0;
-                galaxies[p].MetalsCGMgas = 0.0;
-                // gas_moved = 1;
-            }
-            galaxies[p].Regime = 1;
-        }
+        // if(Tvir_to_Tmax_ratio >= 1.0) {
+        //     // LOW-VELOCITY: Must be in CGM regime regardless of rcool/Rvir
+        //     if(galaxies[p].HotGas > 1e-20) {
+        //         galaxies[p].CGMgas += galaxies[p].HotGas;
+        //         galaxies[p].MetalsCGMgas += galaxies[p].MetalsHotGas;
+        //         galaxies[p].HotGas = 0.0;
+        //         galaxies[p].MetalsHotGas = 0.0;
+        //         // gas_moved = 1;
+        //     }
+        //     galaxies[p].Regime = 0;
+        // } else {
+        //     // HIGH-VELOCITY: Must be in HOT regime regardless of rcool/Rvir
+        //     if(galaxies[p].CGMgas > 1e-20) {
+        //         galaxies[p].HotGas += galaxies[p].CGMgas;
+        //         galaxies[p].MetalsHotGas += galaxies[p].MetalsCGMgas;
+        //         galaxies[p].CGMgas = 0.0;
+        //         galaxies[p].MetalsCGMgas = 0.0;
+        //         // gas_moved = 1;
+        //     }
+        //     galaxies[p].Regime = 1;
+        // }
         
         // Print diagnostics only when gas is moved
         // if(gas_moved) {
@@ -450,9 +426,9 @@ float calculate_molecular_fraction_BR06(float gas_surface_density, float stellar
     // Apply physical bounds
     // Apply aggressive capping for massive galaxies
     // Cap at 40% for most galaxies, with smooth transition
-    if (f_mol > 0.4) {
-        f_mol = 0.4 + 0.2 * tanh((f_mol - 0.4) / 0.15);
-    }
+    // if (f_mol > 0.4) {
+    //     f_mol = 0.4 + 0.2 * tanh((f_mol - 0.4) / 0.15);
+    // }
     
     return f_mol;
 }
@@ -528,9 +504,9 @@ float calculate_molecular_fraction_darksage_pressure(float gas_surface_density_m
     // Apply physical bounds
     // Apply aggressive capping for massive galaxies
     // Cap at 40% for most galaxies, with smooth transition
-    if (f_mol > 0.4) {
-        f_mol = 0.4 + 0.2 * tanh((f_mol - 0.4) / 0.15);
-    }
+    // if (f_mol > 0.4) {
+    //     f_mol = 0.4 + 0.2 * tanh((f_mol - 0.4) / 0.15);
+    // }
     
     return f_mol;
 }

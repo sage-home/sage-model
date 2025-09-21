@@ -12,9 +12,9 @@
 void reincorporate_gas(const int centralgal, const double dt, struct GALAXY *galaxies, const struct params *run_params)
 {
 
-    if(run_params->CGMrecipeOn > 0) {
-        return;
-    }
+    // if(run_params->CGMrecipeOn > 0) {
+    //     return;
+    // }
 
     // SN velocity is 630km/s, and the condition for reincorporation is that the
     // halo has an escape velocity greater than this, i.e. V_SN/sqrt(2) = 445.48km/s
