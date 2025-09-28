@@ -279,7 +279,16 @@ void collisional_starburst_recipe(const double mass_ratio, const int merger_cent
         eburst = 0.56 * pow(mass_ratio, 0.7);
     }
 
-    stars = eburst * galaxies[merger_centralgal].ColdGas;
+    double gas_for_starburst;
+    if(run_params->SFprescription == 1 || run_params->SFprescription == 2 || run_params->SFprescription == 3) {
+        // For H2-based prescriptions (BR06, DarkSAGE, GD14), use molecular gas
+        gas_for_starburst = galaxies[merger_centralgal].H2gas;
+    } else {
+        // For traditional prescription, use total cold gas
+        gas_for_starburst = galaxies[merger_centralgal].ColdGas;
+    }
+
+    stars = eburst * gas_for_starburst;
     if(stars < 0.0) {
         stars = 0.0;
     }
@@ -332,10 +341,8 @@ void collisional_starburst_recipe(const double mass_ratio, const int merger_cent
             } else {
                 if (run_params->FIREMassLoading == 1) {
                     // Use Muratov mass loading calculation
-                    double alpha = (vmax < 60.0) ? -3.2 : -1.0;
-                    double fire_scaling = pow(1.0 + z, 1.3) * pow(vmax / 60.0, alpha);
                     ejected_mass = ((run_params->FeedbackEjectionEfficiency * (run_params->EtaSNcode * run_params->EnergySNcode) / (galaxies[merger_centralgal].Vvir * galaxies[merger_centralgal].Vvir) -
-                    calculate_muratov_mass_loading(merger_centralgal, galaxies, z)) * stars) * fire_scaling;
+                    calculate_muratov_mass_loading(merger_centralgal, galaxies, z)) * stars);
                 } else {
                     // Use traditional feedback parameter
                     ejected_mass =

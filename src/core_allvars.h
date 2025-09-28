@@ -94,6 +94,7 @@ struct GALAXY
     int32_t   SnapNum;
     int32_t  Type;
     int32_t  Regime; // 0 = CGM, 1 = HOT
+    int32_t HasTransitionedToHot;  // 0 = no, 1 = yes
 
     int32_t   GalaxyNr;
     int32_t   CentralGal;
@@ -464,6 +465,10 @@ struct params
     double Hubble;
     double a0;
     double ar;
+
+    double CGM_M0;
+    double CGM_SFR0;
+    double CGM_OUTFLOW0;
 
     int32_t nsnapshots;
     int32_t LastSnapshotNr;

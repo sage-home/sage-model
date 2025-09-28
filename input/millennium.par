@@ -4,7 +4,7 @@
 
 FileNameGalaxies  model
 %OutputDir         /<absolute>/<root>/<path>/sage-model/output/millennium/
-OutputDir   /Users/mbradley/Documents/PhD/SAGE-2.0/sage-model/output/millennium/
+OutputDir   /Users/mbradley/Documents/PhD/SAGE-2.0/sage-model/output/millennium_complexCGM/
 
 FirstFile         0
 LastFile          7
@@ -52,7 +52,7 @@ ReionizationOn        1   %0: switch off
 DiskInstabilityOn     1   %0: switch off; 1: bulge and BH growth through instabilities w. instability starbursts
 CGMrecipeOn           1   %0: switch off
 FIREMassLoading       1   %0: switch off
-FIREejection          0   %0: switch off
+FIREejection          1   %0: switch off
 
 %------------------------------------------
 %----- SAGE model parameters --------------
@@ -60,8 +60,8 @@ FIREejection          0   %0: switch off
 
 SfrEfficiency           0.05  %efficiency of SF (SFprescription=0)
 
-FeedbackReheatingEpsilon    3.0   %mass of cold gas reheated due to SF (see Martin 1999) (SupernovaRecipeOn=1)
-FeedbackEjectionEfficiency  0.3   %mixing efficiency of SN energy with hot gas to unbind and eject some (SupernovaRecipeOn=1)
+FeedbackReheatingEpsilon    1.0   %mass of cold gas reheated due to SF (see Martin 1999) (SupernovaRecipeOn=1)
+FeedbackEjectionEfficiency  0.6   %mixing efficiency of SN energy with hot gas to unbind and eject some (SupernovaRecipeOn=1)
 
 ReIncorporationFactor   0.15    %fraction of ejected mass reincorporated per dynamical time to hot
 
@@ -81,6 +81,10 @@ Reionization_zr         7.0   %using the analytic fit of Kravtsov et al. 2004 (R
 
 EnergySN                1.0e51  %energy per supernova
 EtaSN                   5.0e-3  %supernova efficiency
+
+CGM_M0                  1.0
+CGM_SFR0                1.0
+CGM_OUTFLOW0            5.0
 
 %------------------------------------------
 %----- Other code-related information -----

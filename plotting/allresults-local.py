@@ -14,7 +14,7 @@ warnings.filterwarnings("ignore")
 # ========================== USER OPTIONS ==========================
 
 # File details
-DirName = './output/millennium/'
+DirName = './output/millennium_complexCGM/'
 FileName = 'model_0.hdf5'
 Snapshot = 'Snap_63'
 
@@ -64,6 +64,7 @@ if __name__ == '__main__':
     BlackHoleMass = read_hdf(snap_num = Snapshot, param = 'BlackHoleMass') * 1.0e10 / Hubble_h
     ColdGas = read_hdf(snap_num = Snapshot, param = 'ColdGas') * 1.0e10 / Hubble_h
     MetalsColdGas = read_hdf(snap_num = Snapshot, param = 'MetalsColdGas') * 1.0e10 / Hubble_h
+    MetalsCGMgas = read_hdf(snap_num = Snapshot, param = 'MetalsCGMgas') * 1.0e10 / Hubble_h
     HotGas = read_hdf(snap_num = Snapshot, param = 'HotGas') * 1.0e10 / Hubble_h
     CGMgas = read_hdf(snap_num = Snapshot, param = 'CGMgas') * 1.0e10 / Hubble_h
     IntraClusterStars = read_hdf(snap_num = Snapshot, param = 'IntraClusterStars') * 1.0e10 / Hubble_h
@@ -225,7 +226,25 @@ if __name__ == '__main__':
     NB = int((ma - mi) / binwidth)
     (counts, binedges) = np.histogram(mass, range=(mi, ma), bins=NB)
     xaxeshisto = binedges[:-1] + 0.5 * binwidth  # Set the x-axis values to be the centre of the bins
-   
+
+    centrals = np.where(Type[w] == 0)[0]
+    satellites = np.where(Type[w] == 1)[0]
+
+    centrals_mass = mass[centrals]
+    satellites_mass = mass[satellites]
+
+    mi = np.floor(min(centrals_mass)) - 2
+    ma = np.floor(max(centrals_mass)) + 2
+    NB = int((ma - mi) / binwidth)
+    (counts_centrals, binedges_centrals) = np.histogram(centrals_mass, range=(mi, ma), bins=NB)
+    xaxeshisto_centrals = binedges_centrals[:-1] + 0.5 * binwidth  # Set the x-axis values to be the centre of the bins
+
+    mi = np.floor(min(satellites_mass)) - 2
+    ma = np.floor(max(satellites_mass)) + 2
+    NB = int((ma - mi) / binwidth)
+    (counts_satellites, binedges_satellites) = np.histogram(satellites_mass, range=(mi, ma), bins=NB)
+    xaxeshisto_satellites = binedges_satellites[:-1] + 0.5 * binwidth  # Set the x-axis values to be the centre of the bins
+
     # Bell et al. 2003 BMF (h=1.0 converted to h=0.73)
     M = np.arange(7.0, 13.0, 0.01)
     Mstar = np.log10(5.3*1.0e10 /Hubble_h/Hubble_h)
@@ -243,6 +262,8 @@ if __name__ == '__main__':
 
     # Overplot the model histograms
     plt.plot(xaxeshisto, counts / volume / binwidth, 'k-', label='Model')
+    plt.plot(xaxeshisto_centrals, counts_centrals / volume / binwidth, 'b:', lw=2, label='Model - Centrals')
+    plt.plot(xaxeshisto_satellites, counts_satellites / volume / binwidth, 'g--', lw=1.5, label='Model - Satellites')
 
     plt.yscale('log')
     plt.axis([8.0, 12.2, 1.0e-6, 1.0e-1])
@@ -1227,5 +1248,153 @@ if __name__ == '__main__':
     plt.ylim(4, 10)
 
     outputFile = OutputDir + '18.BH_mass_vs_stellar_mass' + OutputFormat
+    plt.savefig(outputFile)
+    plt.close()
+
+    # -------------------------------------------------------
+
+    print('Plotting CGM vs Stellar Mass')
+
+    plt.figure()
+    w = np.where((StellarMass > 0.0) & (CGMgas > 0.0))[0]
+    if(len(w) > dilute): w = sample(list(w), dilute)
+
+    log10_stellar_mass = np.log10(StellarMass[w])
+    log10_CGM_mass = np.log10(CGMgas[w])
+    tvir = np.log10(35.9 * Vvir[w]**2)  # in Kelvin
+
+    data = """10.06276150627615, 10.48936170212766
+        10.112970711297072, 10.510638297872342
+        10.175732217573222, 10.531914893617023
+        10.242677824267782, 10.574468085106384
+        10.322175732217573, 10.617021276595747
+        10.401673640167363, 10.680851063829788
+        10.481171548117155, 10.702127659574469
+        10.560669456066945, 10.74468085106383
+        10.644351464435147, 10.765957446808512
+        10.719665271966527, 10.829787234042554
+        10.786610878661088, 10.872340425531917
+        10.866108786610878, 10.914893617021278
+        10.94560669456067, 10.97872340425532
+        11.02510460251046, 11.085106382978724
+        11.108786610878662, 11.127659574468087
+        11.196652719665272, 11.297872340425533
+        11.276150627615063, 11.425531914893618
+        11.359832635983263, 11.574468085106384
+        11.426778242677823, 11.765957446808512
+        11.497907949790795, 11.936170212765958
+        11.581589958158995, 12.106382978723406
+        11.652719665271967, 12.255319148936172
+        11.728033472803347, 12.340425531914896
+        11.782426778242678, 12.425531914893618
+        11.832635983263598, 12.468085106382981
+        11.870292887029288, 12.638297872340427
+        11.912133891213388, 12.787234042553193
+        11.94979079497908, 12.893617021276597
+        12, 12.829787234042556
+        12.05020920502092, 12.808510638297875
+        12.09623430962343, 12.872340425531917
+        12.138075313807532, 12.95744680851064
+        12.184100418410042, 13.085106382978726"""
+
+    # Split the data into lines and extract x, y coordinates
+    lines = data.strip().split('\n')
+    x = []
+    y = []
+
+    for line in lines:
+        coords = line.split(', ')
+        x.append(float(coords[0]))
+        y.append(float(coords[1]))
+
+    # Convert to numpy arrays (optional, but often useful for plotting)
+    tng_x = np.array(x)
+    tng_y = np.array(y)
+
+    plt.scatter(log10_stellar_mass, log10_CGM_mass, c=tvir, cmap='seismic', s=5)
+    plt.plot(tng_x, tng_y, 'k--', lw=2, label='TNG-Cluster')
+    plt.colorbar(label=r'$\log_{10} T_{\mathrm{vir}}\ (\mathrm{K})$')
+
+    plt.xlabel(r'$\log_{10} M_{\mathrm{stars}}\ (M_{\odot})$')
+    plt.ylabel(r'$\log_{10} M_{\mathrm{CGM}}\ (M_{\odot})$')
+
+    plt.xlim(8, 12)
+    plt.ylim(6, 12)
+
+    outputFile = OutputDir + '19.CGM_mass_vs_stellar_mass_temperature' + OutputFormat
+    plt.savefig(outputFile)
+    plt.close()
+
+        # -------------------------------------------------------
+
+    print('Plotting CGM vs Stellar Mass')
+
+    plt.figure()
+    w = np.where((StellarMass > 0.0) & (CGMgas > 0.0))[0]
+    if(len(w) > dilute): w = sample(list(w), dilute)
+
+    log10_stellar_mass = np.log10(StellarMass[w])
+    log10_CGM_mass = np.log10(CGMgas[w])
+    Z = np.log10((MetalsCGMgas[w] / CGMgas[w]) / 0.02) + 9.0
+
+    data = """10.06276150627615, 10.48936170212766
+        10.112970711297072, 10.510638297872342
+        10.175732217573222, 10.531914893617023
+        10.242677824267782, 10.574468085106384
+        10.322175732217573, 10.617021276595747
+        10.401673640167363, 10.680851063829788
+        10.481171548117155, 10.702127659574469
+        10.560669456066945, 10.74468085106383
+        10.644351464435147, 10.765957446808512
+        10.719665271966527, 10.829787234042554
+        10.786610878661088, 10.872340425531917
+        10.866108786610878, 10.914893617021278
+        10.94560669456067, 10.97872340425532
+        11.02510460251046, 11.085106382978724
+        11.108786610878662, 11.127659574468087
+        11.196652719665272, 11.297872340425533
+        11.276150627615063, 11.425531914893618
+        11.359832635983263, 11.574468085106384
+        11.426778242677823, 11.765957446808512
+        11.497907949790795, 11.936170212765958
+        11.581589958158995, 12.106382978723406
+        11.652719665271967, 12.255319148936172
+        11.728033472803347, 12.340425531914896
+        11.782426778242678, 12.425531914893618
+        11.832635983263598, 12.468085106382981
+        11.870292887029288, 12.638297872340427
+        11.912133891213388, 12.787234042553193
+        11.94979079497908, 12.893617021276597
+        12, 12.829787234042556
+        12.05020920502092, 12.808510638297875
+        12.09623430962343, 12.872340425531917
+        12.138075313807532, 12.95744680851064
+        12.184100418410042, 13.085106382978726"""
+
+    # Split the data into lines and extract x, y coordinates
+    lines = data.strip().split('\n')
+    x = []
+    y = []
+
+    for line in lines:
+        coords = line.split(', ')
+        x.append(float(coords[0]))
+        y.append(float(coords[1]))
+
+    # Convert to numpy arrays (optional, but often useful for plotting)
+    tng_x = np.array(x)
+    tng_y = np.array(y)
+
+    plt.scatter(log10_stellar_mass, log10_CGM_mass, c=Z, cmap='plasma', s=5, vmin=7, vmax=9)
+    plt.plot(tng_x, tng_y, 'k--', lw=2, label='TNG-Cluster')
+    plt.colorbar(label=r'$12\ +\ \log_{10}[\mathrm{O/H}]$')
+
+    plt.xlabel(r'$\log_{10} M_{\mathrm{stars}}\ (M_{\odot})$')
+    plt.ylabel(r'$\log_{10} M_{\mathrm{CGM}}\ (M_{\odot})$')
+
+    plt.xlim(8, 12)
+    plt.ylim(6, 12)
+
+    outputFile = OutputDir + '20.CGM_mass_vs_stellar_mass_metallicity' + OutputFormat
     plt.savefig(outputFile)
     plt.close()

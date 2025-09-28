@@ -245,6 +245,18 @@ int read_parameter_file(const char *fname, struct params *run_params)
     ParamAddr[NParam] = &(run_params->Exponent_Forest_Dist_Scheme);
     ParamID[NParam++] = DOUBLE;
 
+    strncpy(ParamTag[NParam], "CGM_M0", MAXTAGLEN);
+    ParamAddr[NParam] = &(run_params->CGM_M0);
+    ParamID[NParam++] = DOUBLE;
+
+    strncpy(ParamTag[NParam], "CGM_SFR0", MAXTAGLEN);
+    ParamAddr[NParam] = &(run_params->CGM_SFR0);
+    ParamID[NParam++] = DOUBLE;
+
+    strncpy(ParamTag[NParam], "CGM_OUTFLOW0", MAXTAGLEN);
+    ParamAddr[NParam] = &(run_params->CGM_OUTFLOW0);
+    ParamID[NParam++] = DOUBLE;
+
     used_tag = mymalloc(sizeof(int) * NParam);
     for(int i=0; i<NParam; i++) {
         used_tag[i]=1;

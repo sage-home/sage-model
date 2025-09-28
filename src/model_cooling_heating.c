@@ -682,18 +682,18 @@ double cooling_recipe_cgm(const int gal, const double dt, struct GALAXY *galaxie
     double recent_outflow_rate = current_outflow_rate; // Simplified for now
     
     // METHOD 3 COUPLED PARAMETERS
-    double M_0 = 100.0;   // Characteristic inflow mass per unit time
-    double SFR_0 = 0.1;    // SFR normalization for preventive feedback
-    double OUTFLOW_0 = 0.5; // Outflow normalization for back-pressure (NEW PARAMETER)
+    double M_0 = run_params->CGM_M0;   // Characteristic inflow mass per unit time
+    double SFR_0 = run_params->CGM_SFR0;    // SFR normalization for preventive feedback
+    double OUTFLOW_0 = run_params->CGM_OUTFLOW0; // Outflow normalization for back-pressure (NEW PARAMETER)
     
     // COUPLED SUPPRESSION CALCULATION
     // 1. Original Method 3: SFR-based suppression
     double sfr_suppression_factor = SFR_0 / (SFR_0 + total_recent_sfr);
 
-    // If this galaxy is in a dense environment (proxy: high Vvir)
-    if(galaxies[gal].Vvir > 80.0) {
-        sfr_suppression_factor *= 0.01;  // 90% additional suppression
-    }
+    // // If this galaxy is in a dense environment (proxy: high Vvir)
+    // if(galaxies[gal].Vvir > 80.0) {
+    //     sfr_suppression_factor *= 0.01;  // 90% additional suppression
+    // }
     
     // 2. NEW: Outflow back-pressure suppression
     // High outflow creates "pressure" that further suppresses inflow
@@ -718,80 +718,100 @@ double cooling_recipe_cgm(const int gal, const double dt, struct GALAXY *galaxie
     double dt_myr = dt * run_params->UnitTime_in_s / (1e6 * SEC_PER_YEAR);
     
     // Enhanced diagnostics showing coupling
-    if(cgm_method3_debug_counter % 50000 == 0) {
-        printf("\n=== METHOD 3: COUPLED OUTFLOW-INFLOW FEEDBACK [Galaxy #%ld] ===\n", cgm_method3_debug_counter);
-        printf("BASIC PROPERTIES:\n");
-        printf("  CGMgas:              %.3e Msun\n", galaxies[gal].CGMgas);
-        printf("  Recent SFR:          %.3e Msun/time_unit\n", total_recent_sfr);
-        printf("  Mass loading factor: %.3f\n", current_mass_loading);
-        printf("  Current outflow:     %.3e Msun/time_unit\n", current_outflow_rate);
-        printf("  Current dt:          %.3e time_units (%.2f Myr)\n", dt, dt_myr);
+    // if(cgm_method3_debug_counter % 50000 == 0) {
+    //     printf("\n=== METHOD 3: COUPLED OUTFLOW-INFLOW FEEDBACK [Galaxy #%ld] ===\n", cgm_method3_debug_counter);
+    //     printf("BASIC PROPERTIES:\n");
+    //     printf("  CGMgas:              %.3e Msun\n", galaxies[gal].CGMgas);
+    //     printf("  Recent SFR:          %.3e Msun/time_unit\n", total_recent_sfr);
+    //     printf("  Mass loading factor: %.3f\n", current_mass_loading);
+    //     printf("  Current outflow:     %.3e Msun/time_unit\n", current_outflow_rate);
+    //     printf("  Current dt:          %.3e time_units (%.2f Myr)\n", dt, dt_myr);
         
-        printf("\nCOUPLED FEEDBACK PARAMETERS:\n");
-        printf("  M_0 (baseline):      %.3e Msun/time_unit\n", M_0);
-        printf("  SFR_0 (SFR norm):    %.3e Msun/time_unit\n", SFR_0);
-        printf("  OUTFLOW_0 (new):     %.3e Msun/time_unit\n", OUTFLOW_0);
+    //     printf("\nCOUPLED FEEDBACK PARAMETERS:\n");
+    //     printf("  M_0 (baseline):      %.3e Msun/time_unit\n", M_0);
+    //     printf("  SFR_0 (SFR norm):    %.3e Msun/time_unit\n", SFR_0);
+    //     printf("  OUTFLOW_0 (new):     %.3e Msun/time_unit\n", OUTFLOW_0);
         
-        printf("\nDUAL SUPPRESSION CALCULATION:\n");
-        printf("  SFR suppression:     %.6f (SFR_0 / (SFR_0 + SFR))\n", sfr_suppression_factor);
-        printf("  Outflow suppression: %.6f (OUTFLOW_0 / (OUTFLOW_0 + OUTFLOW))\n", outflow_suppression_factor);
-        printf("  Combined suppression: %.6f (multiplicative coupling)\n", combined_suppression_factor);
-        printf("  Final inflow rate:   %.3e Msun/time_unit\n", inflow_rate);
-        printf("  Raw inflow:          %.3e Msun\n", actual_inflow);
-        printf("  Limited inflow:      %.3e Msun\n", limited_inflow);
+    //     printf("\nDUAL SUPPRESSION CALCULATION:\n");
+    //     printf("  SFR suppression:     %.6f (SFR_0 / (SFR_0 + SFR))\n", sfr_suppression_factor);
+    //     printf("  Outflow suppression: %.6f (OUTFLOW_0 / (OUTFLOW_0 + OUTFLOW))\n", outflow_suppression_factor);
+    //     printf("  Combined suppression: %.6f (multiplicative coupling)\n", combined_suppression_factor);
+    //     printf("  Final inflow rate:   %.3e Msun/time_unit\n", inflow_rate);
+    //     printf("  Raw inflow:          %.3e Msun\n", actual_inflow);
+    //     printf("  Limited inflow:      %.3e Msun\n", limited_inflow);
         
-        printf("\nCOUPLED FEEDBACK INTERPRETATION:\n");
-        if(total_recent_sfr < 0.1 * SFR_0 && recent_outflow_rate < 0.1 * OUTFLOW_0) {
-            printf("  REGIME: QUIESCENT - Minimal SFR & outflow, strong inflow\n");
-            printf("  STATUS: CGM draining efficiently, galaxy refueling\n");
-        } else if(total_recent_sfr > 10.0 * SFR_0 && recent_outflow_rate > 10.0 * OUTFLOW_0) {
-            printf("  REGIME: STARBURST - High SFR & outflow, maximum suppression\n");
-            printf("  STATUS: CGM pressurized, inflow nearly strangled\n");
-        } else if(recent_outflow_rate > 5.0 * OUTFLOW_0) {
-            printf("  REGIME: OUTFLOW DOMINATED - Back-pressure effect\n");
-            printf("  STATUS: High outflow suppressing inflow beyond SFR effect\n");
-        } else {
-            printf("  REGIME: TRANSITIONAL - Mixed SFR/outflow effects\n");
-            printf("  STATUS: Partial suppression from both mechanisms\n");
-        }
+    //     printf("\nCOUPLED FEEDBACK INTERPRETATION:\n");
+    //     if(total_recent_sfr < 0.1 * SFR_0 && recent_outflow_rate < 0.1 * OUTFLOW_0) {
+    //         printf("  REGIME: QUIESCENT - Minimal SFR & outflow, strong inflow\n");
+    //         printf("  STATUS: CGM draining efficiently, galaxy refueling\n");
+    //     } else if(total_recent_sfr > 10.0 * SFR_0 && recent_outflow_rate > 10.0 * OUTFLOW_0) {
+    //         printf("  REGIME: STARBURST - High SFR & outflow, maximum suppression\n");
+    //         printf("  STATUS: CGM pressurized, inflow nearly strangled\n");
+    //     } else if(recent_outflow_rate > 5.0 * OUTFLOW_0) {
+    //         printf("  REGIME: OUTFLOW DOMINATED - Back-pressure effect\n");
+    //         printf("  STATUS: High outflow suppressing inflow beyond SFR effect\n");
+    //     } else {
+    //         printf("  REGIME: TRANSITIONAL - Mixed SFR/outflow effects\n");
+    //         printf("  STATUS: Partial suppression from both mechanisms\n");
+    //     }
         
-        printf("\nSUPPRESSION BREAKDOWN:\n");
-        printf("  SFR contribution:    %.3f (1 - SFR_suppression)\n", 1.0 - sfr_suppression_factor);
-        printf("  Outflow contribution: %.3f (1 - outflow_suppression)\n", 1.0 - outflow_suppression_factor);
-        printf("  Total suppression:   %.3f (1 - combined)\n", 1.0 - combined_suppression_factor);
-        printf("  CGM fraction consumed: %.6f\n", 
-               galaxies[gal].CGMgas > 0 ? limited_inflow/galaxies[gal].CGMgas : 0.0);
+    //     printf("\nSUPPRESSION BREAKDOWN:\n");
+    //     printf("  SFR contribution:    %.3f (1 - SFR_suppression)\n", 1.0 - sfr_suppression_factor);
+    //     printf("  Outflow contribution: %.3f (1 - outflow_suppression)\n", 1.0 - outflow_suppression_factor);
+    //     printf("  Total suppression:   %.3f (1 - combined)\n", 1.0 - combined_suppression_factor);
+    //     printf("  CGM fraction consumed: %.6f\n", 
+    //            galaxies[gal].CGMgas > 0 ? limited_inflow/galaxies[gal].CGMgas : 0.0);
         
-        // Compare to uncoupled Method 3
-        double uncoupled_inflow = M_0 * sfr_suppression_factor * dt;
-        uncoupled_inflow = fmin(uncoupled_inflow, galaxies[gal].CGMgas);
-        printf("\nCOUPLING EFFECT:\n");
-        printf("  Uncoupled Method 3:  %.3e Msun (SFR suppression only)\n", uncoupled_inflow);
-        printf("  Coupled Method 3:    %.3e Msun (SFR + outflow suppression)\n", limited_inflow);
-        printf("  Coupling ratio:      %.3f (coupled/uncoupled)\n", 
-               uncoupled_inflow > 0 ? limited_inflow/uncoupled_inflow : 0.0);
+    //     // Compare to uncoupled Method 3
+    //     double uncoupled_inflow = M_0 * sfr_suppression_factor * dt;
+    //     uncoupled_inflow = fmin(uncoupled_inflow, galaxies[gal].CGMgas);
+    //     printf("\nCOUPLING EFFECT:\n");
+    //     printf("  Uncoupled Method 3:  %.3e Msun (SFR suppression only)\n", uncoupled_inflow);
+    //     printf("  Coupled Method 3:    %.3e Msun (SFR + outflow suppression)\n", limited_inflow);
+    //     printf("  Coupling ratio:      %.3f (coupled/uncoupled)\n", 
+    //            uncoupled_inflow > 0 ? limited_inflow/uncoupled_inflow : 0.0);
         
-        // Timescale analysis
-        if(limited_inflow > 0.0) {
-            double depletion_time_code = galaxies[gal].CGMgas / inflow_rate;
-            double depletion_time_myr = depletion_time_code * run_params->UnitTime_in_s / (1e6 * SEC_PER_YEAR);
-            printf("\nTIMESCALE ANALYSIS:\n");
-            printf("  CGM depletion time:  %.2f Myr\n", depletion_time_myr);
+    //     // Timescale analysis
+    //     if(limited_inflow > 0.0) {
+    //         double depletion_time_code = galaxies[gal].CGMgas / inflow_rate;
+    //         double depletion_time_myr = depletion_time_code * run_params->UnitTime_in_s / (1e6 * SEC_PER_YEAR);
+    //         printf("\nTIMESCALE ANALYSIS:\n");
+    //         printf("  CGM depletion time:  %.2f Myr\n", depletion_time_myr);
             
-            if(depletion_time_myr < 50.0) {
-                printf("  STATUS: Rapid depletion - galaxy will exhaust CGM quickly\n");
-            } else if(depletion_time_myr > 5000.0) {
-                printf("  STATUS: Quasi-static - CGM effectively frozen\n");
-            } else {
-                printf("  STATUS: Moderate depletion - sustained recycling possible\n");
-            }
-        } else {
-            printf("\nTIMESCALE ANALYSIS:\n");
-            printf("  CGM depletion time:  INFINITE (complete strangulation)\n");
-        }
+    //         if(depletion_time_myr < 50.0) {
+    //             printf("  STATUS: Rapid depletion - galaxy will exhaust CGM quickly\n");
+    //         } else if(depletion_time_myr > 5000.0) {
+    //             printf("  STATUS: Quasi-static - CGM effectively frozen\n");
+    //         } else {
+    //             printf("  STATUS: Moderate depletion - sustained recycling possible\n");
+    //         }
+    //     } else {
+    //         printf("\nTIMESCALE ANALYSIS:\n");
+    //         printf("  CGM depletion time:  INFINITE (complete strangulation)\n");
+    //     }
         
-        printf("=========================================================\n\n");
+    //     printf("=========================================================\n\n");
+    // }
+
+    const double tcool = galaxies[gal].Rvir / galaxies[gal].Vvir;
+    const double temp = 35.9 * galaxies[gal].Vvir * galaxies[gal].Vvir;         // in Kelvin
+
+    double logZ = -10.0;
+    if(galaxies[gal].MetalsHotGas > 0) {
+        logZ = log10(galaxies[gal].MetalsHotGas / galaxies[gal].HotGas);
     }
+
+    double lambda = get_metaldependent_cooling_rate(log10(temp), logZ);
+    double x = PROTONMASS * BOLTZMANN * temp / lambda;        // now this has units sec g/cm^3
+    x /= (run_params->UnitDensity_in_cgs * run_params->UnitTime_in_s);         // now in internal units
+    const double rho_rcool = x / tcool * 0.885;  // 0.885 = 3/2 * mu, mu=0.59 for a fully ionized gas
+
+    // an isothermal density profile for the hot gas is assumed here
+    const double rho0 = galaxies[gal].CGMgas / (4 * M_PI * galaxies[gal].Rvir);
+    const double rcool = sqrt(rho0 / rho_rcool);
+
+    // Store rcool/Rvir ratio for later reference
+    galaxies[gal].RcoolToRvir = rcool / galaxies[gal].Rvir;
     
     // Final safety checks
     XASSERT(limited_inflow >= 0.0, -1, "Error: CGM inflow = %g should be >= 0.0", limited_inflow);

@@ -323,7 +323,7 @@ int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals
     const int halo_snapnum = halos[halonr].SnapNum;
     const double Zcurr = run_params->ZZ[halo_snapnum];
     const double halo_age = run_params->Age[halo_snapnum];
-    const double infallingGas = infall_recipe(centralgal, ngal, Zcurr, galaxies, run_params);
+    double infallingGas = infall_recipe(centralgal, ngal, Zcurr, galaxies, run_params);
 
     // ADAPTIVE TIMESTEP: Use dynamical time constraint
     const double Rvir = galaxies[centralgal].Rvir;
@@ -394,8 +394,154 @@ int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals
                 determine_and_store_regime(ngal, galaxies, run_params);
             }
 
+            // // Handle CGM → HOT regime transitions with detailed logging
+            // if (run_params->CGMrecipeOn > 0) {
+            //     static long transition_debug_counter = 0;
+                
+            //     for(int p = 0; p < ngal; p++) {
+            //         if(galaxies[p].mergeType > 0) continue;
+                    
+            //         transition_debug_counter++;
+                    
+            //         // Check for first-time transition to HOT regime
+            //         if(galaxies[p].Regime == 1 && galaxies[p].HasTransitionedToHot == 0) {
+            //             // This is the first time this galaxy entered HOT regime
+            //             galaxies[p].HasTransitionedToHot = 1;
+                        
+            //             double cgm_mass_before = galaxies[p].CGMgas;
+            //             double cgm_metals_before = galaxies[p].MetalsCGMgas;
+            //             double hot_mass_before = galaxies[p].HotGas;   
+            //             double hot_metals_before = galaxies[p].MetalsHotGas; 
+                        
+            //             if(galaxies[p].CGMgas > 0.0) {
+            //                 galaxies[p].HotGas += galaxies[p].CGMgas;
+            //                 galaxies[p].MetalsHotGas += galaxies[p].MetalsCGMgas;
+            //                 galaxies[p].CGMgas = 0.0;
+            //                 galaxies[p].MetalsCGMgas = 0.0;
+                            
+            //                 if(transition_debug_counter % 1 == 0) {
+            //                     printf("\n=== CGM → HOT REGIME TRANSITION [Galaxy #%ld] ===\n", transition_debug_counter);
+            //                     printf("GALAXY PROPERTIES:\n");
+            //                     printf("  Mvir:         %.3e Msun\n", galaxies[p].Mvir);
+            //                     printf("  Vvir:         %.2f km/s\n", galaxies[p].Vvir);
+            //                     printf("  Redshift:     %.3f\n", run_params->ZZ[galaxies[p].SnapNum]);
+            //                     printf("  StellarMass:  %.3e Msun\n", galaxies[p].StellarMass);
+            //                     printf("  ColdGas:      %.3e Msun\n", galaxies[p].ColdGas);
+                                
+            //                     printf("\nREGIME TRANSITION:\n");
+            //                     printf("  Previous:     CGM regime (0)\n");
+            //                     printf("  Current:      HOT regime (1)\n");
+                                
+            //                     printf("\nGAS TRANSFER:\n");
+            //                     printf("  CGM before:   %.3e Msun\n", cgm_mass_before);
+            //                     printf("  CGM after:    %.3e Msun\n", galaxies[p].CGMgas);
+            //                     printf("  HotGas before: %.3e Msun\n", hot_mass_before); 
+            //                     printf("  HotGas after: %.3e Msun\n", galaxies[p].HotGas);
+            //                     printf("  Metals CGM:   %.3e → %.3e Msun\n", cgm_metals_before, galaxies[p].MetalsCGMgas);
+            //                     printf("  Metals Hot:   %.3e Msun\n", galaxies[p].MetalsHotGas);
+                                
+            //                     printf("\nMASS CONSERVATION CHECK:\n");
+            //                     double total_before = cgm_mass_before + hot_mass_before;      // Fix this
+            //                     double total_after = galaxies[p].CGMgas + galaxies[p].HotGas; // This stays
+            //                     printf("  Total before: %.3e Msun\n", total_before);
+            //                     printf("  Total after:  %.3e Msun\n", total_after);
+            //                     printf("  Difference:   %.3e Msun", total_after - total_before);
+            //                     if(fabs(total_after - total_before) > 1e-6) {
+            //                         printf(" [WARNING: Mass not conserved!]");
+            //                     }
+            //                     printf("\n");
+            //                     printf("================================================\n\n");
+            //                 }
+            //             } else {
+            //                 if(transition_debug_counter % 1 == 0) {
+            //                     printf("\n=== CGM → HOT REGIME TRANSITION [Galaxy #%ld] ===\n", transition_debug_counter);
+            //                     printf("  No CGM gas to transfer (CGMgas = %.3e)\n", cgm_mass_before);
+            //                     printf("  Vvir: %.2f km/s, Mvir: %.3e Msun\n", galaxies[p].Vvir, galaxies[p].Mvir);
+            //                     printf("================================================\n\n");
+            //                 }
+            //             }
+            //         }
+            //     }
+            // }
+
+            static long infall_debug_counter = 0;
+
             // For the central galaxy only
             if(p == centralgal) {
+
+                // // Apply dynamical timescale limitation for CGM regime
+                // infall_debug_counter++;
+
+                // // Store original values for diagnostics
+                // double original_infallingGas = infallingGas;
+                // double infall_efficiency = 1.0;
+                // int reduction_applied = 0;  // Debug flag   
+
+                // // Apply dynamical timescale limitation for CGM regime
+                // if(run_params->CGMrecipeOn > 0 && galaxies[centralgal].Regime == 0) {
+                //     const double t_dyn = (galaxies[centralgal].Vvir > 0.0) ? 
+                //                         galaxies[centralgal].Rvir / galaxies[centralgal].Vvir : actual_dt;
+                    
+                //     // Simple scaling factor - adjust this value to control reduction
+                //     double infall_scaling_factor = 13.0;  // Change this number as needed
+                    
+                //     infall_efficiency = (t_dyn > 0.0) ? (actual_dt / t_dyn) * infall_scaling_factor : 1.0;
+                //     infall_efficiency = fmin(infall_efficiency, 1.0);  // Cap at 100%
+                    
+                //     // DEBUG: Print before reduction
+                //     if(infall_debug_counter % 50000 == 0) {
+                //         printf("DEBUG BEFORE: infallingGas=%.3e, efficiency=%.4f, scaling=%.1f\n", 
+                //             infallingGas, infall_efficiency, infall_scaling_factor);
+                //     }
+                    
+                //     // APPLY THE REDUCTION
+                //     infallingGas = original_infallingGas * infall_efficiency;
+                //     reduction_applied = 1;
+                    
+                //     // DEBUG: Print after reduction
+                //     if(infall_debug_counter % 50000 == 0) {
+                //         printf("DEBUG AFTER: infallingGas=%.3e, reduction_applied=%d\n", infallingGas, reduction_applied);
+                //     }
+                // }
+
+                // // Debug output every 50,000 galaxies
+                // if(infall_debug_counter % 50000 == 0) {
+                //     printf("\n=== INFALL DIAGNOSTICS [Galaxy #%ld] ===\n", infall_debug_counter);
+                //     printf("BASIC PROPERTIES:\n");
+                //     printf("  Mvir:         %.3e Msun\n", galaxies[centralgal].Mvir);
+                //     printf("  Vvir:         %.2f km/s\n", galaxies[centralgal].Vvir);
+                //     printf("  Rvir:         %.3e Mpc/h\n", galaxies[centralgal].Rvir);
+                //     printf("  Regime:       %d (%s)\n", galaxies[centralgal].Regime, 
+                //         galaxies[centralgal].Regime == 0 ? "CGM" : "HOT");
+                    
+                //     printf("\nTIMESCALE ANALYSIS:\n");
+                //     if(run_params->CGMrecipeOn > 0 && galaxies[centralgal].Regime == 0) {
+                //         const double t_dyn = galaxies[centralgal].Rvir / galaxies[centralgal].Vvir;
+                //         const double t_dyn_myr = t_dyn * run_params->UnitTime_in_s / (1e6 * SEC_PER_YEAR);
+                //         const double actual_dt_myr = actual_dt * run_params->UnitTime_in_s / (1e6 * SEC_PER_YEAR);
+                        
+                //         printf("  t_dyn:        %.3e (%.2f Myr)\n", t_dyn, t_dyn_myr);
+                //         printf("  actual_dt:    %.3e (%.2f Myr)\n", actual_dt, actual_dt_myr);
+                //         printf("  dt/t_dyn:     %.4f\n", actual_dt / t_dyn);
+                //         printf("  Infall eff:   %.4f\n", infall_efficiency);
+                //         printf("  CGM REGIME:   REDUCTION %s\n", reduction_applied ? "APPLIED" : "FAILED");
+                //     } else {
+                //         printf("  Mode:         HOT regime or CGM off (no reduction)\n");
+                //     }
+                    
+                //     printf("\nINFALL CALCULATION:\n");
+                //     printf("  Original:     %.3e Msun/time_unit\n", original_infallingGas);
+                //     printf("  Modified:     %.3e Msun/time_unit\n", infallingGas);
+                    
+                //     double actual_reduction = (original_infallingGas != 0.0) ? 
+                //                             (1.0 - infallingGas/original_infallingGas) * 100.0 : 0.0;
+                //     printf("  Reduction:    %.1f%% (%.3e Msun lost)\n", 
+                //         actual_reduction, original_infallingGas - infallingGas);
+                //     printf("  Expected red: %.1f%% (based on efficiency)\n", (1.0 - infall_efficiency) * 100.0);
+                //     printf("  Final to disk: %.3e Msun (this timestep)\n", 
+                //         infallingGas * actual_dt / deltaT);
+                //     printf("========================================\n\n");
+                // }
 
                 add_infall_to_hot(centralgal, infallingGas * actual_dt / deltaT, galaxies, run_params);
 

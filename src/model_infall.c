@@ -251,9 +251,46 @@ void add_infall_to_hot(const int gal, double infallingGas, struct GALAXY *galaxi
 
             // add (subtract) the ambient (enriched) infalling gas to the central galaxy CGM component
             // galaxies[gal].ColdGas += infallingGas;
-            double fraction_to_cold = 1.0;
-            double fraction_to_cgm = 0.0;
-            
+            // double fraction_to_cold = 1.0;
+            // double fraction_to_cgm = 0.0;
+
+            // Calculate free-fall time
+            double t_ff = 0.0;
+            if(galaxies[gal].Vvir > 0.0 && galaxies[gal].Rvir > 0.0) {
+                // t_ff = sqrt(2*R/g) where g = GM/R^2
+                double g_accel = GRAVITY * galaxies[gal].Mvir / (galaxies[gal].Rvir * galaxies[gal].Rvir);
+                t_ff = sqrt(2.0 * galaxies[gal].Rvir / g_accel);
+            }
+
+            // Calculate cooling time (simplified)
+            double t_cool = 0.0;
+            if(galaxies[gal].Vvir > 0.0) {
+                // Rough cooling time estimate: t_cool ~ R/V for virial temperature gas
+                t_cool = galaxies[gal].Rvir / galaxies[gal].Vvir;
+                
+                // Adjust for temperature - cooler gas cools faster
+                // double temp = 35.9 * galaxies[gal].Vvir * galaxies[gal].Vvir; // Virial temperature in K
+                // if(temp < 1e4) {
+                //     t_cool *= 0.1; // Cool gas cools much faster
+                // }
+            }
+
+            // Calculate fraction that can cool during free-fall
+            double fraction_to_cold = 0.0;
+            if(t_ff > 0.0 && t_cool > 0.0) {
+                // Fraction that cools = t_ff / t_cool (capped at 1.0)
+                fraction_to_cold = fmin(t_ff / t_cool, 1.0);
+            } else {
+                // Fallback: assume some cooling based on halo mass
+                fraction_to_cold = (galaxies[gal].Mvir < 1.0) ? 0.8 : 0.2;
+            }
+
+            // Ensure reasonable bounds
+            if(fraction_to_cold < 0.05) fraction_to_cold = 0.05; // Minimum 5%
+            if(fraction_to_cold > 0.95) fraction_to_cold = 0.95; // Maximum 95%
+
+            double fraction_to_cgm = 1.0 - fraction_to_cold;
+
             double infall_to_cold = infallingGas * fraction_to_cold;
             double infall_to_cgm = infallingGas * fraction_to_cgm;
             

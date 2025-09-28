@@ -64,13 +64,13 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
             // Calculate additional quantities for debugging
             float pressure = calculate_midplane_pressure_BR06(gas_surface_density, stellar_surface_density, rs_pc);
             float h_star = calculate_stellar_scale_height_BR06(rs_pc);
-            printf("DEBUG BR06: rs_pc=%.2e, h_star_pc=%.2e, pressure=%.2e K cm^-3, f_mol=%.4f\n",
-                rs_pc, h_star, pressure, actual_f_mol);  // NOW PRINTS THE ACTUAL FRACTION
-            printf("DEBUG BR06: gas_sigma=%.2e, star_sigma=%.2e M_sun/pc^2\n",
-                gas_surface_density, stellar_surface_density);
-            printf("DEBUG BR06: ColdGas=%.2e, StellarMass=%.2e M_sun\n",
-                galaxies[p].ColdGas, galaxies[p].StellarMass);
-            printf("DEBUG BR06: H2_gas=%.4e, HI_gas=%.4e\n", galaxies[p].H2gas, galaxies[p].ColdGas - galaxies[p].H2gas);
+            // printf("DEBUG BR06: rs_pc=%.2e, h_star_pc=%.2e, pressure=%.2e K cm^-3, f_mol=%.4f\n",
+            //     rs_pc, h_star, pressure, actual_f_mol);  // NOW PRINTS THE ACTUAL FRACTION
+            // printf("DEBUG BR06: gas_sigma=%.2e, star_sigma=%.2e M_sun/pc^2\n",
+            //     gas_surface_density, stellar_surface_density);
+            // printf("DEBUG BR06: ColdGas=%.2e, StellarMass=%.2e M_sun\n",
+            //     galaxies[p].ColdGas, galaxies[p].StellarMass);
+            // printf("DEBUG BR06: H2_gas=%.4e, HI_gas=%.4e\n", galaxies[p].H2gas, galaxies[p].ColdGas - galaxies[p].H2gas);
     }
 
         const double cold_crit = 0.19 * galaxies[p].Vvir * reff;
@@ -116,13 +116,13 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
         galaxy_debug_counter++;
 
         if (galaxy_debug_counter % 750000 == 0) {
-            printf("DEBUG DarkSAGE: rs_pc=%.2e, gas_vdisp=%.1f, star_vdisp=%.1f, f_mol=%.4f\n",
-                rs_pc, gas_velocity_dispersion, stellar_velocity_dispersion, actual_f_mol);
-            printf("DEBUG DarkSAGE: gas_sigma=%.2e, star_sigma=%.2e M_sun/pc^2\n",
-                gas_surface_density, stellar_surface_density);
-            printf("DEBUG DarkSAGE: ColdGas=%.2e, StellarMass=%.2e M_sun\n",
-                galaxies[p].ColdGas, galaxies[p].StellarMass);
-            printf("DEBUG DarkSAGE: H2_gas=%.4e, HI_gas=%.4e\n", galaxies[p].H2gas, galaxies[p].ColdGas - galaxies[p].H2gas);
+            // printf("DEBUG DarkSAGE: rs_pc=%.2e, gas_vdisp=%.1f, star_vdisp=%.1f, f_mol=%.4f\n",
+            //     rs_pc, gas_velocity_dispersion, stellar_velocity_dispersion, actual_f_mol);
+            // printf("DEBUG DarkSAGE: gas_sigma=%.2e, star_sigma=%.2e M_sun/pc^2\n",
+            //     gas_surface_density, stellar_surface_density);
+            // printf("DEBUG DarkSAGE: ColdGas=%.2e, StellarMass=%.2e M_sun\n",
+            //     galaxies[p].ColdGas, galaxies[p].StellarMass);
+            // printf("DEBUG DarkSAGE: H2_gas=%.4e, HI_gas=%.4e\n", galaxies[p].H2gas, galaxies[p].ColdGas - galaxies[p].H2gas);
         }
 
         const double cold_crit = 0.19 * galaxies[p].Vvir * reff;
@@ -162,12 +162,12 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
         
         galaxy_debug_counter++;
         if (galaxy_debug_counter % 750000 == 0) {
-            printf("DEBUG GD14: rs_pc=%.2e, spatial_scale=%.2e pc, gas_Σ=%.2e M_sun/pc^2\n",
-                rs_pc, spatial_scale_pc, gas_surface_density);
-            printf("DEBUG GD14: Z=%.4f Z_sun, D_MW=%.4f, f_mol=%.4f\n",
-                metallicity/0.02, metallicity/0.02, actual_f_mol);
-            printf("DEBUG GD14: ColdGas=%.2e, H2_gas=%.2e, HI_gas=%.2e M_sun\n",
-                galaxies[p].ColdGas, galaxies[p].H2gas, galaxies[p].ColdGas - galaxies[p].H2gas);
+            // printf("DEBUG GD14: rs_pc=%.2e, spatial_scale=%.2e pc, gas_Σ=%.2e M_sun/pc^2\n",
+            //     rs_pc, spatial_scale_pc, gas_surface_density);
+            // printf("DEBUG GD14: Z=%.4f Z_sun, D_MW=%.4f, f_mol=%.4f\n",
+            //     metallicity/0.02, metallicity/0.02, actual_f_mol);
+            // printf("DEBUG GD14: ColdGas=%.2e, H2_gas=%.2e, HI_gas=%.2e M_sun\n",
+            //     galaxies[p].ColdGas, galaxies[p].H2gas, galaxies[p].ColdGas - galaxies[p].H2gas);
         }
 
         const double cold_crit = 0.19 * galaxies[p].Vvir * reff;
@@ -237,8 +237,6 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
             } else {
                 if (run_params->FIREMassLoading == 1) {
                     // Use Muratov mass loading calculation
-                    double alpha = (vmax < 60.0) ? -3.2 : -1.0;
-                    double fire_scaling = pow(1.0 + z, 1.3) * pow(vmax / 60.0, alpha);
                     ejected_mass = ((run_params->FeedbackEjectionEfficiency * (run_params->EtaSNcode * run_params->EnergySNcode) / (galaxies[centralgal].Vvir * galaxies[centralgal].Vvir) -
                     calculate_muratov_mass_loading(centralgal, galaxies, z)) * stars);
                 } else {
