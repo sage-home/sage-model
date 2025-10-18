@@ -15,13 +15,10 @@ static long galaxy_debug_counter = 0;
 void starformation_and_feedback(const int p, const int centralgal, const double time, const double dt, const int halonr, const int step,
                                 struct GALAXY *galaxies, const struct params *run_params)
 {
-    double reff, tdyn, strdot, stars, ejected_mass, metallicity, reheated_mass, total_molecular_gas;
+    double reff, tdyn, strdot, stars, ejected_mass, metallicity, total_molecular_gas;
 
     // Initialise variables
     strdot = 0.0;
-    reheated_mass = 0.0;
-    ejected_mass = 0.0;
-    total_molecular_gas = 0.0;
 
     // star formation recipes
     if(run_params->SFprescription == 0) {
@@ -60,7 +57,7 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
         galaxies[p].H2gas = total_molecular_gas;
         galaxy_debug_counter++;
 
-         if (galaxy_debug_counter % 750000 == 0) {
+        if (galaxy_debug_counter % 750000 == 0) {
             // Calculate additional quantities for debugging
             float pressure = calculate_midplane_pressure_BR06(gas_surface_density, stellar_surface_density, rs_pc);
             float h_star = calculate_stellar_scale_height_BR06(rs_pc);
@@ -71,103 +68,35 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
             // printf("DEBUG BR06: ColdGas=%.2e, StellarMass=%.2e M_sun\n",
             //     galaxies[p].ColdGas, galaxies[p].StellarMass);
             // printf("DEBUG BR06: H2_gas=%.4e, HI_gas=%.4e\n", galaxies[p].H2gas, galaxies[p].ColdGas - galaxies[p].H2gas);
-    }
+            }
 
-        const double cold_crit = 0.19 * galaxies[p].Vvir * reff;
-        if(galaxies[p].ColdGas > cold_crit) {
-            strdot = run_params->SfrEfficiency * galaxies[p].H2gas / tdyn;
-        } else {
-            strdot = 0.0;
-        }
-
-    } else if(run_params->SFprescription == 2) {
-        // DarkSAGE pressure-based H2 model
-        reff = 3.0 * galaxies[p].DiskScaleRadius;
-        tdyn = reff / galaxies[p].Vvir;
-        
-        const float h = run_params->Hubble_h;
-        const float rs_pc = galaxies[p].DiskScaleRadius * 1.0e6 / h;
-        if (rs_pc <= 0.0) {
-            galaxies[p].H2gas = 0.0;
-            strdot = 0.0;
-            return;
-        }
-        // float disk_area_pc2 = M_PI * rs_pc * rs_pc;
-        float disk_area_pc2 = M_PI * pow(3.0 * rs_pc, 2);
-        float gas_surface_density = (galaxies[p].ColdGas * 1.0e10 / h) / disk_area_pc2; // M☉/pc²
-        float stellar_surface_density = (galaxies[p].StellarMass * 1.0e10 / h) / disk_area_pc2; // M☉/pc²
-
-        // Estimate velocity dispersions (you might want to track these in your galaxy structure)
-        float gas_velocity_dispersion = 8.0;  // km/s, typical for cold ISM
-        float stellar_velocity_dispersion = fmax(30.0, 0.5 * galaxies[p].Vvir);  // km/s, scale with Vvir
-
-        // Assume aligned discs for simplicity (you could track disc misalignment)
-        float disk_alignment_angle = 0.0;  // degrees
-
-        float actual_f_mol = calculate_molecular_fraction_darksage_pressure(gas_surface_density, 
-                                                                stellar_surface_density,
-                                                                gas_velocity_dispersion,
-                                                                stellar_velocity_dispersion,
-                                                                disk_alignment_angle,
-                                                                run_params);
-        
-        total_molecular_gas = actual_f_mol * galaxies[p].ColdGas;
-        galaxies[p].H2gas = total_molecular_gas;
-        galaxy_debug_counter++;
-
-        if (galaxy_debug_counter % 750000 == 0) {
-            // printf("DEBUG DarkSAGE: rs_pc=%.2e, gas_vdisp=%.1f, star_vdisp=%.1f, f_mol=%.4f\n",
-            //     rs_pc, gas_velocity_dispersion, stellar_velocity_dispersion, actual_f_mol);
-            // printf("DEBUG DarkSAGE: gas_sigma=%.2e, star_sigma=%.2e M_sun/pc^2\n",
-            //     gas_surface_density, stellar_surface_density);
-            // printf("DEBUG DarkSAGE: ColdGas=%.2e, StellarMass=%.2e M_sun\n",
-            //     galaxies[p].ColdGas, galaxies[p].StellarMass);
-            // printf("DEBUG DarkSAGE: H2_gas=%.4e, HI_gas=%.4e\n", galaxies[p].H2gas, galaxies[p].ColdGas - galaxies[p].H2gas);
-        }
-
-        const double cold_crit = 0.19 * galaxies[p].Vvir * reff;
-        if(galaxies[p].ColdGas > cold_crit) {
-            strdot = run_params->SfrEfficiency * galaxies[p].H2gas / tdyn;
-        } else {
-            strdot = 0.0;
-        }
-
-    } else if(run_params->SFprescription == 3) {
-        // GD14 H2 model - Paper exact implementation
-        reff = 3.0 * galaxies[p].DiskScaleRadius;
-        tdyn = reff / galaxies[p].Vvir;
-        
-        const float h = run_params->Hubble_h;
-        const float rs_pc = galaxies[p].DiskScaleRadius * 1.0e6 / h;  // Convert Mpc/h to pc
-        
-        // Calculate disk area using 3× scale radius (captures ~95% of disk mass)
-        float disk_area_pc2 = M_PI * pow(3.0 * rs_pc, 2);
-        
-        // Calculate gas surface density in M_sun/pc^2
-        float gas_surface_density = (galaxies[p].ColdGas * 1.0e10 / h) / disk_area_pc2;
-        
-        // Use the metallicity that's already calculated in the calling function
-        metallicity = get_metallicity(galaxies[p].ColdGas, galaxies[p].MetalsColdGas);
-        
-        // Determine appropriate spatial scale for this calculation
-        // Using the effective radius as the characteristic scale
-        float spatial_scale_pc = 3.0 * rs_pc;
-        
-        // Calculate molecular fraction using paper-exact GD14 prescription
-        float actual_f_mol = calculate_molecular_fraction_GD14(gas_surface_density, metallicity, spatial_scale_pc);
-        
-        // Update galaxy H2 mass
-        total_molecular_gas = actual_f_mol * galaxies[p].ColdGas;
+            
         galaxies[p].H2gas = total_molecular_gas;
         
-        galaxy_debug_counter++;
-        if (galaxy_debug_counter % 750000 == 0) {
-            // printf("DEBUG GD14: rs_pc=%.2e, spatial_scale=%.2e pc, gas_Σ=%.2e M_sun/pc^2\n",
-            //     rs_pc, spatial_scale_pc, gas_surface_density);
-            // printf("DEBUG GD14: Z=%.4f Z_sun, D_MW=%.4f, f_mol=%.4f\n",
-            //     metallicity/0.02, metallicity/0.02, actual_f_mol);
-            // printf("DEBUG GD14: ColdGas=%.2e, H2_gas=%.2e, HI_gas=%.2e M_sun\n",
-            //     galaxies[p].ColdGas, galaxies[p].H2gas, galaxies[p].ColdGas - galaxies[p].H2gas);
+        // ================================================================
+        // CRITICAL FIX: Minimum molecular fraction floor
+        // ================================================================
+        // Even metal-poor, low-pressure gas can form SOME H2 in dense cores
+        // and self-shielded regions (Krumholz 2012, Glover & Clark 2012)
+        
+        const double f_mol_min = 0.02;  // 2% minimum (tunable)
+        
+        // Apply minimum only if galaxy has significant cold gas
+        if(galaxies[p].ColdGas > 0.001 && galaxies[p].H2gas < f_mol_min * galaxies[p].ColdGas) {
+            
+            // Option A: Simple floor (recommended for testing)
+            // galaxies[p].H2gas = f_mol_min * galaxies[p].ColdGas;
+            
+            // Option B: Mass-dependent floor (more sophisticated)
+            // double floor_scaling = fmin(1.0, galaxies[p].Mvir / 1.0); // Stronger floor at low mass
+            // double adaptive_floor = f_mol_min * floor_scaling;
+            // galaxies[p].H2gas = adaptive_floor * galaxies[p].ColdGas;
+            
+            // Option C: Metallicity-dependent floor
+            double Z = get_metallicity(galaxies[p].ColdGas, galaxies[p].MetalsColdGas);
+            double Z_sun = 0.02;
+            double Z_factor = fmin(1.0, (Z / Z_sun) + 0.1);  // Z=0 → 10% floor, Z=Z_sun → 100% floor
+            galaxies[p].H2gas = f_mol_min * Z_factor * galaxies[p].ColdGas;
         }
 
         const double cold_crit = 0.19 * galaxies[p].Vvir * reff;
@@ -176,7 +105,6 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
         } else {
             strdot = 0.0;
         }
-
     } else {
         fprintf(stderr, "No star formation prescription selected!\n");
         ABORT(0);
@@ -187,23 +115,9 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
         stars = 0.0;
     }
 
-    double z = run_params->ZZ[galaxies[p].SnapNum];
-    double vmax = galaxies[p].Vmax;
-
-    // determine reheated mass
-    if(run_params->SupernovaRecipeOn == 1) {
-        if(run_params->FIREMassLoading == 1) {
-            // Use Muratov mass loading calculation
-            reheated_mass = calculate_muratov_mass_loading(p, galaxies, z) * stars;
-            // Store mass-loading of the galaxy
-            galaxies[p].MassLoading = calculate_muratov_mass_loading(p, galaxies, z);
-
-            } else {
-                // Use traditional feedback parameter
-                reheated_mass = run_params->FeedbackReheatingEpsilon * stars;
-            }
-        } 
     // double reheated_mass = (run_params->SupernovaRecipeOn == 1) ? run_params->FeedbackReheatingEpsilon * stars: 0.0;
+    double reheated_mass = (run_params->SupernovaRecipeOn == 1) ? calculate_muratov_mass_loading(centralgal, galaxies, run_params->ZZ[galaxies[centralgal].SnapNum]) * stars: 0.0;
+    // double eta = calculate_muratov_mass_loading(centralgal, galaxies, run_params->ZZ[galaxies[centralgal].SnapNum]);
 
 	XASSERT(reheated_mass >= 0.0, -1,
             "Error: Expected reheated gas-mass = %g to be >=0.0\n", reheated_mass);
@@ -218,34 +132,12 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
     // determine ejection
     if(run_params->SupernovaRecipeOn == 1) {
         if(galaxies[centralgal].Vvir > 0.0) {
-            if (run_params->FIREejection == 1) {
-                // Implement FIRE ejection calculation
-                double alpha = (vmax < 60.0) ? -3.2 : -1.0;
-                double fire_scaling = pow(1.0 + z, 1.3) * pow(vmax / 60.0, alpha);
-                
-                double E_FB = run_params->FeedbackEjectionEfficiency * fire_scaling * 
-                            0.5 * stars * run_params->EtaSNcode * run_params->EnergySNcode;
-                
-                double energy_used_reheating = 0.5 * reheated_mass * galaxies[centralgal].Vvir * galaxies[centralgal].Vvir;
-                double available_energy = E_FB - energy_used_reheating;
-                
-                if(available_energy > 0.0) {
-                    ejected_mass = available_energy / (0.5 * galaxies[centralgal].Vvir * galaxies[centralgal].Vvir);
-                } else {
-                    ejected_mass = 0.0;
-                }
-            } else {
-                if (run_params->FIREMassLoading == 1) {
-                    // Use Muratov mass loading calculation
-                    ejected_mass = ((run_params->FeedbackEjectionEfficiency * (run_params->EtaSNcode * run_params->EnergySNcode) / (galaxies[centralgal].Vvir * galaxies[centralgal].Vvir) -
-                    calculate_muratov_mass_loading(centralgal, galaxies, z)) * stars);
-                } else {
-                    // Use traditional feedback parameter
-                    ejected_mass =
-                    (run_params->FeedbackEjectionEfficiency * (run_params->EtaSNcode * run_params->EnergySNcode) / (galaxies[centralgal].Vvir * galaxies[centralgal].Vvir) -
-                     run_params->FeedbackReheatingEpsilon) * stars;
-                }
-            }
+            // ejected_mass =
+            //     (run_params->FeedbackEjectionEfficiency * (run_params->EtaSNcode * run_params->EnergySNcode) / (galaxies[centralgal].Vvir * galaxies[centralgal].Vvir) -
+            //      run_params->FeedbackReheatingEpsilon) * stars;
+            ejected_mass =
+                (run_params->FeedbackEjectionEfficiency * (run_params->EtaSNcode * run_params->EnergySNcode) / (galaxies[centralgal].Vvir * galaxies[centralgal].Vvir) -
+                 calculate_muratov_mass_loading(centralgal, galaxies, run_params->ZZ[galaxies[centralgal].SnapNum])) * stars;
         } else {
             ejected_mass = 0.0;
         }
@@ -256,9 +148,6 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
     } else {
         ejected_mass = 0.0;
     }
-
-    // printf("DEBUG: stars=%.3e, reheated=%.3e, ejected=%.3e\n", 
-    //    stars, reheated_mass, ejected_mass);
 
     // update the star formation rate
     galaxies[p].SfrDisk[step] += stars / dt;
@@ -280,33 +169,44 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
         check_disk_instability(p, centralgal, halonr, time, dt, step, galaxies, (struct params *) run_params);
     }
 
-    if (run_params->CGMrecipeOn > 0) {
-        if (galaxies[p].Regime == 0) {
-            if(galaxies[p].ColdGas > 1.0e-8) {
-                const double FracZleaveDiskVal = run_params->FracZleaveDisk * exp(-1.0 * galaxies[centralgal].Mvir / 30.0);  // Krumholz & Dekel 2011 Eq. 22
-                galaxies[p].MetalsColdGas += run_params->Yield * (1.0 - FracZleaveDiskVal) * stars;
-                galaxies[centralgal].MetalsCGMgas += run_params->Yield * FracZleaveDiskVal * stars;
+    // formation of new metals - instantaneous recycling approximation - only SNII
+    if(galaxies[p].ColdGas > 1.0e-8) {
+        const double FracZleaveDiskVal = run_params->FracZleaveDisk * exp(-1.0 * galaxies[centralgal].Mvir / 30.0);  // Krumholz & Dekel 2011 Eq. 22
+        
+        // Metals that stay in disk (same for all regimes)
+        galaxies[p].MetalsColdGas += run_params->Yield * (1.0 - FracZleaveDiskVal) * stars;
+        
+        // Metals that leave disk - regime dependent
+        const double metals_leaving_disk = run_params->Yield * FracZleaveDiskVal * stars;
+        
+        if(run_params->CGMrecipeOn == 1) {
+            if(galaxies[centralgal].Regime == 0) {
+                // CGM-regime: metals go to CGM
+                galaxies[centralgal].MetalsCGMgas += metals_leaving_disk;
             } else {
-                galaxies[centralgal].MetalsCGMgas += run_params->Yield * stars;
-                }
+                // Hot-ICM-regime: metals go to HotGas
+                galaxies[centralgal].MetalsHotGas += metals_leaving_disk;
+            }
         } else {
-            if(galaxies[p].ColdGas > 1.0e-8) {
-                const double FracZleaveDiskVal = run_params->FracZleaveDisk * exp(-1.0 * galaxies[centralgal].Mvir / 30.0);  // Krumholz & Dekel 2011 Eq. 22
-                galaxies[p].MetalsColdGas += run_params->Yield * (1.0 - FracZleaveDiskVal) * stars;
-                galaxies[centralgal].MetalsHotGas += run_params->Yield * FracZleaveDiskVal * stars;
-            } else {
-                galaxies[centralgal].MetalsHotGas += run_params->Yield * stars;
-                }
+            // Original SAGE behavior: metals go to HotGas
+            galaxies[centralgal].MetalsHotGas += metals_leaving_disk;
         }
+        
     } else {
-        if(galaxies[p].ColdGas > 1.0e-8) {
-            const double FracZleaveDiskVal = run_params->FracZleaveDisk * exp(-1.0 * galaxies[centralgal].Mvir / 30.0);  // Krumholz & Dekel 2011 Eq. 22
-            galaxies[p].MetalsColdGas += run_params->Yield * (1.0 - FracZleaveDiskVal) * stars;
-            galaxies[centralgal].MetalsHotGas += run_params->Yield * FracZleaveDiskVal * stars;
-            // galaxies[centralgal].MetalsCGMgas += run_params->Yield * FracZleaveDiskVal * stars;
+        // All metals leave disk when ColdGas is very low - regime dependent
+        const double all_metals = run_params->Yield * stars;
+        
+        if(run_params->CGMrecipeOn == 1) {
+            if(galaxies[centralgal].Regime == 0) {
+                // CGM-regime: metals go to CGM
+                galaxies[centralgal].MetalsCGMgas += all_metals;
+            } else {
+                // Hot-ICM-regime: metals go to HotGas
+                galaxies[centralgal].MetalsHotGas += all_metals;
+            }
         } else {
-            galaxies[centralgal].MetalsHotGas += run_params->Yield * stars;
-            // galaxies[centralgal].MetalsCGMgas += run_params->Yield * stars;
+            // Original SAGE behavior: metals go to HotGas
+            galaxies[centralgal].MetalsHotGas += all_metals;
         }
     }
 }
@@ -337,63 +237,69 @@ void update_from_feedback(const int p, const int centralgal, const double reheat
             reheated_mass, galaxies[p].ColdGas);
 
     if(run_params->SupernovaRecipeOn == 1) {
-        // Remove gas from cold reservoir (always from galaxy p)
+        // Remove reheated mass from cold gas (same for all regimes)
         galaxies[p].ColdGas -= reheated_mass;
         galaxies[p].MetalsColdGas -= metallicity * reheated_mass;
 
         if(run_params->CGMrecipeOn == 1) {
-            // FIXED: Use CENTRAL galaxy's regime for routing (reheated gas goes to central)
-            // But use STAR-FORMING galaxy's regime for ejection constraints
-        
             if(galaxies[centralgal].Regime == 0) {
-                // CENTRAL is CGM REGIME: Reheated gas goes to central's CGM
+                // CGM-regime: Cold --> CGM --> Ejected
+                
+                // Add reheated gas to CGM
                 galaxies[centralgal].CGMgas += reheated_mass;
                 galaxies[centralgal].MetalsCGMgas += metallicity * reheated_mass;
-                
-                // Ejection from central's CGM reservoir
-                // if(ejected_mass > galaxies[centralgal].CGMgas) {
-                //     ejected_mass = galaxies[centralgal].CGMgas;
-                //     }
-                // if(ejected_mass > 0.0) {
-                //     const double metallicityCGM = get_metallicity(galaxies[centralgal].CGMgas, galaxies[centralgal].MetalsCGMgas);
-                //     galaxies[centralgal].CGMgas -= ejected_mass;
-                //     galaxies[centralgal].MetalsCGMgas -= metallicityCGM * ejected_mass;
-                //     }
-                
+
+                // Check if ejection is possible from CGM
+                if(ejected_mass > galaxies[centralgal].CGMgas) {
+                    ejected_mass = galaxies[centralgal].CGMgas;
+                }
+                const double metallicityCGM = get_metallicity(galaxies[centralgal].CGMgas, galaxies[centralgal].MetalsCGMgas);
+
+                // Eject from CGM to EjectedMass
+                galaxies[centralgal].CGMgas -= ejected_mass;
+                galaxies[centralgal].MetalsCGMgas -= metallicityCGM * ejected_mass;
+                galaxies[centralgal].EjectedMass += ejected_mass;
+                galaxies[centralgal].MetalsEjectedMass += metallicityCGM * ejected_mass;
+
             } else {
-                // CENTRAL is HOT REGIME: Reheated gas goes to central's HotGas  
+                // Hot-ICM-regime: Cold --> HotGas --> Ejected
+                
+                // Add reheated gas to HotGas
                 galaxies[centralgal].HotGas += reheated_mass;
                 galaxies[centralgal].MetalsHotGas += metallicity * reheated_mass;
 
-                // Ejection from central's HotGas reservoir
-                // if(ejected_mass > galaxies[centralgal].HotGas) {
-                //     ejected_mass = galaxies[centralgal].HotGas;
-                //     }
-                // if(ejected_mass > 0.0) {
-                //     const double metallicityHot = get_metallicity(galaxies[centralgal].HotGas, galaxies[centralgal].MetalsHotGas);
-                //     galaxies[centralgal].HotGas -= ejected_mass;
-                //     galaxies[centralgal].MetalsHotGas -= metallicityHot * ejected_mass;
-                // }
+                // Check if ejection is possible from HotGas
+                if(ejected_mass > galaxies[centralgal].HotGas) {
+                    ejected_mass = galaxies[centralgal].HotGas;
+                }
+                const double metallicityHot = get_metallicity(galaxies[centralgal].HotGas, galaxies[centralgal].MetalsHotGas);
+
+                // Eject from HotGas to EjectedMass
+                galaxies[centralgal].HotGas -= ejected_mass;
+                galaxies[centralgal].MetalsHotGas -= metallicityHot * ejected_mass;
+                galaxies[centralgal].EjectedMass += ejected_mass;
+                galaxies[centralgal].MetalsEjectedMass += metallicityHot * ejected_mass;
             }
         } else {
-            // Original behavior: reheated gas goes to HotGas
+            // Original SAGE behavior: Cold --> HotGas --> Ejected
+            
+            // Add reheated gas to HotGas
             galaxies[centralgal].HotGas += reheated_mass;
             galaxies[centralgal].MetalsHotGas += metallicity * reheated_mass;
 
-            // Ejection logic: remove from HotGas, add to CGM (original SAGE behavior)
+            // Check if ejection is possible from HotGas
             if(ejected_mass > galaxies[centralgal].HotGas) {
                 ejected_mass = galaxies[centralgal].HotGas;
-                }
-            if(ejected_mass > 0.0) {
-                const double metallicityHot = get_metallicity(galaxies[centralgal].HotGas, galaxies[centralgal].MetalsHotGas);
-                galaxies[centralgal].HotGas -= ejected_mass;
-                galaxies[centralgal].MetalsHotGas -= metallicityHot * ejected_mass;
-                galaxies[centralgal].CGMgas += ejected_mass;
-                galaxies[centralgal].MetalsCGMgas += metallicityHot * ejected_mass;
             }
+            const double metallicityHot = get_metallicity(galaxies[centralgal].HotGas, galaxies[centralgal].MetalsHotGas);
+
+            // Eject from HotGas to EjectedMass
+            galaxies[centralgal].HotGas -= ejected_mass;
+            galaxies[centralgal].MetalsHotGas -= metallicityHot * ejected_mass;
+            galaxies[centralgal].EjectedMass += ejected_mass;
+            galaxies[centralgal].MetalsEjectedMass += metallicityHot * ejected_mass;
         }
 
-        // Track outflow rate for star-forming galaxy
         galaxies[p].OutflowRate += reheated_mass;
     }
 }

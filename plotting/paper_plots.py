@@ -38,7 +38,7 @@ Main_VolumeFraction = 1.0  # Fraction of the full volume output by the model
 SFR_SimDirs = [
     {
         'path': './output/millennium/', 
-        'label': 'Millennium', 
+        'label': 'SAGE25', 
         'color': 'black', 
         'linestyle': '-',
         'BoxSize': 62.5,  # h-1 Mpc
@@ -55,28 +55,28 @@ SFR_SimDirs = [
         'BHMFsnaps': [63, 40, 32, 27, 23, 20, 18, 16]
     },
     {
-        'path': './output/miniuchuu_full/', 
-        'label': 'miniUchuu', 
+        'path': '/Users/mbradley/Documents/PhD/SAGE_BROKEN/sage-model/output/millennium/', 
+        'label': 'SAGE Broken Model', 
         'color': 'blue', 
-        'linestyle': '.',
-        'BoxSize': 400,  # h-1 Mpc  (example - adjust to your actual values)
-        'Hubble_h': 0.677,  # (example - adjust to your actual values)
+        'linestyle': '--',
+        'BoxSize': 62.5,  # h-1 Mpc
+        'Hubble_h': 0.73,
         'VolumeFraction': 1.0,
-        'FirstSnap': 0,  # (adjust to your actual values)
-        'LastSnap': 49,  # (adjust to your actual values)
-        'redshifts': [13.9334, 12.67409, 11.50797, 10.44649, 9.480752, 8.58543, 7.77447, 7.032387, 6.344409, 5.721695,
-            5.153127, 4.629078, 4.26715, 3.929071, 3.610462, 3.314082, 3.128427, 2.951226, 2.77809, 2.616166,
-            2.458114, 2.309724, 2.16592, 2.027963, 1.8962, 1.770958, 1.65124, 1.535928, 1.426272, 1.321656,
-            1.220303, 1.124166, 1.031983, 0.9441787, 0.8597281, 0.779046, 0.7020205, 0.6282588, 0.5575475, 0.4899777,
-            0.4253644, 0.3640053, 0.3047063, 0.2483865, 0.1939743, 0.1425568, 0.09296665, 0.0455745, 0.02265383, 0.0001130128],
-        'SMFsnaps': [49, 38, 32, 23, 17, 13, 10, 8, 7, 5, 4],  # Example snapshots
-        'BHMFsnaps': [49, 38, 32, 23, 17, 13, 10, 8, 7, 5, 4]  # Example snapshots
+        'FirstSnap': 0,
+        'LastSnap': 63,
+        'redshifts': [127.000, 79.998, 50.000, 30.000, 19.916, 18.244, 16.725, 15.343, 14.086, 12.941, 11.897, 10.944, 10.073, 
+                     9.278, 8.550, 7.883, 7.272, 6.712, 6.197, 5.724, 5.289, 4.888, 4.520, 4.179, 3.866, 3.576, 3.308, 3.060, 
+                     2.831, 2.619, 2.422, 2.239, 2.070, 1.913, 1.766, 1.630, 1.504, 1.386, 1.276, 1.173, 1.078, 0.989, 0.905, 
+                     0.828, 0.755, 0.687, 0.624, 0.564, 0.509, 0.457, 0.408, 0.362, 0.320, 0.280, 0.242, 0.208, 0.175, 0.144, 
+                     0.116, 0.089, 0.064, 0.041, 0.020, 0.000],
+        'SMFsnaps': [63, 40, 32, 27, 23, 20, 18, 16],
+        'BHMFsnaps': [63, 40, 32, 27, 23, 20, 18, 16]
     },
     {
-        'path': './output/millennium_vanilla/', 
-        'label': 'C16 Millennium', 
-        'color': 'black', 
-        'linestyle': '--',
+        'path': './output/millennium_complexCGM/', 
+        'label': ' SAGE CGM Method 3', 
+        'color': 'red', 
+        'linestyle': ':',
         'BoxSize': 62.5,  # h-1 Mpc  (example - adjust to your actual values)
         'Hubble_h': 0.73,  # (example - adjust to your actual values)
         'VolumeFraction': 1.0,
@@ -89,6 +89,153 @@ SFR_SimDirs = [
                      0.116, 0.089, 0.064, 0.041, 0.020, 0.000],
         'SMFsnaps': [63, 40, 32, 27, 23, 20, 18, 16],
         'BHMFsnaps': [63, 40, 32, 27, 23, 20, 18, 16]
+    },
+    {
+        'path': '/Users/mbradley/Documents/PhD/SAGE-VANILLA/sage-model/output/millennium/', 
+        'label': 'SAGE C16', 
+        'color': 'green', 
+        'linestyle': '--',
+        'BoxSize': 62.5,  # h-1 Mpc
+        'Hubble_h': 0.73,
+        'VolumeFraction': 1.0,
+        'FirstSnap': 0,
+        'LastSnap': 63,
+        'redshifts': [127.000, 79.998, 50.000, 30.000, 19.916, 18.244, 16.725, 15.343, 14.086, 12.941, 11.897, 10.944, 10.073, 
+                     9.278, 8.550, 7.883, 7.272, 6.712, 6.197, 5.724, 5.289, 4.888, 4.520, 4.179, 3.866, 3.576, 3.308, 3.060, 
+                     2.831, 2.619, 2.422, 2.239, 2.070, 1.913, 1.766, 1.630, 1.504, 1.386, 1.276, 1.173, 1.078, 0.989, 0.905, 
+                     0.828, 0.755, 0.687, 0.624, 0.564, 0.509, 0.457, 0.408, 0.362, 0.320, 0.280, 0.242, 0.208, 0.175, 0.144, 
+                     0.116, 0.089, 0.064, 0.041, 0.020, 0.000],
+        'SMFsnaps': [63, 40, 32, 27, 23, 20, 18, 16],
+        'BHMFsnaps': [63, 40, 32, 27, 23, 20, 18, 16]
+    },
+    {
+        'path': './output/millennium_CGM_precip/', 
+        'label': ' SAGE CGM Precipitation', 
+        'color': 'magenta', 
+        'linestyle': ':',
+        'BoxSize': 62.5,  # h-1 Mpc  (example - adjust to your actual values)
+        'Hubble_h': 0.73,  # (example - adjust to your actual values)
+        'VolumeFraction': 1.0,
+        'FirstSnap': 0,  # (adjust to your actual values)
+        'LastSnap': 63,  # (adjust to your actual values)
+        'redshifts': [127.000, 79.998, 50.000, 30.000, 19.916, 18.244, 16.725, 15.343, 14.086, 12.941, 11.897, 10.944, 10.073, 
+                     9.278, 8.550, 7.883, 7.272, 6.712, 6.197, 5.724, 5.289, 4.888, 4.520, 4.179, 3.866, 3.576, 3.308, 3.060, 
+                     2.831, 2.619, 2.422, 2.239, 2.070, 1.913, 1.766, 1.630, 1.504, 1.386, 1.276, 1.173, 1.078, 0.989, 0.905, 
+                     0.828, 0.755, 0.687, 0.624, 0.564, 0.509, 0.457, 0.408, 0.362, 0.320, 0.280, 0.242, 0.208, 0.175, 0.144, 
+                     0.116, 0.089, 0.064, 0.041, 0.020, 0.000],
+        'SMFsnaps': [63, 40, 32, 27, 23, 20, 18, 16],
+        'BHMFsnaps': [63, 40, 32, 27, 23, 20, 18, 16]
+    }
+]
+
+# Define simulation configurations for SMF comparison
+SMF_SimConfigs = [
+    # SAGE25 simulations (solid lines)
+    {
+        'path': './output/millennium/', 
+        'label': 'SAGE25', 
+        'color': 'black', 
+        'linestyle': '-',  # solid line
+        'BoxSize': 62.5,  # h-1 Mpc
+        'Hubble_h': 0.73,
+        'VolumeFraction': 1.0
+    },
+    {
+        'path': '/Users/mbradley/Documents/PhD/SAGE_BROKEN/sage-model/output/millennium/', 
+        'label': 'Broken Model', 
+        'color': 'blue', 
+        'linestyle': '-',  # solid line
+        'BoxSize': 62.5,  # h-1 Mpc
+        'Hubble_h': 0.73,
+        'VolumeFraction': 1.0
+    },
+    # Vanilla SAGE simulation (dashed lines)
+    {
+        'path': './output/millennium_complexCGM/', 
+        'label': 'SAGE CGM Method 3', 
+        'color': 'red', 
+        'linestyle': '--',  # dashed line
+        'BoxSize': 62.5,  # h-1 Mpc
+        'Hubble_h': 0.73,
+        'VolumeFraction': 1.0
+    },
+    {
+        'path': '/Users/mbradley/Documents/PhD/SAGE-VANILLA/sage-model/output/millennium/', 
+        'label': 'SAGE C16', 
+        'color': 'green', 
+        'linestyle': '--',  # dashed line
+        'BoxSize': 62.5,  # h-1 Mpc
+        'Hubble_h': 0.73,
+        'VolumeFraction': 1.0
+    },
+    # Vanilla SAGE simulation (dashed lines)
+    {
+        'path': './output/millennium_CGM_precip/', 
+        'label': 'SAGE CGM Precipitation', 
+        'color': 'magenta', 
+        'linestyle': '--',  # dashed line
+        'BoxSize': 62.5,  # h-1 Mpc
+        'Hubble_h': 0.73,
+        'VolumeFraction': 1.0
+    }
+]
+
+GAS_SimConfigs = [
+    # Main simulation (your current one)
+    {
+        'path': './output/millennium/', 
+        'label': 'SAGE25', 
+        'color': 'black', 
+        'linestyle': '-',
+        'BoxSize': 62.5,
+        'Hubble_h': 0.73,
+        'VolumeFraction': 1.0,
+        'linewidth': 3,
+        'alpha': 0.9
+    },
+    {
+        'path': '/Users/mbradley/Documents/PhD/SAGE_BROKEN/sage-model/output/millennium/', 
+        'label': 'Broken Model', 
+        'color': 'blue', 
+        'linestyle': '-',
+        'BoxSize': 62.5,
+        'Hubble_h': 0.73,
+        'VolumeFraction': 1.0,
+        'linewidth': 3,
+        'alpha': 0.9
+    },
+    {
+        'path': './output/millennium_complexCGM/', 
+        'label': 'SAGE CGM Method 3', 
+        'color': 'red', 
+        'linestyle': '-',
+        'BoxSize': 62.5,
+        'Hubble_h': 0.73,
+        'VolumeFraction': 1.0,
+        'linewidth': 3,
+        'alpha': 0.9
+    },
+    {
+        'path': '/Users/mbradley/Documents/PhD/SAGE-VANILLA/sage-model/output/millennium/', 
+        'label': 'SAGE C16', 
+        'color': 'green', 
+        'linestyle': '-',
+        'BoxSize': 62.5,
+        'Hubble_h': 0.73,
+        'VolumeFraction': 1.0,
+        'linewidth': 3,
+        'alpha': 0.9
+    },
+    {
+        'path': './output/millennium_CGM_precip/', 
+        'label': 'SAGE CGM Precipitation', 
+        'color': 'magenta', 
+        'linestyle': '-',
+        'BoxSize': 62.5,
+        'Hubble_h': 0.73,
+        'VolumeFraction': 1.0,
+        'linewidth': 3,
+        'alpha': 0.9
     }
 ]
 
@@ -131,7 +278,7 @@ HDF5_CACHE_SIZE = 64 * 1024 * 1024  # 64MB cache per file
 USE_MEMMAP = True  # Use memory mapping for large arrays
 
 # Data caching
-ENABLE_CACHING = True
+ENABLE_CACHING = False
 CACHE_DIR = './cache/'
 
 # ==================================================================
@@ -1554,3 +1701,295 @@ if __name__ == '__main__':
         logger.info("Subsequent runs will be significantly faster!")
     
     logger.info(f"\nSpeed improvement estimate: 3-10x faster than original")
+
+    # -----------------------------------------------------------------------
+    # Gas Reservoir Flow Rates Evolution Plot
+
+    logger.info('\n=== Gas Reservoir Flow Rates Evolution Analysis ===')
+
+    def calculate_cosmic_time(redshifts, H0=73, Om0=0.25, OL0=0.75):
+        """Calculate cosmic time in Gyr for given redshifts using proper cosmology"""
+        times = []
+        for z in redshifts:
+            if z == 0:
+                times.append(13.8)  # Age of universe at z=0 in Gyr
+            else:
+                # Simplified calculation - for exact values use astropy
+                t_H = 9.78 / (H0/100)  # Hubble time in Gyr
+                # Integration approximation for flat LCDM
+                a = 1.0 / (1.0 + z)
+                integrand = lambda x: 1.0 / (x * np.sqrt(Om0/x + OL0*x*x + (1-Om0-OL0)))
+                # Numerical integration from 0 to a
+                t = t_H * np.trapz([integrand(x) for x in np.linspace(1e-6, a, 100)], 
+                                np.linspace(1e-6, a, 100))
+                times.append(t)
+        return np.array(times)
+
+    def calculate_gas_flow_rates(sim_config):
+        """Calculate gas reservoir flow rates for a simulation"""
+        sim_path = sim_config['path']
+        sim_label = sim_config['label']
+        hubble_h = sim_config['Hubble_h']
+        first_snap = sim_config['FirstSnap']
+        last_snap = sim_config['LastSnap']
+        sim_redshifts = sim_config['redshifts']
+        
+        logger.info(f"Processing gas flow rates for: {sim_label}")
+        
+        # Calculate cosmic times for this simulation
+        cosmic_times = calculate_cosmic_time(sim_redshifts, H0=hubble_h*100)
+        
+        # Read data for all snapshots
+        logger.info(f"  Reading gas reservoir data...")
+        HotGasFull = {}
+        ColdGasFull = {}
+        CGMFull = {}
+        StellarMassFull = {}
+        TypeFull = {}
+        
+        for snap in range(first_snap, last_snap + 1):
+            snap_name = f'Snap_{snap}'
+            try:
+                # Read gas reservoirs
+                hot = read_hdf_ultra_optimized(snap_num=snap_name, param='HotGas', 
+                                            directory=sim_path)
+                cold = read_hdf_ultra_optimized(snap_num=snap_name, param='ColdGas', 
+                                            directory=sim_path)
+                
+                # Try to read CGM - it might have different names in different models
+                try:
+                    cgm = read_hdf_ultra_optimized(snap_num=snap_name, param='EjectedMass', 
+                                                directory=sim_path)
+                except:
+                    try:
+                        cgm = read_hdf_ultra_optimized(snap_num=snap_name, param='CGM', 
+                                                    directory=sim_path)
+                    except:
+                        cgm = np.zeros_like(hot) if len(hot) > 0 else np.array([])
+                
+                stellar = read_hdf_ultra_optimized(snap_num=snap_name, param='StellarMass', 
+                                                directory=sim_path)
+                gal_type = read_hdf_ultra_optimized(snap_num=snap_name, param='Type', 
+                                                directory=sim_path)
+                
+                # Only store if we have valid data
+                if len(hot) > 0 and len(stellar) > 0 and len(gal_type) > 0:
+                    # Convert to physical units
+                    HotGasFull[snap] = hot * 1.0e10 / hubble_h
+                    ColdGasFull[snap] = cold * 1.0e10 / hubble_h if len(cold) > 0 else np.zeros_like(hot)
+                    CGMFull[snap] = cgm * 1.0e10 / hubble_h if len(cgm) > 0 else np.zeros_like(hot)
+                    StellarMassFull[snap] = stellar * 1.0e10 / hubble_h
+                    TypeFull[snap] = gal_type
+                else:
+                    logger.warning(f"  Snapshot {snap} has insufficient data, skipping")
+                
+            except Exception as e:
+                logger.warning(f"  Error reading snapshot {snap}: {e}")
+                continue
+            
+            if snap % 10 == 0:
+                logger.info(f"  Loaded snapshot {snap}")
+        
+        # Calculate flow rates between consecutive snapshots
+        logger.info(f"  Calculating flow rates...")
+        redshift_centers = []
+        mean_dHotGas = []
+        mean_dColdGas = []
+        mean_dCGMgas = []
+        mean_dStellarMass = []
+        
+        for snap in range(first_snap + 1, last_snap + 1):
+            prev_snap = snap - 1
+            
+            # Skip if data not available for both snapshots
+            if prev_snap not in HotGasFull or snap not in HotGasFull:
+                continue
+            
+            if prev_snap not in TypeFull or snap not in TypeFull:
+                continue
+            
+            # Calculate time difference in Gyr
+            dt = cosmic_times[snap] - cosmic_times[prev_snap]
+            if dt <= 0:
+                continue
+            
+            # Find central galaxies (Type == 0) with reasonable masses
+            try:
+                w_prev = np.where((TypeFull[prev_snap] == 0) & 
+                                (StellarMassFull[prev_snap] > 1e8))[0]
+                w_curr = np.where((TypeFull[snap] == 0) & 
+                                (StellarMassFull[snap] > 1e8))[0]
+            except Exception as e:
+                logger.warning(f"  Error filtering galaxies at snapshot {snap}: {e}")
+                continue
+            
+            if len(w_prev) == 0 or len(w_curr) == 0:
+                continue
+            
+            try:
+                # Calculate mean masses at each snapshot
+                hot_prev = np.mean(HotGasFull[prev_snap][w_prev])
+                hot_curr = np.mean(HotGasFull[snap][w_curr])
+                
+                cold_prev = np.mean(ColdGasFull[prev_snap][w_prev])
+                cold_curr = np.mean(ColdGasFull[snap][w_curr])
+                
+                cgm_prev = np.mean(CGMFull[prev_snap][w_prev])
+                cgm_curr = np.mean(CGMFull[snap][w_curr])
+                
+                stellar_prev = np.mean(StellarMassFull[prev_snap][w_prev])
+                stellar_curr = np.mean(StellarMassFull[snap][w_curr])
+                
+                # Calculate rates (Msol/yr)
+                # Convert from Gyr to yr: divide by 1e9
+                mean_dHotGas.append((hot_curr - hot_prev) / (dt * 1e9))
+                mean_dColdGas.append((cold_curr - cold_prev) / (dt * 1e9))
+                mean_dCGMgas.append((cgm_curr - cgm_prev) / (dt * 1e9))
+                mean_dStellarMass.append((stellar_curr - stellar_prev) / (dt * 1e9))
+                
+                # Use midpoint redshift
+                redshift_centers.append((sim_redshifts[snap] + sim_redshifts[prev_snap]) / 2.0)
+                
+            except Exception as e:
+                logger.warning(f"  Error calculating flow rates at snapshot {snap}: {e}")
+                continue
+        
+        # Convert to numpy arrays
+        result = {
+            'redshifts': np.array(redshift_centers),
+            'dHotGas': np.array(mean_dHotGas),
+            'dColdGas': np.array(mean_dColdGas),
+            'dCGM': np.array(mean_dCGMgas),
+            'dStellarMass': np.array(mean_dStellarMass)
+        }
+        
+        logger.info(f"  Calculated {len(redshift_centers)} time steps")
+        
+        return result
+
+    # Process all simulations
+    logger.info('Processing gas flow rates for all simulations...')
+    gas_flow_data = {}
+
+    for sim_config in SFR_SimDirs:
+        if os.path.exists(sim_config['path']):
+            try:
+                flow_rates = calculate_gas_flow_rates(sim_config)
+                if len(flow_rates['redshifts']) > 0:
+                    gas_flow_data[sim_config['label']] = {
+                        'data': flow_rates,
+                        'config': sim_config
+                    }
+            except Exception as e:
+                logger.error(f"Error processing {sim_config['label']}: {e}")
+                import traceback
+                traceback.print_exc()
+                continue
+
+    if not gas_flow_data:
+        logger.warning("No valid gas flow data calculated!")
+    else:
+        # Create the plot
+        logger.info('Plotting gas reservoir flow rates evolution...')
+
+        plt.figure(figsize=(12, 8))
+        ax = plt.subplot(111)
+
+        # Define colors for different reservoirs (consistent across all models)
+        reservoir_colors = {
+            'HotGas': 'red',      # Red
+            'ColdGas': 'blue',     # Blue
+            'CGM': 'green',         # Green
+            'StellarMass': 'magenta'  # Magenta
+        }
+
+        # Track maximum redshift across all simulations
+        max_z = 0.0
+
+        # Plot each simulation
+        for sim_label, sim_info in gas_flow_data.items():
+            data = sim_info['data']
+            config = sim_info['config']
+            
+            z = data['redshifts']
+            if len(z) > 0:
+                max_z = max(max_z, np.max(z))
+            
+            linestyle = config['linestyle']
+            
+            # Plot each reservoir with its color and the model's linestyle
+            plt.plot(z, data['dHotGas'], 
+                    color=reservoir_colors['HotGas'], 
+                    linestyle=linestyle, 
+                    linewidth=2.5, 
+                    alpha=0.8)
+            
+            plt.plot(z, data['dColdGas'], 
+                    color=reservoir_colors['ColdGas'], 
+                    linestyle=linestyle, 
+                    linewidth=2.5, 
+                    alpha=0.8)
+            
+            plt.plot(z, data['dCGM'], 
+                    color=reservoir_colors['CGM'], 
+                    linestyle=linestyle, 
+                    linewidth=2.5, 
+                    alpha=0.8)
+            
+            plt.plot(z, data['dStellarMass'], 
+                    color=reservoir_colors['StellarMass'], 
+                    linestyle=linestyle, 
+                    linewidth=2.5, 
+                    alpha=0.8)
+
+        # Add zero line
+        plt.axhline(y=0, color='black', linestyle=':', alpha=0.3, linewidth=1)
+
+        # Labels and formatting
+        plt.xlabel(r'$\mathrm{Redshift}$', fontsize=16)
+        plt.ylabel(r'$\mathrm{d}M/\mathrm{d}t\ (M_{\odot}\ \mathrm{yr}^{-1})$', fontsize=16)
+
+        # Set axis limits - use the maximum redshift from the last snapshot
+        ax.set_xlim(0, 14)  # Don't exceed the last snapshot
+        ax.xaxis.set_minor_locator(plt.MultipleLocator(0.5))
+        ax.yaxis.set_minor_locator(plt.MultipleLocator(1))
+
+        # Create custom legend
+        # First, add model legend
+        model_legend_elements = []
+        for sim_label, sim_info in gas_flow_data.items():
+            config = sim_info['config']
+            model_legend_elements.append(
+                plt.Line2D([0], [0], color='black', linewidth=2.5, 
+                        linestyle=config['linestyle'], label=sim_label)
+            )
+
+        # Then add reservoir legend
+        reservoir_legend_elements = [
+            plt.Line2D([0], [0], color=reservoir_colors['HotGas'], linewidth=2.5, 
+                    linestyle='-', label='HotGas'),
+            plt.Line2D([0], [0], color=reservoir_colors['ColdGas'], linewidth=2.5, 
+                    linestyle='-', label='ColdGas'),
+            plt.Line2D([0], [0], color=reservoir_colors['CGM'], linewidth=2.5, 
+                    linestyle='-', label='CGM'),
+            plt.Line2D([0], [0], color=reservoir_colors['StellarMass'], linewidth=2.5, 
+                    linestyle='-', label='Stellar')
+        ]
+
+        # Add both legends
+        first_legend = ax.legend(handles=model_legend_elements, loc='upper left', 
+                                frameon=False, fontsize=12, title='Models')
+        ax.add_artist(first_legend)
+
+        second_legend = ax.legend(handles=reservoir_legend_elements, loc='upper right', 
+                                frameon=False, fontsize=12, title='Reservoirs')
+
+        plt.grid(True, alpha=0.2, linestyle=':', linewidth=0.5)
+
+        # Save plot
+        outputFile = OutputDir + 'J.GasFlowRates_evolution' + OutputFormat
+        plt.savefig(outputFile, dpi=500, bbox_inches='tight')
+        logger.info(f'Saved file to {outputFile}')
+        plt.close()
+
+        logger.info('Gas flow rates evolution analysis complete')

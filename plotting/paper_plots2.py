@@ -145,7 +145,7 @@ Main_VolumeFraction = 1.0  # Fraction of the full volume output by the model
 SFR_SimDirs = [
     {
         'path': './output/millennium/', 
-        'label': 'Millennium', 
+        'label': 'SAGE25', 
         'color': 'black', 
         'linestyle': '-',
         'BoxSize': 62.5,  # h-1 Mpc
@@ -162,27 +162,63 @@ SFR_SimDirs = [
         'BHMFsnaps': [63, 40, 32, 27, 23, 20, 18, 16]
     },
     {
-        'path': './output/miniuchuu_full/', 
-        'label': 'miniUchuu', 
+        'path': '/Users/mbradley/Documents/PhD/SAGE_BROKEN/sage-model/output/millennium/', 
+        'label': 'SAGE Broken Model', 
         'color': 'blue', 
         'linestyle': '--',
-        'BoxSize': 400,  # h-1 Mpc  (example - adjust to your actual values)
-        'Hubble_h': 0.677,  # (example - adjust to your actual values)
+        'BoxSize': 62.5,  # h-1 Mpc
+        'Hubble_h': 0.73,
         'VolumeFraction': 1.0,
-        'FirstSnap': 0,  # (adjust to your actual values)
-        'LastSnap': 49,  # (adjust to your actual values)
-        'redshifts': [13.9334, 12.67409, 11.50797, 10.44649, 9.480752, 8.58543, 7.77447, 7.032387, 6.344409, 5.721695,
-            5.153127, 4.629078, 4.26715, 3.929071, 3.610462, 3.314082, 3.128427, 2.951226, 2.77809, 2.616166,
-            2.458114, 2.309724, 2.16592, 2.027963, 1.8962, 1.770958, 1.65124, 1.535928, 1.426272, 1.321656,
-            1.220303, 1.124166, 1.031983, 0.9441787, 0.8597281, 0.779046, 0.7020205, 0.6282588, 0.5575475, 0.4899777,
-            0.4253644, 0.3640053, 0.3047063, 0.2483865, 0.1939743, 0.1425568, 0.09296665, 0.0455745, 0.02265383, 0.0001130128],
-        'SMFsnaps': [49, 38, 32, 23, 17, 13, 10, 8, 7, 5, 4],  # Example snapshots
-        'BHMFsnaps': [49, 38, 32, 23, 17, 13, 10, 8, 7, 5, 4]  # Example snapshots
+        'FirstSnap': 0,
+        'LastSnap': 63,
+        'redshifts': [127.000, 79.998, 50.000, 30.000, 19.916, 18.244, 16.725, 15.343, 14.086, 12.941, 11.897, 10.944, 10.073, 
+                     9.278, 8.550, 7.883, 7.272, 6.712, 6.197, 5.724, 5.289, 4.888, 4.520, 4.179, 3.866, 3.576, 3.308, 3.060, 
+                     2.831, 2.619, 2.422, 2.239, 2.070, 1.913, 1.766, 1.630, 1.504, 1.386, 1.276, 1.173, 1.078, 0.989, 0.905, 
+                     0.828, 0.755, 0.687, 0.624, 0.564, 0.509, 0.457, 0.408, 0.362, 0.320, 0.280, 0.242, 0.208, 0.175, 0.144, 
+                     0.116, 0.089, 0.064, 0.041, 0.020, 0.000],
+        'SMFsnaps': [63, 40, 32, 27, 23, 20, 18, 16],
+        'BHMFsnaps': [63, 40, 32, 27, 23, 20, 18, 16]
     },
     {
-        'path': './output/millennium_vanilla/', 
-        'label': ' SAGE (C16) Millennium', 
-        'color': 'black', 
+        'path': './output/millennium_complexCGM/', 
+        'label': ' SAGE CGM Method 3', 
+        'color': 'red', 
+        'linestyle': ':',
+        'BoxSize': 62.5,  # h-1 Mpc  (example - adjust to your actual values)
+        'Hubble_h': 0.73,  # (example - adjust to your actual values)
+        'VolumeFraction': 1.0,
+        'FirstSnap': 0,  # (adjust to your actual values)
+        'LastSnap': 63,  # (adjust to your actual values)
+        'redshifts': [127.000, 79.998, 50.000, 30.000, 19.916, 18.244, 16.725, 15.343, 14.086, 12.941, 11.897, 10.944, 10.073, 
+                     9.278, 8.550, 7.883, 7.272, 6.712, 6.197, 5.724, 5.289, 4.888, 4.520, 4.179, 3.866, 3.576, 3.308, 3.060, 
+                     2.831, 2.619, 2.422, 2.239, 2.070, 1.913, 1.766, 1.630, 1.504, 1.386, 1.276, 1.173, 1.078, 0.989, 0.905, 
+                     0.828, 0.755, 0.687, 0.624, 0.564, 0.509, 0.457, 0.408, 0.362, 0.320, 0.280, 0.242, 0.208, 0.175, 0.144, 
+                     0.116, 0.089, 0.064, 0.041, 0.020, 0.000],
+        'SMFsnaps': [63, 40, 32, 27, 23, 20, 18, 16],
+        'BHMFsnaps': [63, 40, 32, 27, 23, 20, 18, 16]
+    },
+    {
+        'path': '/Users/mbradley/Documents/PhD/SAGE-VANILLA/sage-model/output/millennium/', 
+        'label': 'SAGE C16', 
+        'color': 'green', 
+        'linestyle': '-.',
+        'BoxSize': 62.5,  # h-1 Mpc
+        'Hubble_h': 0.73,
+        'VolumeFraction': 1.0,
+        'FirstSnap': 0,
+        'LastSnap': 63,
+        'redshifts': [127.000, 79.998, 50.000, 30.000, 19.916, 18.244, 16.725, 15.343, 14.086, 12.941, 11.897, 10.944, 10.073, 
+                     9.278, 8.550, 7.883, 7.272, 6.712, 6.197, 5.724, 5.289, 4.888, 4.520, 4.179, 3.866, 3.576, 3.308, 3.060, 
+                     2.831, 2.619, 2.422, 2.239, 2.070, 1.913, 1.766, 1.630, 1.504, 1.386, 1.276, 1.173, 1.078, 0.989, 0.905, 
+                     0.828, 0.755, 0.687, 0.624, 0.564, 0.509, 0.457, 0.408, 0.362, 0.320, 0.280, 0.242, 0.208, 0.175, 0.144, 
+                     0.116, 0.089, 0.064, 0.041, 0.020, 0.000],
+        'SMFsnaps': [63, 40, 32, 27, 23, 20, 18, 16],
+        'BHMFsnaps': [63, 40, 32, 27, 23, 20, 18, 16]
+    },
+    {
+        'path': './output/millennium_CGM_precip/', 
+        'label': ' SAGE CGM Precipitation', 
+        'color': 'magenta', 
         'linestyle': ':',
         'BoxSize': 62.5,  # h-1 Mpc  (example - adjust to your actual values)
         'Hubble_h': 0.73,  # (example - adjust to your actual values)
@@ -205,27 +241,46 @@ SMF_SimConfigs = [
     {
         'path': './output/millennium/', 
         'label': 'SAGE25', 
-        'color': PLOT_COLORS['millennium'], 
+        'color': 'black', 
         'linestyle': '-',  # solid line
         'BoxSize': 62.5,  # h-1 Mpc
         'Hubble_h': 0.73,
         'VolumeFraction': 1.0
     },
     {
-        'path': './output/miniuchuu_full/', 
-        'label': 'miniUchuu ', 
-        'color': 'darkred', 
-        'linestyle': '-',  # solid line
+        'path': '/Users/mbradley/Documents/PhD/SAGE_BROKEN/sage-model/output/millennium/', 
+        'label': 'Broken Model', 
+        'color': 'blue', 
+        'linestyle': '--',  # solid line
         'BoxSize': 62.5,  # h-1 Mpc
         'Hubble_h': 0.73,
         'VolumeFraction': 1.0
     },
     # Vanilla SAGE simulation (dashed lines)
     {
-        'path': './output/millennium_vanilla/', 
-        'label': 'SAGE (C16)', 
-        'color': PLOT_COLORS['c16_millennium'], 
-        'linestyle': '--',  # dashed line
+        'path': './output/millennium_complexCGM/', 
+        'label': 'SAGE CGM Method 3', 
+        'color': 'red', 
+        'linestyle': ':',  # dashed line
+        'BoxSize': 62.5,  # h-1 Mpc
+        'Hubble_h': 0.73,
+        'VolumeFraction': 1.0
+    },
+    {
+        'path': '/Users/mbradley/Documents/PhD/SAGE-VANILLA/sage-model/output/millennium/', 
+        'label': 'SAGE C16', 
+        'color': 'green', 
+        'linestyle': '-.',  # dashed line
+        'BoxSize': 62.5,  # h-1 Mpc
+        'Hubble_h': 0.73,
+        'VolumeFraction': 1.0
+    },
+    # Vanilla SAGE simulation (dashed lines)
+    {
+        'path': './output/millennium_CGM_precip/', 
+        'label': 'SAGE CGM Precipitation', 
+        'color': 'magenta', 
+        'linestyle': ':',  # dashed line
         'BoxSize': 62.5,  # h-1 Mpc
         'Hubble_h': 0.73,
         'VolumeFraction': 1.0
@@ -237,7 +292,7 @@ GAS_SimConfigs = [
     {
         'path': './output/millennium/', 
         'label': 'SAGE25', 
-        'color': PLOT_COLORS['millennium'], 
+        'color': 'black', 
         'linestyle': '-',
         'BoxSize': 62.5,
         'Hubble_h': 0.73,
@@ -249,7 +304,40 @@ GAS_SimConfigs = [
         'path': '/Users/mbradley/Documents/PhD/SAGE_BROKEN/sage-model/output/millennium/', 
         'label': 'Broken Model', 
         'color': 'blue', 
-        'linestyle': '-',
+        'linestyle': '--',
+        'BoxSize': 62.5,
+        'Hubble_h': 0.73,
+        'VolumeFraction': 1.0,
+        'linewidth': 3,
+        'alpha': 0.9
+    },
+    {
+        'path': './output/millennium_complexCGM/', 
+        'label': 'SAGE CGM Method 3', 
+        'color': 'red', 
+        'linestyle': ':',
+        'BoxSize': 62.5,
+        'Hubble_h': 0.73,
+        'VolumeFraction': 1.0,
+        'linewidth': 3,
+        'alpha': 0.9
+    },
+    {
+        'path': '/Users/mbradley/Documents/PhD/SAGE-VANILLA/sage-model/output/millennium/', 
+        'label': 'SAGE C16', 
+        'color': 'green', 
+        'linestyle': '-.',
+        'BoxSize': 62.5,
+        'Hubble_h': 0.73,
+        'VolumeFraction': 1.0,
+        'linewidth': 3,
+        'alpha': 0.9
+    },
+    {
+        'path': './output/millennium_CGM_precip/', 
+        'label': 'SAGE CGM Precipitation', 
+        'color': 'magenta', 
+        'linestyle': ':',
         'BoxSize': 62.5,
         'Hubble_h': 0.73,
         'VolumeFraction': 1.0,
@@ -2944,10 +3032,31 @@ def plot_bh_bulge_mass_relation(sim_configs, snapshot, output_dir):
                 
             elif 'C16' in model_name or 'Vanilla' in model_name:  # C16 model - dashed dark red line
                 # Plot dashed dark red median line (no error bars)
-                ax.plot(valid_centers, median_bh, color='darkred', linewidth=1.5, 
+                ax.plot(valid_centers, median_bh, color='red', linewidth=1.5, 
                        linestyle='--', label='SAGE C16', alpha=0.9, zorder=8)
                 
                 logger.info(f'  SAGE (C16) median line: {len(valid_centers)} bins')
+
+            elif 'CGM Method 3' in model_name:  # ComplexCGM model - dotted blue line
+                # Plot dotted blue median line (no error bars)
+                ax.plot(valid_centers, median_bh, color='blue', linewidth=1.5, 
+                       linestyle='--', label='SAGE CGM Method 3', alpha=0.9, zorder=8)
+
+                logger.info(f'  SAGE (CGM Method 3) median line: {len(valid_centers)} bins')
+        
+            elif 'Broken Model' in model_name:  # C16 model - dashed dark red line
+                # Plot dashed dark red median line (no error bars)
+                ax.plot(valid_centers, median_bh, color='green', linewidth=1.5, 
+                       linestyle='--', label='Broken Model', alpha=0.9, zorder=8)
+                
+                logger.info(f'  SAGE (C16) median line: {len(valid_centers)} bins')
+
+            elif 'CGM Precipitation' in model_name:  # ComplexCGM model - dotted blue line
+                # Plot dotted blue median line (no error bars)
+                ax.plot(valid_centers, median_bh, color='blue', linewidth=1.5, 
+                       linestyle='--', label='SAGE CGM Precipitation', alpha=0.9, zorder=8)
+
+                logger.info(f'  SAGE (CGM Precipitation) median line: {len(valid_centers)} bins')
     
     # =============== OBSERVATIONAL DATA ===============
     
@@ -3094,7 +3203,7 @@ def plot_bh_bulge_mass_relation(sim_configs, snapshot, output_dir):
     
     # Categorize legend entries
     for handle, label in zip(handles, labels):
-        if any(model_name in label for model_name in ['SAGE25', 'SAGE C16', 'Centrals', 'Satellites', 'Median', '1σ']):
+        if any(model_name in label for model_name in ['SAGE25', 'SAGE C16', 'Centrals', 'Satellites', 'Median', '1σ', 'Broken Model', 'CGM Method 3', 'CGM Precipitation']):
             model_handles.append(handle)
             model_labels.append(label)
         elif any(obs_name in label for obs_name in ['Terrazas', 'Davis', 'Sahu']):
@@ -3702,7 +3811,7 @@ def plot_mass_bulge_fraction(sim_configs, snapshot, output_dir):
     
     # Models legend (lower right)
     if model_handles:
-        model_legend = ax.legend(model_handles, model_labels, loc='lower right', 
+        model_legend = ax.legend(model_handles, model_labels, loc='center left', 
                                fontsize=16, frameon=False)
     
     # Save plot
@@ -3763,6 +3872,696 @@ def plot_mass_bulge_fraction(sim_configs, snapshot, output_dir):
         logger.warning(f'Could not calculate mass-bulge fraction statistics: {e}')
     
     logger.info('Mass-Bulge Fraction relation analysis complete')
+
+def plot_baryon_fraction_vs_halo_mass(sim_configs, snapshot, output_dir):
+    """Plot average baryon fraction vs halo mass for multiple models with standardized styling"""
+    logger.info('=== Baryon Fraction vs Halo Mass Analysis ===')
+    
+    # Create standardized figure
+    fig, ax = create_figure()
+    
+    # Define reservoir-specific colors (consistent across all models)
+    reservoir_colors = {
+        'total': 'black',
+        'stars': 'purple',
+        'cold': 'blue',
+        'hot': 'red',
+        'cgm': 'green',
+        'ics': 'orange',
+        'bh': 'brown'
+    }
+    
+    # Mass bins for analysis
+    MinHalo, MaxHalo, Interval = 11.0, 16.0, 0.1
+    HaloBins = np.arange(MinHalo, MaxHalo + Interval, Interval)
+    Nbins = len(HaloBins) - 1
+    
+    # Lists to collect legend handles and labels
+    model_handles = []
+    model_labels = []
+    
+    # Process each simulation model
+    for i, sim_config in enumerate(sim_configs):
+        directory = sim_config['path']
+        label = sim_config['label']
+        linestyle = sim_config['linestyle']
+        linewidth = sim_config.get('linewidth', 2)
+        alpha = sim_config.get('alpha', 0.8)
+        hubble_h = sim_config['Hubble_h']
+        
+        logger.info(f'Processing {label} for baryon fraction analysis...')
+        
+        try:
+            # Read required galaxy properties
+            Mvir = read_hdf_ultra_optimized(snap_num=snapshot, param='Mvir', directory=directory) * 1.0e10 / hubble_h
+            StellarMass = read_hdf_ultra_optimized(snap_num=snapshot, param='StellarMass', directory=directory) * 1.0e10 / hubble_h
+            ColdGas = read_hdf_ultra_optimized(snap_num=snapshot, param='ColdGas', directory=directory) * 1.0e10 / hubble_h
+            HotGas = read_hdf_ultra_optimized(snap_num=snapshot, param='HotGas', directory=directory) * 1.0e10 / hubble_h
+            CGMgas = read_hdf_ultra_optimized(snap_num=snapshot, param='CGMgas', directory=directory) * 1.0e10 / hubble_h
+            IntraClusterStars = read_hdf_ultra_optimized(snap_num=snapshot, param='IntraClusterStars', directory=directory) * 1.0e10 / hubble_h
+            BlackHoleMass = read_hdf_ultra_optimized(snap_num=snapshot, param='BlackHoleMass', directory=directory) * 1.0e10 / hubble_h
+            Type = read_hdf_ultra_optimized(snap_num=snapshot, param='Type', directory=directory)
+            CentralGalaxyIndex = read_hdf_ultra_optimized(snap_num=snapshot, param='CentralGalaxyIndex', directory=directory)
+            
+            logger.info(f'  Total galaxies: {len(Mvir)}')
+            
+            # Calculate total baryons
+            Baryons = StellarMass + ColdGas + HotGas + CGMgas + IntraClusterStars + BlackHoleMass
+            
+            # Calculate halo mass in log scale
+            HaloMass = np.log10(Mvir)
+            
+            # Bin indices
+            bin_indices = np.digitize(HaloMass, HaloBins) - 1
+            
+            # Pre-compute halo to galaxies mapping
+            halo_to_galaxies = {}
+            for idx, central_idx in enumerate(CentralGalaxyIndex):
+                if central_idx not in halo_to_galaxies:
+                    halo_to_galaxies[central_idx] = []
+                halo_to_galaxies[central_idx].append(idx)
+            
+            # Initialize arrays to store results
+            MeanCentralHaloMass = []
+            reservoir_data = {
+                'total': {'mean': [], 'upper': [], 'lower': []},
+                'stars': {'mean': [], 'upper': [], 'lower': []},
+                'cold': {'mean': [], 'upper': [], 'lower': []},
+                'hot': {'mean': [], 'upper': [], 'lower': []},
+                'cgm': {'mean': [], 'upper': [], 'lower': []},
+                'ics': {'mean': [], 'upper': [], 'lower': []},
+            }
+            
+            # Calculate fractions for each bin
+            for bin_idx in range(Nbins - 1):
+                w1 = np.where((Type == 0) & (bin_indices == bin_idx))[0]
+                HalosFound = len(w1)
+                
+                if HalosFound > 2:
+                    # Pre-allocate arrays
+                    BaryonFractions = np.zeros(HalosFound)
+                    StarsFractions = np.zeros(HalosFound)
+                    ColdFractions = np.zeros(HalosFound)
+                    HotFractions = np.zeros(HalosFound)
+                    CGMFractions = np.zeros(HalosFound)
+                    ICSFractions = np.zeros(HalosFound)
+                    
+                    # Calculate fractions for each halo
+                    for idx, halo_idx in enumerate(w1):
+                        central_idx = CentralGalaxyIndex[halo_idx]
+                        if central_idx in halo_to_galaxies:
+                            halo_galaxies = np.array(halo_to_galaxies[central_idx])
+                            halo_mvir = Mvir[halo_idx]
+                            
+                            if halo_mvir > 0:
+                                BaryonFractions[idx] = np.sum(Baryons[halo_galaxies]) / halo_mvir
+                                StarsFractions[idx] = np.sum(StellarMass[halo_galaxies]) / halo_mvir
+                                ColdFractions[idx] = np.sum(ColdGas[halo_galaxies]) / halo_mvir
+                                HotFractions[idx] = np.sum(HotGas[halo_galaxies]) / halo_mvir
+                                CGMFractions[idx] = np.sum(CGMgas[halo_galaxies]) / halo_mvir
+                                ICSFractions[idx] = np.sum(IntraClusterStars[halo_galaxies]) / halo_mvir
+                    
+                    # Store mean halo mass for this bin
+                    CentralHaloMass = np.log10(Mvir[w1])
+                    MeanCentralHaloMass.append(np.mean(CentralHaloMass))
+                    
+                    # Calculate statistics for each reservoir
+                    sqrt_n = np.sqrt(HalosFound)
+                    
+                    for reservoir_name, fractions in [
+                        ('total', BaryonFractions),
+                        ('stars', StarsFractions),
+                        ('cold', ColdFractions),
+                        ('hot', HotFractions),
+                        ('cgm', CGMFractions),
+                        ('ics', ICSFractions)
+                    ]:
+                        mean_val = np.mean(fractions)
+                        std_val = np.std(fractions) / sqrt_n
+                        
+                        reservoir_data[reservoir_name]['mean'].append(mean_val)
+                        reservoir_data[reservoir_name]['upper'].append(mean_val + std_val)
+                        reservoir_data[reservoir_name]['lower'].append(max(mean_val - std_val, 1e-6))
+            
+            # Convert to arrays
+            MeanCentralHaloMass = np.array(MeanCentralHaloMass)
+            for reservoir in reservoir_data.values():
+                reservoir['mean'] = np.array(reservoir['mean'])
+                reservoir['upper'] = np.array(reservoir['upper'])
+                reservoir['lower'] = np.array(reservoir['lower'])
+            
+            # Plot each reservoir with model-specific linestyle and reservoir-specific color
+            for reservoir_name, color in reservoir_colors.items():
+                if reservoir_name in reservoir_data:
+                    data = reservoir_data[reservoir_name]
+                    
+                    if len(data['mean']) > 0:
+                        # Create label only for the first reservoir of each model
+                        plot_label = label if reservoir_name == 'total' else None
+                        
+                        # Plot line
+                        line = ax.plot(MeanCentralHaloMass, data['mean'], 
+                                     color=color, linestyle=linestyle, linewidth=linewidth,
+                                     label=plot_label, alpha=alpha)[0]
+                        
+                        # Add to legend only for total baryons
+                        if reservoir_name == 'total' and i == 0:
+                            model_handles.append(line)
+                            model_labels.append(label)
+                        
+                        # Add error shading with matching color
+                        ax.fill_between(MeanCentralHaloMass, data['lower'], data['upper'],
+                                      color=color, alpha=0.15)
+            
+            logger.info(f'  Processed {len(MeanCentralHaloMass)} halo mass bins')
+            
+        except Exception as e:
+            logger.error(f'Error processing {label}: {e}')
+            import traceback
+            logger.error(traceback.format_exc())
+            continue
+    
+    # Add cosmic baryon fraction reference line
+    baryon_frac = 0.17
+    ax.axhline(y=baryon_frac, color='grey', linestyle='--', linewidth=2.0, 
+              label=f'Cosmic Baryon Fraction = {baryon_frac:.2f}', zorder=1)
+    
+    # =============== FORMATTING ===============
+    
+    ax.set_xlabel(r'$\log_{10} M_{\mathrm{vir}}\ (M_{\odot})$')
+    ax.set_ylabel(r'Baryon Fraction')
+    
+    ax.set_xlim(11.1, 14.0)
+    ax.set_ylim(0.0, 0.2)
+    
+    ax.xaxis.set_minor_locator(plt.MultipleLocator(0.05))
+    ax.yaxis.set_minor_locator(plt.MultipleLocator(0.01))
+    
+    # Create custom legend combining models and reservoirs
+    from matplotlib.lines import Line2D
+    
+    # Model legend entries (linestyles)
+    model_legend_elements = []
+    for sim_config in sim_configs:
+        model_legend_elements.append(
+            Line2D([0], [0], color='gray', linestyle=sim_config['linestyle'], 
+                   linewidth=2, label=sim_config['label'])
+        )
+    
+    # Reservoir legend entries (colors)
+    reservoir_legend_elements = [
+        Line2D([0], [0], color=reservoir_colors['total'], linewidth=2, label='Total Baryons'),
+        Line2D([0], [0], color=reservoir_colors['stars'], linewidth=2, label='Stars'),
+        Line2D([0], [0], color=reservoir_colors['cold'], linewidth=2, label='Cold Gas'),
+        Line2D([0], [0], color=reservoir_colors['hot'], linewidth=2, label='Hot Gas'),
+        Line2D([0], [0], color=reservoir_colors['cgm'], linewidth=2, label='CGM'),
+        Line2D([0], [0], color=reservoir_colors['ics'], linewidth=2, label='Intracluster Stars'),
+    ]
+    
+    # Add cosmic baryon fraction to reservoir legend
+    reservoir_legend_elements.append(
+        Line2D([0], [0], color='grey', linestyle='--', linewidth=2, 
+               label=f'Cosmic Fraction ({baryon_frac:.2f})')
+    )
+    
+    # Create two legends
+    model_legend = ax.legend(handles=model_legend_elements, loc='upper right', 
+                            title='Models', fontsize=12, frameon=False)
+    ax.add_artist(model_legend)
+    
+    reservoir_legend = ax.legend(handles=reservoir_legend_elements, loc='upper left',
+                                title='Reservoirs', fontsize=12, frameon=False)
+    
+    # Save plot
+    output_filename = output_dir + 'baryon_fraction_vs_halo_mass' + OutputFormat
+    finalize_plot(fig, output_filename)
+    
+    logger.info('Baryon fraction vs halo mass analysis complete')
+
+def plot_cgm_vs_stellar_mass(sim_configs, snapshot, output_dir):
+    """Plot CGM mass vs stellar mass with median lines and 1-sigma shading for each model"""
+    logger.info('=== CGM Mass vs Stellar Mass Analysis ===')
+    
+    # Create standardized figure
+    fig, ax = create_figure()
+    
+    # Lists to collect legend handles and labels
+    obs_handles = []
+    obs_labels = []
+    model_handles = []
+    model_labels = []
+    
+    # =============== OBSERVATIONAL DATA - TNG-Cluster ===============
+    
+    # TNG-Cluster data from the original script
+    tng_data = """10.06276150627615, 10.48936170212766
+        10.112970711297072, 10.510638297872342
+        10.175732217573222, 10.531914893617023
+        10.242677824267782, 10.574468085106384
+        10.322175732217573, 10.617021276595747
+        10.401673640167363, 10.680851063829788
+        10.481171548117155, 10.702127659574469
+        10.560669456066945, 10.74468085106383
+        10.644351464435147, 10.765957446808512
+        10.719665271966527, 10.829787234042554
+        10.786610878661088, 10.872340425531917
+        10.866108786610878, 10.914893617021278
+        10.94560669456067, 10.97872340425532
+        11.02510460251046, 11.085106382978724
+        11.108786610878662, 11.127659574468087
+        11.196652719665272, 11.297872340425533
+        11.276150627615063, 11.425531914893618
+        11.359832635983263, 11.574468085106384
+        11.426778242677823, 11.765957446808512
+        11.497907949790795, 11.936170212765958
+        11.581589958158995, 12.106382978723406
+        11.652719665271967, 12.255319148936172
+        11.728033472803347, 12.340425531914896
+        11.782426778242678, 12.425531914893618
+        11.832635983263598, 12.468085106382981
+        11.870292887029288, 12.638297872340427
+        11.912133891213388, 12.787234042553193
+        11.94979079497908, 12.893617021276597
+        12, 12.829787234042556
+        12.05020920502092, 12.808510638297875
+        12.09623430962343, 12.872340425531917
+        12.138075313807532, 12.95744680851064
+        12.184100418410042, 13.085106382978726"""
+    
+    # Parse TNG data
+    lines = tng_data.strip().split('\n')
+    tng_x = []
+    tng_y = []
+    
+    for line in lines:
+        coords = line.split(', ')
+        tng_x.append(float(coords[0]))
+        tng_y.append(float(coords[1]))
+    
+    tng_x = np.array(tng_x)
+    tng_y = np.array(tng_y)
+    
+    # Plot TNG-Cluster data
+    tng_line = ax.plot(tng_x, tng_y, color='black', linestyle='--', linewidth=3, 
+                       label='TNG-Cluster', alpha=0.8, zorder=10)[0]
+    obs_handles.append(tng_line)
+    obs_labels.append('TNG-Cluster')
+    
+    # =============== MODEL DATA ===============
+    
+    # Define mass bins for median calculation
+    mass_bins = np.arange(8.0, 12.5, 0.15)
+    mass_centers = mass_bins[:-1] + 0.075
+    
+    # Process each simulation model
+    for i, sim_config in enumerate(sim_configs):
+        directory = sim_config['path']
+        label = sim_config['label']
+        color = sim_config['color']
+        linestyle = sim_config['linestyle']
+        linewidth = sim_config.get('linewidth', 2)
+        alpha = sim_config.get('alpha', 0.8)
+        hubble_h = sim_config['Hubble_h']
+        
+        logger.info(f'Processing {label} for CGM vs stellar mass...')
+        
+        try:
+            # Read required galaxy properties
+            StellarMass = read_hdf_ultra_optimized(snap_num=snapshot, param='StellarMass', directory=directory) * 1.0e10 / hubble_h
+            
+            # Try to read CGMgas, fall back to EjectedMass for C16/Vanilla models
+            CGMgas = None
+            try:
+                CGMgas = read_hdf_ultra_optimized(snap_num=snapshot, param='CGMgas', directory=directory) * 1.0e10 / hubble_h
+                if len(CGMgas) == 0 or np.all(CGMgas == 0):
+                    logger.info(f'  CGMgas is empty or all zeros, trying EjectedMass...')
+                    CGMgas = None
+            except Exception as e:
+                logger.info(f'  Could not read CGMgas: {e}, trying EjectedMass...')
+            
+            # If CGMgas failed, try EjectedMass
+            if CGMgas is None:
+                try:
+                    CGMgas = read_hdf_ultra_optimized(snap_num=snapshot, param='EjectedMass', directory=directory) * 1.0e10 / hubble_h
+                    logger.info(f'  Using EjectedMass as CGM proxy for {label}')
+                except Exception as e:
+                    logger.error(f'  Could not read EjectedMass either: {e}')
+                    continue
+            
+            Type = read_hdf_ultra_optimized(snap_num=snapshot, param='Type', directory=directory)
+            
+            logger.info(f'  Total galaxies: {len(StellarMass)}')
+            
+            # Apply selection criteria: galaxies with both stellar mass and CGM > 0
+            w = np.where((StellarMass > 0.0) & (CGMgas > 0.0))[0]
+            logger.info(f'  Galaxies with StellarMass > 0 and CGM > 0: {len(w)}')
+            
+            if len(w) == 0:
+                logger.warning(f'  No galaxies meet selection criteria for {label}')
+                continue
+            
+            # Calculate log masses for all valid galaxies
+            log10_stellar_mass = np.log10(StellarMass[w])
+            log10_CGM_mass = np.log10(CGMgas[w])
+            
+            # Calculate median and 1-sigma error in each mass bin
+            median_CGM = []
+            sigma_CGM = []
+            valid_centers = []
+            
+            for j in range(len(mass_bins)-1):
+                mask = (log10_stellar_mass >= mass_bins[j]) & (log10_stellar_mass < mass_bins[j+1])
+                if np.sum(mask) >= 5:  # Require at least 5 galaxies per bin
+                    bin_CGM = log10_CGM_mass[mask]
+                    n_gal = len(bin_CGM)
+                    median_CGM.append(np.median(bin_CGM))
+                    # 1-sigma error on the mean (standard error)
+                    sigma_CGM.append(np.std(bin_CGM) / np.sqrt(n_gal))
+                    valid_centers.append(mass_centers[j])
+            
+            if len(median_CGM) > 0:
+                median_CGM = np.array(median_CGM)
+                sigma_CGM = np.array(sigma_CGM)
+                valid_centers = np.array(valid_centers)
+                
+                # Plot median line with model-specific color and linestyle
+                line = ax.plot(valid_centers, median_CGM, color=color, linewidth=linewidth,
+                              linestyle=linestyle, label=label, alpha=alpha, zorder=6)[0]
+                model_handles.append(line)
+                model_labels.append(label)
+                
+                # Add 1-sigma error shading
+                ax.fill_between(valid_centers, median_CGM - sigma_CGM, median_CGM + sigma_CGM,
+                               color=color, alpha=0.2, zorder=5)
+                
+                logger.info(f'  {label} median line: {len(valid_centers)} bins')
+                logger.info(f'  CGM mass range: {np.min(log10_CGM_mass):.2f} - {np.max(log10_CGM_mass):.2f}')
+                logger.info(f'  Stellar mass range: {np.min(log10_stellar_mass):.2f} - {np.max(log10_stellar_mass):.2f}')
+                logger.info(f'  Median CGM/Stellar ratio: {np.median(CGMgas[w] / StellarMass[w]):.3f}')
+            
+        except Exception as e:
+            logger.error(f'Error processing {label}: {e}')
+            import traceback
+            logger.error(traceback.format_exc())
+            continue
+    
+    # =============== FORMATTING ===============
+    
+    ax.set_xlabel(r'$\log_{10} M_{\mathrm{stars}}\ (M_{\odot})$')
+    ax.set_ylabel(r'$\log_{10} M_{\mathrm{CGM}}\ (M_{\odot})$')
+    
+    ax.set_xlim(8.0, 12.5)
+    ax.set_ylim(8.0, 13.5)
+    
+    ax.xaxis.set_minor_locator(plt.MultipleLocator(0.1))
+    ax.yaxis.set_minor_locator(plt.MultipleLocator(0.1))
+    
+    # Create two separate legends
+    # Observations legend (upper left)
+    if obs_handles:
+        obs_legend = ax.legend(obs_handles, obs_labels, loc='upper left', 
+                              fontsize=16, frameon=False)
+        ax.add_artist(obs_legend)
+    
+    # Models legend (lower right)
+    if model_handles:
+        model_legend = ax.legend(model_handles, model_labels, loc='center left', 
+                               fontsize=16, frameon=False)
+    
+    # Save plot
+    output_filename = output_dir + 'cgm_mass_vs_stellar_mass' + OutputFormat
+    finalize_plot(fig, output_filename)
+    
+    # Print summary statistics
+    logger.info('=== CGM Mass vs Stellar Mass Statistics ===')
+    try:
+        # Calculate statistics for each simulation
+        for sim_config in sim_configs:
+            directory = sim_config['path']
+            label = sim_config['label']
+            hubble_h = sim_config['Hubble_h']
+            
+            # Read data
+            StellarMass = read_hdf_ultra_optimized(snap_num=snapshot, param='StellarMass', directory=directory) * 1.0e10 / hubble_h
+            
+            # Try CGMgas first, then EjectedMass
+            CGMgas = None
+            try:
+                CGMgas = read_hdf_ultra_optimized(snap_num=snapshot, param='CGMgas', directory=directory) * 1.0e10 / hubble_h
+                if len(CGMgas) == 0 or np.all(CGMgas == 0):
+                    CGMgas = None
+            except:
+                pass
+            
+            if CGMgas is None:
+                try:
+                    CGMgas = read_hdf_ultra_optimized(snap_num=snapshot, param='EjectedMass', directory=directory) * 1.0e10 / hubble_h
+                except:
+                    continue
+            
+            w = np.where((StellarMass > 0.0) & (CGMgas > 0.0))[0]
+            
+            if len(w) > 0:
+                log10_stellar_mass = np.log10(StellarMass[w])
+                log10_CGM_mass = np.log10(CGMgas[w])
+                CGM_stellar_ratio = CGMgas[w] / StellarMass[w]
+                
+                # Calculate correlation coefficient
+                correlation = np.corrcoef(log10_stellar_mass, log10_CGM_mass)[0, 1]
+                
+                # Fit a linear relation
+                coeffs = np.polyfit(log10_stellar_mass, log10_CGM_mass, 1)
+                slope, intercept = coeffs
+                
+                logger.info(f'{label}:')
+                logger.info(f'  Total galaxies with CGM: {len(w)}')
+                logger.info(f'  Correlation coefficient: {correlation:.3f}')
+                logger.info(f'  Best-fit slope: {slope:.3f}')
+                logger.info(f'  Best-fit intercept: {intercept:.3f}')
+                logger.info(f'  Relation: log(M_CGM) = {intercept:.2f} + {slope:.2f} * log(M*)')
+                logger.info(f'  Median CGM/Stellar ratio: {np.median(CGM_stellar_ratio):.3f}')
+                logger.info(f'  Mean CGM/Stellar ratio: {np.mean(CGM_stellar_ratio):.3f}')
+                
+                # Statistics by stellar mass bins
+                low_mass = (log10_stellar_mass < 10.0)
+                mid_mass = (log10_stellar_mass >= 10.0) & (log10_stellar_mass < 11.0)
+                high_mass = (log10_stellar_mass >= 11.0)
+                
+                if np.any(low_mass):
+                    logger.info(f'  Low mass (<10^10 M_sun): median CGM/M* = {np.median(CGM_stellar_ratio[low_mass]):.3f}')
+                if np.any(mid_mass):
+                    logger.info(f'  Mid mass (10^10-10^11 M_sun): median CGM/M* = {np.median(CGM_stellar_ratio[mid_mass]):.3f}')
+                if np.any(high_mass):
+                    logger.info(f'  High mass (>10^11 M_sun): median CGM/M* = {np.median(CGM_stellar_ratio[high_mass]):.3f}')
+    
+    except Exception as e:
+        logger.warning(f'Could not calculate CGM statistics: {e}')
+    
+    logger.info('CGM mass vs stellar mass analysis complete')
+
+def plot_mass_fraction_vs_stellar_mass(sim_configs, snapshot, output_dir):
+    """Plot stellar mass fraction (bulge vs disk) for multiple models with standardized styling"""
+    logger.info('=== Mass Fraction vs Stellar Mass Analysis ===')
+    
+    # Create standardized figure
+    fig, ax = create_figure()
+    
+    # Define color gradients for models
+    # Red shades for bulge (from light to dark)
+    red_shades = ['#ffb3b3', '#ff6b6b', '#ff0000', '#cc0000', '#990000']
+    # Black/gray shades for disk (from light gray to black)
+    gray_shades = ['#a6a6a6', '#737373', '#404040', '#262626', '#000000']
+    
+    # Lists to collect legend handles and labels
+    bulge_handles = []
+    bulge_labels = []
+    disk_handles = []
+    disk_labels = []
+    
+    # Mass bins
+    binwidth = 0.2
+    shift = binwidth / 2.0
+    mass_range = np.arange(8.5 - shift, 12.0 + shift, binwidth)
+    bins = len(mass_range)
+    
+    # Process each simulation model
+    for i, sim_config in enumerate(sim_configs):
+        directory = sim_config['path']
+        label = sim_config['label']
+        linestyle = sim_config['linestyle']
+        linewidth = sim_config.get('linewidth', 2)
+        alpha = sim_config.get('alpha', 0.8)
+        hubble_h = sim_config['Hubble_h']
+        
+        # Select color shades based on model index
+        bulge_color = red_shades[min(i, len(red_shades) - 1)]
+        disk_color = gray_shades[min(i, len(gray_shades) - 1)]
+        
+        logger.info(f'Processing {label} for mass fraction analysis...')
+        
+        try:
+            # Read required galaxy properties
+            StellarMass = read_hdf_ultra_optimized(snap_num=snapshot, param='StellarMass', directory=directory) * 1.0e10 / hubble_h
+            BulgeMass = read_hdf_ultra_optimized(snap_num=snapshot, param='BulgeMass', directory=directory) * 1.0e10 / hubble_h
+            SfrDisk = read_hdf_ultra_optimized(snap_num=snapshot, param='SfrDisk', directory=directory)
+            SfrBulge = read_hdf_ultra_optimized(snap_num=snapshot, param='SfrBulge', directory=directory)
+            
+            logger.info(f'  Total galaxies: {len(StellarMass)}')
+            
+            # Apply selection criteria
+            w = np.where(StellarMass > 0.0)[0]
+            logger.info(f'  Galaxies with StellarMass > 0: {len(w)}')
+            
+            if len(w) == 0:
+                logger.warning(f'  No galaxies meet selection criteria for {label}')
+                continue
+            
+            # Calculate fractions
+            fBulge = BulgeMass[w] / StellarMass[w]
+            fDisk = 1.0 - fBulge
+            mass = np.log10(StellarMass[w])
+            sSFR = np.log10((SfrDisk[w] + SfrBulge[w]) / StellarMass[w])
+            
+            # Initialize arrays for binned statistics
+            fBulge_ave = np.zeros(bins)
+            fBulge_var = np.zeros(bins)
+            fDisk_ave = np.zeros(bins)
+            fDisk_var = np.zeros(bins)
+            
+            # Calculate binned statistics
+            for bin_idx in range(bins - 1):
+                w_bin = np.where((mass >= mass_range[bin_idx]) & (mass < mass_range[bin_idx + 1]))[0]
+                if len(w_bin) > 0:
+                    fBulge_ave[bin_idx] = np.mean(fBulge[w_bin])
+                    fBulge_var[bin_idx] = np.std(fBulge[w_bin]) / np.sqrt(len(w_bin))  # Standard error
+                    fDisk_ave[bin_idx] = np.mean(fDisk[w_bin])
+                    fDisk_var[bin_idx] = np.std(fDisk[w_bin]) / np.sqrt(len(w_bin))  # Standard error
+            
+            # Plot bulge fraction
+            w_bulge = np.where(fBulge_ave > 0.0)[0]
+            if len(w_bulge) > 0:
+                bulge_line = ax.plot(mass_range[w_bulge] + shift, fBulge_ave[w_bulge], 
+                                    color=bulge_color, linestyle=linestyle, linewidth=linewidth,
+                                    label=f'{label} (Bulge)', alpha=alpha, zorder=6)[0]
+                bulge_handles.append(bulge_line)
+                bulge_labels.append(f'{label} (Bulge)')
+                
+                # Add variance shading
+                ax.fill_between(mass_range[w_bulge] + shift,
+                               fBulge_ave[w_bulge] - fBulge_var[w_bulge],
+                               fBulge_ave[w_bulge] + fBulge_var[w_bulge],
+                               color=bulge_color, alpha=0.2, zorder=5)
+            
+            # Plot disk fraction
+            w_disk = np.where(fDisk_ave > 0.0)[0]
+            if len(w_disk) > 0:
+                disk_line = ax.plot(mass_range[w_disk] + shift, fDisk_ave[w_disk],
+                                   color=disk_color, linestyle=linestyle, linewidth=linewidth,
+                                   label=f'{label} (Disk)', alpha=alpha, zorder=6)[0]
+                disk_handles.append(disk_line)
+                disk_labels.append(f'{label} (Disk)')
+                
+                # Add variance shading
+                ax.fill_between(mass_range[w_disk] + shift,
+                               fDisk_ave[w_disk] - fDisk_var[w_disk],
+                               fDisk_ave[w_disk] + fDisk_var[w_disk],
+                               color=disk_color, alpha=0.2, zorder=5)
+            
+            logger.info(f'  Bulge fraction range: {np.min(fBulge):.3f} - {np.max(fBulge):.3f}')
+            logger.info(f'  Disk fraction range: {np.min(fDisk):.3f} - {np.max(fDisk):.3f}')
+            logger.info(f'  Mean bulge fraction: {np.mean(fBulge):.3f}')
+            logger.info(f'  Mean disk fraction: {np.mean(fDisk):.3f}')
+            
+        except Exception as e:
+            logger.error(f'Error processing {label}: {e}')
+            import traceback
+            logger.error(traceback.format_exc())
+            continue
+    
+    # =============== FORMATTING ===============
+    
+    ax.set_xlabel(r'$\log_{10} M_{\mathrm{stars}}\ (M_{\odot})$')
+    ax.set_ylabel(r'Stellar Mass Fraction')
+    
+    ax.set_xlim(mass_range[0], mass_range[bins - 1])
+    ax.set_ylim(0.0, 1.05)
+    
+    ax.xaxis.set_minor_locator(plt.MultipleLocator(0.05))
+    ax.yaxis.set_minor_locator(plt.MultipleLocator(0.05))
+    
+    # Add reference lines
+    ax.axhline(y=0.5, color='gray', linestyle=':', alpha=0.5, linewidth=1)
+    ax.axhline(y=1.0, color='gray', linestyle=':', alpha=0.5, linewidth=1)
+    
+    # Create combined legend with bulge and disk entries
+    all_handles = []
+    all_labels = []
+    
+    # Interleave bulge and disk for each model
+    for i in range(len(sim_configs)):
+        if i < len(bulge_handles):
+            all_handles.append(bulge_handles[i])
+            all_labels.append(bulge_labels[i])
+        if i < len(disk_handles):
+            all_handles.append(disk_handles[i])
+            all_labels.append(disk_labels[i])
+    
+    if all_handles:
+        ax.legend(all_handles, all_labels, loc='center left', 
+                 fontsize=12, frameon=False, ncol=1)
+    
+    # Save plot
+    output_filename = output_dir + 'mass_fraction_bulge_disk' + OutputFormat
+    finalize_plot(fig, output_filename)
+    
+    # Print summary statistics
+    logger.info('=== Mass Fraction Statistics ===')
+    try:
+        for sim_config in sim_configs:
+            directory = sim_config['path']
+            label = sim_config['label']
+            hubble_h = sim_config['Hubble_h']
+            
+            # Read data
+            StellarMass = read_hdf_ultra_optimized(snap_num=snapshot, param='StellarMass', directory=directory) * 1.0e10 / hubble_h
+            BulgeMass = read_hdf_ultra_optimized(snap_num=snapshot, param='BulgeMass', directory=directory) * 1.0e10 / hubble_h
+            
+            w = np.where(StellarMass > 0.0)[0]
+            
+            if len(w) > 0:
+                fBulge = BulgeMass[w] / StellarMass[w]
+                mass = np.log10(StellarMass[w])
+                
+                logger.info(f'{label}:')
+                logger.info(f'  Total galaxies: {len(w)}')
+                logger.info(f'  Mean bulge fraction: {np.mean(fBulge):.3f}')
+                logger.info(f'  Median bulge fraction: {np.median(fBulge):.3f}')
+                
+                # Statistics by mass bins
+                low_mass = (mass < 10.0)
+                mid_mass = (mass >= 10.0) & (mass < 11.0)
+                high_mass = (mass >= 11.0)
+                
+                if np.any(low_mass):
+                    logger.info(f'  Low mass (<10^10 M_sun): mean B/T = {np.mean(fBulge[low_mass]):.3f}')
+                if np.any(mid_mass):
+                    logger.info(f'  Mid mass (10^10-10^11 M_sun): mean B/T = {np.mean(fBulge[mid_mass]):.3f}')
+                if np.any(high_mass):
+                    logger.info(f'  High mass (>10^11 M_sun): mean B/T = {np.mean(fBulge[high_mass]):.3f}')
+                
+                # Morphological fractions
+                disk_dominated = np.sum(fBulge < 0.2) / len(fBulge)
+                intermediate = np.sum((fBulge >= 0.2) & (fBulge < 0.8)) / len(fBulge)
+                bulge_dominated = np.sum(fBulge >= 0.8) / len(fBulge)
+                
+                logger.info(f'  Disk-dominated (B/T < 0.2): {disk_dominated:.1%}')
+                logger.info(f'  Intermediate (0.2 ≤ B/T < 0.8): {intermediate:.1%}')
+                logger.info(f'  Bulge-dominated (B/T ≥ 0.8): {bulge_dominated:.1%}')
+    
+    except Exception as e:
+        logger.warning(f'Could not calculate mass fraction statistics: {e}')
+    
+    logger.info('Mass fraction analysis complete')
 
 # ========================== MAIN EXECUTION ==========================
 
@@ -3992,7 +4791,9 @@ if __name__ == '__main__':
     plot_mass_metallicity_relation(SMF_SimConfigs, Snapshot, OutputDir)
     plot_mass_bulge_fraction(SMF_SimConfigs, Snapshot, OutputDir)
 
-
+    plot_baryon_fraction_vs_halo_mass(GAS_SimConfigs, Snapshot, OutputDir)
+    plot_cgm_vs_stellar_mass(GAS_SimConfigs, Snapshot, OutputDir)
+    plot_mass_fraction_vs_stellar_mass(GAS_SimConfigs, Snapshot, OutputDir)
     
     logger.info(f'Total execution time: {time.time() - start_time:.2f} seconds')
     logger.info('Analysis complete!')

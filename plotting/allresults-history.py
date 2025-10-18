@@ -13,7 +13,7 @@ warnings.filterwarnings("ignore")
 # ========================== USER OPTIONS ==========================
 
 # File details
-DirName = './output/millennium_complexCGM/'
+DirName = './output/millennium_CGM_precip/'
 FileName = 'model_0.hdf5'
 
 # Simulation details
@@ -74,6 +74,8 @@ if __name__ == '__main__':
     fullcgmFull = [0]*(LastSnap-FirstSnap+1)
     TypeFull = [0]*(LastSnap-FirstSnap+1)
     OutflowRateFull = [0]*(LastSnap-FirstSnap+1)
+    coldgasFull = [0]*(LastSnap-FirstSnap+1)
+    dT = [0]*(LastSnap-FirstSnap+1)
 
     for snap in range(FirstSnap,LastSnap+1):
 
@@ -90,6 +92,8 @@ if __name__ == '__main__':
         fullcgmFull[snap] = (read_hdf(snap_num = Snapshot, param = 'CGMgas') + read_hdf(snap_num = Snapshot, param = 'HotGas')) * 1.0e10 / Hubble_h
         TypeFull[snap] = read_hdf(snap_num = Snapshot, param = 'Type')
         OutflowRateFull[snap] = read_hdf(snap_num = Snapshot, param = 'OutflowRate')
+        coldgasFull[snap] = read_hdf(snap_num = Snapshot, param = 'ColdGas') * 1.0e10 / Hubble_h
+        dT[snap] = read_hdf(snap_num = Snapshot, param = 'dT')
 
 
 # --------------------------------------------------------
@@ -814,3 +818,1137 @@ if __name__ == '__main__':
     print('Saved file to', outputFile, '\n')
     plt.close()
 
+    # --------------------------------------------------------
+
+    print('Plotting gas reservoir flow rates evolution')
+
+    from astropy.cosmology import FlatLambdaCDM
+    import astropy.units as u
+
+    # Define cosmology to match simulation parameters
+    cosmo = FlatLambdaCDM(H0=73, Om0=0.25)  # Adjust Om0 if you know the exact value
+
+    # Calculate cosmic time for each snapshot from redshift
+    cosmic_time_Gyr = np.array([cosmo.age(z).value for z in redshifts])
+
+    print(f'Cosmic time at z=0: {cosmic_time_Gyr[-1]:.2f} Gyr')
+    print(f'Cosmic time at z={redshifts[0]:.2f}: {cosmic_time_Gyr[0]:.2f} Gyr')
+
+    plt.figure(figsize=(12, 8))
+
+    # Initialize arrays to store mean flow rates
+    mean_dHotGas = []
+    mean_dColdGas = []
+    mean_dCGMgas = []
+    mean_dStellarMass = []
+    time_centers = []
+
+    # Calculate flow rates between consecutive snapshots
+    for snap in range(FirstSnap+1, LastSnap+1):
+        prev_snap = snap - 1
+        
+        # Calculate time difference from cosmology (in Gyr)
+        dt_Gyr = cosmic_time_Gyr[snap] - cosmic_time_Gyr[prev_snap]
+        
+        # Convert to yr for rate calculation (M_sun/yr)
+        dt_yr = dt_Gyr * 1e9
+        
+        if dt_yr <= 0:
+            continue
+        
+        # Calculate changes for all centrals (Type == 0)
+        w_prev = np.where(TypeFull[prev_snap] == 0)[0]
+        w_curr = np.where(TypeFull[snap] == 0)[0]
+        
+        if len(w_prev) > 0 and len(w_curr) > 0:
+            # Calculate mean change rates
+            dHotGas = np.mean(hotgasFull[snap][w_curr]) - np.mean(hotgasFull[prev_snap][w_prev])
+            dColdGas = np.mean(coldgasFull[snap][w_curr]) - np.mean(coldgasFull[prev_snap][w_prev])
+            dCGMgas = np.mean(cgmFull[snap][w_curr]) - np.mean(cgmFull[prev_snap][w_prev])
+            dStellarMass = np.mean(StellarMassFull[snap][w_curr]) - np.mean(StellarMassFull[prev_snap][w_prev])
+            
+            mean_dHotGas.append(dHotGas / dt_yr)
+            mean_dColdGas.append(dColdGas / dt_yr)
+            mean_dCGMgas.append(dCGMgas / dt_yr)
+            mean_dStellarMass.append(dStellarMass / dt_yr)
+            time_centers.append((cosmic_time_Gyr[snap] + cosmic_time_Gyr[prev_snap]) / 2.0)
+
+    # Convert to numpy arrays
+    mean_dHotGas = np.array(mean_dHotGas)
+    mean_dColdGas = np.array(mean_dColdGas)
+    mean_dCGMgas = np.array(mean_dCGMgas)
+    mean_dStellarMass = np.array(mean_dStellarMass)
+    time_centers = np.array(time_centers)
+
+    # Plot the flow rates
+    plt.plot(time_centers, mean_dHotGas, 'r-', linewidth=2, label='HotGas rate')
+    plt.plot(time_centers, mean_dColdGas, 'b-', linewidth=2, label='ColdGas rate')
+    plt.plot(time_centers, mean_dCGMgas, 'g-', linewidth=2, label='CGM rate')
+    plt.plot(time_centers, mean_dStellarMass, 'k-', linewidth=2, label='StellarMass rate')
+    plt.axhline(y=0, color='gray', linestyle=':', alpha=0.5)
+
+    plt.xlabel(r'Cosmic Time [Gyr]', fontsize=14)
+    plt.ylabel(r'$\mathrm{d}M/\mathrm{d}t$ [$M_{\odot}$ yr$^{-1}$]', fontsize=14)
+    plt.legend(loc='best', frameon=False)
+
+    outputFile = OutputDir + 'H.GasFlowRates_evolution_time' + OutputFormat
+    plt.savefig(outputFile, dpi=300, bbox_inches='tight')
+    print('Saved file to', outputFile, '\n')
+    plt.close()
+
+    # --------------------------------------------------------
+
+    print('Plotting gas reservoir flow rates as a function of virial mass (multiple redshifts)')
+
+    plt.figure(figsize=(10, 8))
+
+    # Define snapshot pairs at different redshifts
+    redshift_snap_pairs = {
+        'z~0.0': [(61, 62), (62, 63)],
+        'z~1.0': [(38, 39), (39, 40)],
+        'z~2.0': [(28, 29), (29, 30)]
+    }
+
+    # Use plasma colormap for redshifts
+    n_redshifts = len(redshift_snap_pairs)
+    plasma_cmap = plt.cm.plasma
+    redshift_colors = {z_label: plasma_cmap(i / (n_redshifts - 1)) 
+                    for i, z_label in enumerate(redshift_snap_pairs.keys())}
+
+    # Linestyles for different gas reservoirs
+    gas_linestyles = {
+        'HotGas': '-',
+        'CGM': '--',
+        'ColdGas': ':',
+        'StellarMass': '-.' 
+    }
+
+    # Define virial mass bins - FIXED mass_centers calculation
+    mass_bins = np.arange(10.0, 14.0, 0.5)
+    mass_centers = mass_bins[:-1] + 0.25  # Correct centering for 0.5 dex bins
+
+    # Plot each gas component at different redshifts
+    for gas_type, gas_array in [('HotGas', hotgasFull), 
+                                ('CGM', cgmFull), 
+                                ('ColdGas', coldgasFull),
+                                ('StellarMass', StellarMassFull)]:
+        
+        first_redshift = True  # Flag to only label once per gas type
+        
+        for z_label, snap_pairs in redshift_snap_pairs.items():
+            # Initialize arrays for this redshift
+            dGas_binned = np.zeros(len(mass_centers))
+            counts_binned = np.zeros(len(mass_centers))
+            
+            for prev_snap, snap in snap_pairs:
+                # Get time difference with proper error handling
+                try:
+                    if isinstance(dT[snap], np.ndarray) and len(dT[snap]) > 0:
+                        dt = dT[snap][0]
+                    elif isinstance(dT[snap], (int, float)):
+                        dt = dT[snap]
+                    else:
+                        continue
+                except:
+                    continue
+                
+                if dt <= 0:
+                    continue
+                
+                # Only look at centrals in CURRENT snapshot
+                w_curr = np.where((TypeFull[snap] == 0) & (HaloMassFull[snap] > 0))[0]
+                w_prev = np.where((TypeFull[prev_snap] == 0) & (HaloMassFull[prev_snap] > 0))[0]
+                
+                if len(w_curr) > 0 and len(w_prev) > 0:
+                    masses = np.log10(HaloMassFull[snap][w_curr])
+                    
+                    # For each mass bin, calculate mean change in gas reservoir
+                    for i, mass_center in enumerate(mass_centers):
+                        mask_curr = (masses >= mass_bins[i]) & (masses < mass_bins[i+1])
+                        
+                        if np.sum(mask_curr) > 0:
+                            galaxies_in_bin_curr = w_curr[mask_curr]
+                            mean_gas_curr = np.mean(gas_array[snap][galaxies_in_bin_curr])
+                            
+                            # Get galaxies in similar mass bin at previous snapshot
+                            masses_prev = np.log10(HaloMassFull[prev_snap][w_prev])
+                            mask_prev = (masses_prev >= mass_bins[i]) & (masses_prev < mass_bins[i+1])
+                            
+                            if np.sum(mask_prev) > 0:
+                                galaxies_in_bin_prev = w_prev[mask_prev]
+                                mean_gas_prev = np.mean(gas_array[prev_snap][galaxies_in_bin_prev])
+                                
+                                # Calculate rate of change (dM/dt)
+                                dGas_rate = (mean_gas_curr - mean_gas_prev) / dt
+                                dGas_binned[i] += dGas_rate
+                                counts_binned[i] += 1
+            
+            # Normalize by number of snapshot pairs
+            valid = counts_binned > 0
+            if np.any(valid):
+                dGas_binned[valid] /= counts_binned[valid]
+                
+                # Plot with appropriate style - only label the first redshift for each gas type
+                label = gas_type if first_redshift else None
+                plt.plot(mass_centers[valid], dGas_binned[valid], 
+                        linestyle=gas_linestyles[gas_type], linewidth=2.5, 
+                        color=redshift_colors[z_label],
+                        label=label)
+                
+                first_redshift = False  # Only label once
+
+    plt.axhline(y=0, color='gray', linestyle=':', alpha=0.5)
+
+    plt.xlabel(r'$\log_{10} M_{\rm vir} [M_\odot]$', fontsize=14)
+    plt.ylabel(r'$\mathrm{d}M/\mathrm{d}t\ (M_{\odot}\ \mathrm{yr}^{-1})$', fontsize=14)
+    plt.title('Mean gas reservoir flow rates vs virial mass', fontsize=12)
+    plt.legend(loc='best', frameon=False, fontsize=11)
+    plt.xlim(10.0, 14.0)
+
+    outputFile = OutputDir + 'I.GasFlowRates_vs_VirialMass_MultiZ' + OutputFormat
+    plt.savefig(outputFile, dpi=300, bbox_inches='tight')
+    print('Saved file to', outputFile, '\n')
+    plt.close()
+
+    # --------------------------------------------------------
+
+    print('Calculating cosmic time and lookback time from redshifts using astropy')
+
+    from astropy.cosmology import FlatLambdaCDM
+    import astropy.units as u
+
+    # Define cosmology to match simulation parameters
+    cosmo = FlatLambdaCDM(H0=73, Om0=0.25)
+
+    # Calculate cosmic time for each snapshot from redshift
+    cosmic_time_Gyr = np.array([cosmo.age(z).value for z in redshifts])
+
+    # Calculate lookback time (present day = 0)
+    lookback_time_Gyr = cosmic_time_Gyr[LastSnap] - cosmic_time_Gyr
+
+    print(f'Lookback time at z=0 (snap {LastSnap}): {lookback_time_Gyr[LastSnap]:.2f} Gyr')
+    print(f'Lookback time at z={redshifts[FirstSnap]:.2f} (snap {FirstSnap}): {lookback_time_Gyr[FirstSnap]:.2f} Gyr')
+
+    # --------------------------------------------------------
+
+    # Load second model for comparison
+    FileName2 = '../../SAGE_BROKEN/sage-model/output/millennium/model_0.hdf5'
+
+    print(f'Reading second model from {FileName2}')
+
+    StellarMassFull2 = [0]*(LastSnap-FirstSnap+1)
+    cgmFull2 = [0]*(LastSnap-FirstSnap+1)
+    hotgasFull2 = [0]*(LastSnap-FirstSnap+1)
+    coldgasFull2 = [0]*(LastSnap-FirstSnap+1)
+    HaloMassFull2 = [0]*(LastSnap-FirstSnap+1)
+
+    def read_hdf2(filename=None, snap_num=None, param=None):
+        property = h5.File(FileName2, 'r')
+        return np.array(property[snap_num][param])
+
+    for snap in range(FirstSnap, LastSnap+1):
+        Snapshot = 'Snap_'+str(snap)
+        StellarMassFull2[snap] = read_hdf2(snap_num=Snapshot, param='StellarMass') * 1.0e10 / Hubble_h
+        cgmFull2[snap] = read_hdf2(snap_num=Snapshot, param='CGMgas') * 1.0e10 / Hubble_h
+        hotgasFull2[snap] = read_hdf2(snap_num=Snapshot, param='HotGas') * 1.0e10 / Hubble_h
+        coldgasFull2[snap] = read_hdf2(snap_num=Snapshot, param='ColdGas') * 1.0e10 / Hubble_h
+        HaloMassFull2[snap] = read_hdf2(snap_num=Snapshot, param='Mvir') * 1.0e10 / Hubble_h
+
+
+    # --------------------------------------------------------
+
+    print('Plotting HotGas dM/dt evolution (Model Comparison)')
+
+    plt.figure(figsize=(10, 6))
+    ax = plt.subplot(111)
+
+    hotgas_rate_model1 = []
+    hotgas_rate_model2 = []
+    lookback_centers = []
+
+    for snap in range(FirstSnap+1, LastSnap+1):
+        try:
+            if isinstance(dT[snap], np.ndarray) and len(dT[snap]) > 0:
+                dt = dT[snap][0]  # in Myr
+            elif isinstance(dT[snap], (int, float)):
+                dt = dT[snap]  # in Myr
+            else:
+                continue
+        except:
+            continue
+        
+        if dt <= 0:
+            continue
+        
+        # Convert dt from Myr to yr
+        dt_yr = dt * 1e6
+        
+        if len(hotgasFull[snap]) > 0 and len(hotgasFull[snap-1]) > 0:
+            mean_curr_1 = np.mean(hotgasFull[snap])
+            mean_prev_1 = np.mean(hotgasFull[snap-1])
+            rate_1 = (mean_curr_1 - mean_prev_1) / dt_yr
+        else:
+            rate_1 = np.nan
+        
+        if len(hotgasFull2[snap]) > 0 and len(hotgasFull2[snap-1]) > 0:
+            mean_curr_2 = np.mean(hotgasFull2[snap])
+            mean_prev_2 = np.mean(hotgasFull2[snap-1])
+            rate_2 = (mean_curr_2 - mean_prev_2) / dt_yr
+        else:
+            rate_2 = np.nan
+        
+        hotgas_rate_model1.append(rate_1)
+        hotgas_rate_model2.append(rate_2)
+        lookback_centers.append((lookback_time_Gyr[snap] + lookback_time_Gyr[snap-1]) / 2.0)
+
+    hotgas_rate_model1 = np.array(hotgas_rate_model1)
+    hotgas_rate_model2 = np.array(hotgas_rate_model2)
+    lookback_centers = np.array(lookback_centers)
+
+    valid1 = ~np.isnan(hotgas_rate_model1)
+    valid2 = ~np.isnan(hotgas_rate_model2)
+
+    plt.plot(lookback_centers[valid1], hotgas_rate_model1[valid1], 'b-', linewidth=2.5, label='SAGE CGM')
+    plt.plot(lookback_centers[valid2], hotgas_rate_model2[valid2], 'r--', linewidth=2.5, label='evilSAGE')
+    plt.axhline(y=0, color='gray', linestyle=':', alpha=0.5)
+
+    plt.xlabel(r'Lookback Time [Gyr]', fontsize=14)
+    plt.ylabel(r'$\mathrm{d}M_{\rm HotGas}/\mathrm{d}t$ [$M_\odot$ yr$^{-1}$]', fontsize=14)
+    plt.legend(loc='best', frameon=False)
+    ax.xaxis.set_minor_locator(plt.MultipleLocator(0.5))
+    plt.tight_layout()
+
+    outputFile = OutputDir + 'J.HotGas_dMdt_ModelComparison' + OutputFormat
+    plt.savefig(outputFile, dpi=300, bbox_inches='tight')
+    print('Saved file to', outputFile, '\n')
+    plt.close()
+
+    # --------------------------------------------------------
+
+    print('Plotting ColdGas dM/dt evolution (Model Comparison)')
+
+    plt.figure(figsize=(10, 6))
+    ax = plt.subplot(111)
+
+    coldgas_rate_model1 = []
+    coldgas_rate_model2 = []
+    lookback_centers = []
+
+    for snap in range(FirstSnap+1, LastSnap+1):
+        try:
+            if isinstance(dT[snap], np.ndarray) and len(dT[snap]) > 0:
+                dt = dT[snap][0]
+            elif isinstance(dT[snap], (int, float)):
+                dt = dT[snap]
+            else:
+                continue
+        except:
+            continue
+        
+        if dt <= 0:
+            continue
+        
+        dt_yr = dt * 1e6
+        
+        if len(coldgasFull[snap]) > 0 and len(coldgasFull[snap-1]) > 0:
+            mean_curr_1 = np.mean(coldgasFull[snap])
+            mean_prev_1 = np.mean(coldgasFull[snap-1])
+            rate_1 = (mean_curr_1 - mean_prev_1) / dt_yr
+        else:
+            rate_1 = np.nan
+        
+        if len(coldgasFull2[snap]) > 0 and len(coldgasFull2[snap-1]) > 0:
+            mean_curr_2 = np.mean(coldgasFull2[snap])
+            mean_prev_2 = np.mean(coldgasFull2[snap-1])
+            rate_2 = (mean_curr_2 - mean_prev_2) / dt_yr
+        else:
+            rate_2 = np.nan
+        
+        coldgas_rate_model1.append(rate_1)
+        coldgas_rate_model2.append(rate_2)
+        lookback_centers.append((lookback_time_Gyr[snap] + lookback_time_Gyr[snap-1]) / 2.0)
+
+    coldgas_rate_model1 = np.array(coldgas_rate_model1)
+    coldgas_rate_model2 = np.array(coldgas_rate_model2)
+    lookback_centers = np.array(lookback_centers)
+
+    valid1 = ~np.isnan(coldgas_rate_model1)
+    valid2 = ~np.isnan(coldgas_rate_model2)
+
+    plt.plot(lookback_centers[valid1], coldgas_rate_model1[valid1], 'b-', linewidth=2.5, label='SAGE CGM')
+    plt.plot(lookback_centers[valid2], coldgas_rate_model2[valid2], 'r--', linewidth=2.5, label='evilSAGE')
+    plt.axhline(y=0, color='gray', linestyle=':', alpha=0.5)
+
+    plt.xlabel(r'Lookback Time [Gyr]', fontsize=14)
+    plt.ylabel(r'$\mathrm{d}M_{\rm ColdGas}/\mathrm{d}t$ [$M_\odot$ yr$^{-1}$]', fontsize=14)
+    plt.legend(loc='best', frameon=False)
+    ax.xaxis.set_minor_locator(plt.MultipleLocator(0.5))
+    plt.tight_layout()
+
+    outputFile = OutputDir + 'K.ColdGas_dMdt_ModelComparison' + OutputFormat
+    plt.savefig(outputFile, dpi=300, bbox_inches='tight')
+    print('Saved file to', outputFile, '\n')
+    plt.close()
+
+    # --------------------------------------------------------
+
+    print('Plotting CGM dM/dt evolution (Model Comparison)')
+
+    plt.figure(figsize=(10, 6))
+    ax = plt.subplot(111)
+
+    cgm_rate_model1 = []
+    cgm_rate_model2 = []
+    lookback_centers = []
+
+    for snap in range(FirstSnap+1, LastSnap+1):
+        try:
+            if isinstance(dT[snap], np.ndarray) and len(dT[snap]) > 0:
+                dt = dT[snap][0]
+            elif isinstance(dT[snap], (int, float)):
+                dt = dT[snap]
+            else:
+                continue
+        except:
+            continue
+        
+        if dt <= 0:
+            continue
+        
+        dt_yr = dt * 1e6
+        
+        if len(cgmFull[snap]) > 0 and len(cgmFull[snap-1]) > 0:
+            mean_curr_1 = np.mean(cgmFull[snap])
+            mean_prev_1 = np.mean(cgmFull[snap-1])
+            rate_1 = (mean_curr_1 - mean_prev_1) / dt_yr
+        else:
+            rate_1 = np.nan
+        
+        if len(cgmFull2[snap]) > 0 and len(cgmFull2[snap-1]) > 0:
+            mean_curr_2 = np.mean(cgmFull2[snap])
+            mean_prev_2 = np.mean(cgmFull2[snap-1])
+            rate_2 = (mean_curr_2 - mean_prev_2) / dt_yr
+        else:
+            rate_2 = np.nan
+        
+        cgm_rate_model1.append(rate_1)
+        cgm_rate_model2.append(rate_2)
+        lookback_centers.append((lookback_time_Gyr[snap] + lookback_time_Gyr[snap-1]) / 2.0)
+
+    cgm_rate_model1 = np.array(cgm_rate_model1)
+    cgm_rate_model2 = np.array(cgm_rate_model2)
+    lookback_centers = np.array(lookback_centers)
+
+    valid1 = ~np.isnan(cgm_rate_model1)
+    valid2 = ~np.isnan(cgm_rate_model2)
+
+    plt.plot(lookback_centers[valid1], cgm_rate_model1[valid1], 'b-', linewidth=2.5, label='SAGE CGM')
+    plt.plot(lookback_centers[valid2], cgm_rate_model2[valid2], 'r--', linewidth=2.5, label='evilSAGE')
+    plt.axhline(y=0, color='gray', linestyle=':', alpha=0.5)
+
+    plt.xlabel(r'Lookback Time [Gyr]', fontsize=14)
+    plt.ylabel(r'$\mathrm{d}M_{\rm CGM}/\mathrm{d}t$ [$M_\odot$ yr$^{-1}$]', fontsize=14)
+    plt.legend(loc='best', frameon=False)
+    ax.xaxis.set_minor_locator(plt.MultipleLocator(0.5))
+    plt.tight_layout()
+
+    outputFile = OutputDir + 'L.CGM_dMdt_ModelComparison' + OutputFormat
+    plt.savefig(outputFile, dpi=300, bbox_inches='tight')
+    print('Saved file to', outputFile, '\n')
+    plt.close()
+
+    # --------------------------------------------------------
+
+    print('Plotting StellarMass dM/dt evolution (Model Comparison)')
+
+    plt.figure(figsize=(10, 6))
+    ax = plt.subplot(111)
+
+    stellar_rate_model1 = []
+    stellar_rate_model2 = []
+    lookback_centers = []
+
+    for snap in range(FirstSnap+1, LastSnap+1):
+        try:
+            if isinstance(dT[snap], np.ndarray) and len(dT[snap]) > 0:
+                dt = dT[snap][0]
+            elif isinstance(dT[snap], (int, float)):
+                dt = dT[snap]
+            else:
+                continue
+        except:
+            continue
+        
+        if dt <= 0:
+            continue
+        
+        dt_yr = dt * 1e6
+        
+        if len(StellarMassFull[snap]) > 0 and len(StellarMassFull[snap-1]) > 0:
+            mean_curr_1 = np.mean(StellarMassFull[snap])
+            mean_prev_1 = np.mean(StellarMassFull[snap-1])
+            rate_1 = (mean_curr_1 - mean_prev_1) / dt_yr
+        else:
+            rate_1 = np.nan
+        
+        if len(StellarMassFull2[snap]) > 0 and len(StellarMassFull2[snap-1]) > 0:
+            mean_curr_2 = np.mean(StellarMassFull2[snap])
+            mean_prev_2 = np.mean(StellarMassFull2[snap-1])
+            rate_2 = (mean_curr_2 - mean_prev_2) / dt_yr
+        else:
+            rate_2 = np.nan
+        
+        stellar_rate_model1.append(rate_1)
+        stellar_rate_model2.append(rate_2)
+        lookback_centers.append((lookback_time_Gyr[snap] + lookback_time_Gyr[snap-1]) / 2.0)
+
+    stellar_rate_model1 = np.array(stellar_rate_model1)
+    stellar_rate_model2 = np.array(stellar_rate_model2)
+    lookback_centers = np.array(lookback_centers)
+
+    valid1 = ~np.isnan(stellar_rate_model1)
+    valid2 = ~np.isnan(stellar_rate_model2)
+
+    plt.plot(lookback_centers[valid1], stellar_rate_model1[valid1], 'b-', linewidth=2.5, label='SAGE CGM')
+    plt.plot(lookback_centers[valid2], stellar_rate_model2[valid2], 'r--', linewidth=2.5, label='evilSAGE')
+    plt.axhline(y=0, color='gray', linestyle=':', alpha=0.5)
+
+    plt.xlabel(r'Lookback Time [Gyr]', fontsize=14)
+    plt.ylabel(r'$\mathrm{d}M_*/\mathrm{d}t$ [$M_\odot$ yr$^{-1}$]', fontsize=14)
+    plt.legend(loc='best', frameon=False)
+    ax.xaxis.set_minor_locator(plt.MultipleLocator(0.5))
+    plt.tight_layout()
+
+    outputFile = OutputDir + 'M.StellarMass_dMdt_ModelComparison' + OutputFormat
+    plt.savefig(outputFile, dpi=300, bbox_inches='tight')
+    print('Saved file to', outputFile, '\n')
+    plt.close()
+
+    print('\nAll plots completed!')
+
+    # --------------------------------------------------------
+
+    print('Plotting gas reservoir flow rates evolution (Model Comparison)')
+
+    plt.figure(figsize=(12, 8))
+
+    mean_dHotGas1 = []
+    mean_dColdGas1 = []
+    mean_dCGMgas1 = []
+    mean_dStellarMass1 = []
+
+    mean_dHotGas2 = []
+    mean_dColdGas2 = []
+    mean_dCGMgas2 = []
+    mean_dStellarMass2 = []
+
+    lookback_centers = []
+
+    for snap in range(FirstSnap+1, LastSnap+1):
+        try:
+            if isinstance(dT[snap], np.ndarray) and len(dT[snap]) > 0:
+                dt = dT[snap][0]
+            elif isinstance(dT[snap], (int, float)):
+                dt = dT[snap]
+            else:
+                continue
+        except:
+            continue
+        
+        if dt <= 0:
+            continue
+        
+        dt_yr = dt * 1e6
+        
+        has_model1 = len(hotgasFull[snap]) > 0 and len(hotgasFull[snap-1]) > 0
+        has_model2 = len(hotgasFull2[snap]) > 0 and len(hotgasFull2[snap-1]) > 0
+        
+        if not (has_model1 and has_model2):
+            continue
+        
+        # Model 1 calculations
+        dHotGas1 = np.mean(hotgasFull[snap]) - np.mean(hotgasFull[snap-1])
+        dColdGas1 = np.mean(coldgasFull[snap]) - np.mean(coldgasFull[snap-1])
+        dCGMgas1 = np.mean(cgmFull[snap]) - np.mean(cgmFull[snap-1])
+        dStellarMass1 = np.mean(StellarMassFull[snap]) - np.mean(StellarMassFull[snap-1])
+        
+        mean_dHotGas1.append(dHotGas1 / dt_yr)
+        mean_dColdGas1.append(dColdGas1 / dt_yr)
+        mean_dCGMgas1.append(dCGMgas1 / dt_yr)
+        mean_dStellarMass1.append(dStellarMass1 / dt_yr)
+        
+        # Model 2 calculations
+        dHotGas2 = np.mean(hotgasFull2[snap]) - np.mean(hotgasFull2[snap-1])
+        dColdGas2 = np.mean(coldgasFull2[snap]) - np.mean(coldgasFull2[snap-1])
+        dCGMgas2 = np.mean(cgmFull2[snap]) - np.mean(cgmFull2[snap-1])
+        dStellarMass2 = np.mean(StellarMassFull2[snap]) - np.mean(StellarMassFull2[snap-1])
+        
+        mean_dHotGas2.append(dHotGas2 / dt_yr)
+        mean_dColdGas2.append(dColdGas2 / dt_yr)
+        mean_dCGMgas2.append(dCGMgas2 / dt_yr)
+        mean_dStellarMass2.append(dStellarMass2 / dt_yr)
+        
+        lookback_centers.append((lookback_time_Gyr[snap] + lookback_time_Gyr[snap-1]) / 2.0)
+
+    mean_dHotGas1 = np.array(mean_dHotGas1)
+    mean_dColdGas1 = np.array(mean_dColdGas1)
+    mean_dCGMgas1 = np.array(mean_dCGMgas1)
+    mean_dStellarMass1 = np.array(mean_dStellarMass1)
+
+    mean_dHotGas2 = np.array(mean_dHotGas2)
+    mean_dColdGas2 = np.array(mean_dColdGas2)
+    mean_dCGMgas2 = np.array(mean_dCGMgas2)
+    mean_dStellarMass2 = np.array(mean_dStellarMass2)
+
+    lookback_centers = np.array(lookback_centers)
+
+    # Plot Model 1 (SAGE CGM) - solid lines
+    plt.plot(lookback_centers, mean_dHotGas1, 'r-', linewidth=1, label='HotGas (SAGE CGM)')
+    plt.plot(lookback_centers, mean_dColdGas1, 'b-', linewidth=1, label='ColdGas (SAGE CGM)')
+    plt.plot(lookback_centers, mean_dCGMgas1, 'g-', linewidth=1, label='CGM (SAGE CGM)')
+    plt.plot(lookback_centers, mean_dStellarMass1, 'k-', linewidth=1, label='StellarMass (SAGE CGM)')
+
+    # Plot Model 2 (evilSAGE) - dashed lines
+    plt.plot(lookback_centers, mean_dHotGas2, 'r--', linewidth=1, label='HotGas (evilSAGE)')
+    plt.plot(lookback_centers, mean_dColdGas2, 'b--', linewidth=1, label='ColdGas (evilSAGE)')
+    plt.plot(lookback_centers, mean_dCGMgas2, 'g--', linewidth=1, label='CGM (evilSAGE)')
+    plt.plot(lookback_centers, mean_dStellarMass2, 'k--', linewidth=1, label='StellarMass (evilSAGE)')
+
+    plt.axhline(y=0, color='gray', linestyle=':', alpha=0.5)
+
+    plt.xlabel(r'Lookback Time [Gyr]', fontsize=14)
+    plt.ylabel(r'$\mathrm{d}M/\mathrm{d}t$ [$M_{\odot}$ yr$^{-1}$]', fontsize=14)
+    plt.legend(loc='best', frameon=False, fontsize=10)
+
+    outputFile = OutputDir + 'H.GasFlowRates_evolution_time_comparison' + OutputFormat
+    plt.savefig(outputFile, dpi=300, bbox_inches='tight')
+    print('Saved file to', outputFile, '\n')
+    plt.close()
+
+    # --------------------------------------------------------
+
+    # Define halo mass bins (in log10 M_sun)
+    mass_bins_dict = {
+        'Low': (10.0, 11.5),
+        'Intermediate': (11.5, 12.5),
+        'High': (12.5, 15.0)
+    }
+
+    # --------------------------------------------------------
+    # Loop through each mass bin to create separate plots
+
+    for mass_label, (mass_min, mass_max) in mass_bins_dict.items():
+        
+        print(f'Plotting HotGas dM/dt evolution for {mass_label} mass haloes')
+        
+        plt.figure(figsize=(10, 6))
+        ax = plt.subplot(111)
+        
+        hotgas_rate_model1 = []
+        hotgas_rate_model2 = []
+        lookback_centers = []
+        
+        for snap in range(FirstSnap+1, LastSnap+1):
+            try:
+                if isinstance(dT[snap], np.ndarray) and len(dT[snap]) > 0:
+                    dt = dT[snap][0]
+                elif isinstance(dT[snap], (int, float)):
+                    dt = dT[snap]
+                else:
+                    continue
+            except:
+                continue
+            
+            if dt <= 0:
+                continue
+            
+            dt_yr = dt * 1e6
+            
+            # Filter by halo mass for Model 1
+            halo_masses_1 = np.log10(HaloMassFull[snap])
+            halo_masses_1_prev = np.log10(HaloMassFull[snap-1])
+            mask_1_curr = (halo_masses_1 >= mass_min) & (halo_masses_1 < mass_max)
+            mask_1_prev = (halo_masses_1_prev >= mass_min) & (halo_masses_1_prev < mass_max)
+            
+            if np.sum(mask_1_curr) > 0 and np.sum(mask_1_prev) > 0:
+                mean_curr_1 = np.mean(hotgasFull[snap][mask_1_curr])
+                mean_prev_1 = np.mean(hotgasFull[snap-1][mask_1_prev])
+                rate_1 = (mean_curr_1 - mean_prev_1) / dt_yr
+            else:
+                rate_1 = np.nan
+            
+            # Filter by halo mass for Model 2
+            halo_masses_2 = np.log10(HaloMassFull2[snap])
+            halo_masses_2_prev = np.log10(HaloMassFull2[snap-1])
+            mask_2_curr = (halo_masses_2 >= mass_min) & (halo_masses_2 < mass_max)
+            mask_2_prev = (halo_masses_2_prev >= mass_min) & (halo_masses_2_prev < mass_max)
+            
+            if np.sum(mask_2_curr) > 0 and np.sum(mask_2_prev) > 0:
+                mean_curr_2 = np.mean(hotgasFull2[snap][mask_2_curr])
+                mean_prev_2 = np.mean(hotgasFull2[snap-1][mask_2_prev])
+                rate_2 = (mean_curr_2 - mean_prev_2) / dt_yr
+            else:
+                rate_2 = np.nan
+            
+            hotgas_rate_model1.append(rate_1)
+            hotgas_rate_model2.append(rate_2)
+            lookback_centers.append((lookback_time_Gyr[snap] + lookback_time_Gyr[snap-1]) / 2.0)
+        
+        hotgas_rate_model1 = np.array(hotgas_rate_model1)
+        hotgas_rate_model2 = np.array(hotgas_rate_model2)
+        lookback_centers = np.array(lookback_centers)
+        
+        valid1 = ~np.isnan(hotgas_rate_model1)
+        valid2 = ~np.isnan(hotgas_rate_model2)
+        
+        plt.plot(lookback_centers[valid1], hotgas_rate_model1[valid1], 'b-', linewidth=2.5, label='SAGE CGM')
+        plt.plot(lookback_centers[valid2], hotgas_rate_model2[valid2], 'r--', linewidth=2.5, label='evilSAGE')
+        plt.axhline(y=0, color='gray', linestyle=':', alpha=0.5)
+        
+        plt.xlabel(r'Lookback Time [Gyr]', fontsize=14)
+        plt.ylabel(r'$\mathrm{d}M_{\rm HotGas}/\mathrm{d}t$ [$M_\odot$ yr$^{-1}$]', fontsize=14)
+        plt.title(f'{mass_label} Mass Haloes: {mass_min:.1f} < log(M$_{{vir}}$) < {mass_max:.1f}', fontsize=12)
+        plt.legend(loc='best', frameon=False)
+        ax.xaxis.set_minor_locator(plt.MultipleLocator(0.5))
+        plt.tight_layout()
+        
+        outputFile = OutputDir + f'J.HotGas_dMdt_{mass_label}Mass' + OutputFormat
+        plt.savefig(outputFile, dpi=300, bbox_inches='tight')
+        print('Saved file to', outputFile, '\n')
+        plt.close()
+
+    # --------------------------------------------------------
+
+    for mass_label, (mass_min, mass_max) in mass_bins_dict.items():
+        
+        print(f'Plotting ColdGas dM/dt evolution for {mass_label} mass haloes')
+        
+        plt.figure(figsize=(10, 6))
+        ax = plt.subplot(111)
+        
+        coldgas_rate_model1 = []
+        coldgas_rate_model2 = []
+        lookback_centers = []
+        
+        for snap in range(FirstSnap+1, LastSnap+1):
+            try:
+                if isinstance(dT[snap], np.ndarray) and len(dT[snap]) > 0:
+                    dt = dT[snap][0]
+                elif isinstance(dT[snap], (int, float)):
+                    dt = dT[snap]
+                else:
+                    continue
+            except:
+                continue
+            
+            if dt <= 0:
+                continue
+            
+            dt_yr = dt * 1e6
+            
+            halo_masses_1 = np.log10(HaloMassFull[snap])
+            halo_masses_1_prev = np.log10(HaloMassFull[snap-1])
+            mask_1_curr = (halo_masses_1 >= mass_min) & (halo_masses_1 < mass_max)
+            mask_1_prev = (halo_masses_1_prev >= mass_min) & (halo_masses_1_prev < mass_max)
+            
+            if np.sum(mask_1_curr) > 0 and np.sum(mask_1_prev) > 0:
+                mean_curr_1 = np.mean(coldgasFull[snap][mask_1_curr])
+                mean_prev_1 = np.mean(coldgasFull[snap-1][mask_1_prev])
+                rate_1 = (mean_curr_1 - mean_prev_1) / dt_yr
+            else:
+                rate_1 = np.nan
+            
+            halo_masses_2 = np.log10(HaloMassFull2[snap])
+            halo_masses_2_prev = np.log10(HaloMassFull2[snap-1])
+            mask_2_curr = (halo_masses_2 >= mass_min) & (halo_masses_2 < mass_max)
+            mask_2_prev = (halo_masses_2_prev >= mass_min) & (halo_masses_2_prev < mass_max)
+            
+            if np.sum(mask_2_curr) > 0 and np.sum(mask_2_prev) > 0:
+                mean_curr_2 = np.mean(coldgasFull2[snap][mask_2_curr])
+                mean_prev_2 = np.mean(coldgasFull2[snap-1][mask_2_prev])
+                rate_2 = (mean_curr_2 - mean_prev_2) / dt_yr
+            else:
+                rate_2 = np.nan
+            
+            coldgas_rate_model1.append(rate_1)
+            coldgas_rate_model2.append(rate_2)
+            lookback_centers.append((lookback_time_Gyr[snap] + lookback_time_Gyr[snap-1]) / 2.0)
+        
+        coldgas_rate_model1 = np.array(coldgas_rate_model1)
+        coldgas_rate_model2 = np.array(coldgas_rate_model2)
+        lookback_centers = np.array(lookback_centers)
+        
+        valid1 = ~np.isnan(coldgas_rate_model1)
+        valid2 = ~np.isnan(coldgas_rate_model2)
+        
+        plt.plot(lookback_centers[valid1], coldgas_rate_model1[valid1], 'b-', linewidth=2.5, label='SAGE CGM')
+        plt.plot(lookback_centers[valid2], coldgas_rate_model2[valid2], 'r--', linewidth=2.5, label='evilSAGE')
+        plt.axhline(y=0, color='gray', linestyle=':', alpha=0.5)
+        
+        plt.xlabel(r'Lookback Time [Gyr]', fontsize=14)
+        plt.ylabel(r'$\mathrm{d}M_{\rm ColdGas}/\mathrm{d}t$ [$M_\odot$ yr$^{-1}$]', fontsize=14)
+        plt.title(f'{mass_label} Mass Haloes: {mass_min:.1f} < log(M$_{{vir}}$) < {mass_max:.1f}', fontsize=12)
+        plt.legend(loc='best', frameon=False)
+        ax.xaxis.set_minor_locator(plt.MultipleLocator(0.5))
+        plt.tight_layout()
+        
+        outputFile = OutputDir + f'K.ColdGas_dMdt_{mass_label}Mass' + OutputFormat
+        plt.savefig(outputFile, dpi=300, bbox_inches='tight')
+        print('Saved file to', outputFile, '\n')
+        plt.close()
+
+    # --------------------------------------------------------
+
+    for mass_label, (mass_min, mass_max) in mass_bins_dict.items():
+        
+        print(f'Plotting CGM dM/dt evolution for {mass_label} mass haloes')
+        
+        plt.figure(figsize=(10, 6))
+        ax = plt.subplot(111)
+        
+        cgm_rate_model1 = []
+        cgm_rate_model2 = []
+        lookback_centers = []
+        
+        for snap in range(FirstSnap+1, LastSnap+1):
+            try:
+                if isinstance(dT[snap], np.ndarray) and len(dT[snap]) > 0:
+                    dt = dT[snap][0]
+                elif isinstance(dT[snap], (int, float)):
+                    dt = dT[snap]
+                else:
+                    continue
+            except:
+                continue
+            
+            if dt <= 0:
+                continue
+            
+            dt_yr = dt * 1e6
+            
+            halo_masses_1 = np.log10(HaloMassFull[snap])
+            halo_masses_1_prev = np.log10(HaloMassFull[snap-1])
+            mask_1_curr = (halo_masses_1 >= mass_min) & (halo_masses_1 < mass_max)
+            mask_1_prev = (halo_masses_1_prev >= mass_min) & (halo_masses_1_prev < mass_max)
+            
+            if np.sum(mask_1_curr) > 0 and np.sum(mask_1_prev) > 0:
+                mean_curr_1 = np.mean(cgmFull[snap][mask_1_curr])
+                mean_prev_1 = np.mean(cgmFull[snap-1][mask_1_prev])
+                rate_1 = (mean_curr_1 - mean_prev_1) / dt_yr
+            else:
+                rate_1 = np.nan
+            
+            halo_masses_2 = np.log10(HaloMassFull2[snap])
+            halo_masses_2_prev = np.log10(HaloMassFull2[snap-1])
+            mask_2_curr = (halo_masses_2 >= mass_min) & (halo_masses_2 < mass_max)
+            mask_2_prev = (halo_masses_2_prev >= mass_min) & (halo_masses_2_prev < mass_max)
+            
+            if np.sum(mask_2_curr) > 0 and np.sum(mask_2_prev) > 0:
+                mean_curr_2 = np.mean(cgmFull2[snap][mask_2_curr])
+                mean_prev_2 = np.mean(cgmFull2[snap-1][mask_2_prev])
+                rate_2 = (mean_curr_2 - mean_prev_2) / dt_yr
+            else:
+                rate_2 = np.nan
+            
+            cgm_rate_model1.append(rate_1)
+            cgm_rate_model2.append(rate_2)
+            lookback_centers.append((lookback_time_Gyr[snap] + lookback_time_Gyr[snap-1]) / 2.0)
+        
+        cgm_rate_model1 = np.array(cgm_rate_model1)
+        cgm_rate_model2 = np.array(cgm_rate_model2)
+        lookback_centers = np.array(lookback_centers)
+        
+        valid1 = ~np.isnan(cgm_rate_model1)
+        valid2 = ~np.isnan(cgm_rate_model2)
+        
+        plt.plot(lookback_centers[valid1], cgm_rate_model1[valid1], 'b-', linewidth=2.5, label='SAGE CGM')
+        plt.plot(lookback_centers[valid2], cgm_rate_model2[valid2], 'r--', linewidth=2.5, label='evilSAGE')
+        plt.axhline(y=0, color='gray', linestyle=':', alpha=0.5)
+        
+        plt.xlabel(r'Lookback Time [Gyr]', fontsize=14)
+        plt.ylabel(r'$\mathrm{d}M_{\rm CGM}/\mathrm{d}t$ [$M_\odot$ yr$^{-1}$]', fontsize=14)
+        plt.title(f'{mass_label} Mass Haloes: {mass_min:.1f} < log(M$_{{vir}}$) < {mass_max:.1f}', fontsize=12)
+        plt.legend(loc='best', frameon=False)
+        ax.xaxis.set_minor_locator(plt.MultipleLocator(0.5))
+        plt.tight_layout()
+        
+        outputFile = OutputDir + f'L.CGM_dMdt_{mass_label}Mass' + OutputFormat
+        plt.savefig(outputFile, dpi=300, bbox_inches='tight')
+        print('Saved file to', outputFile, '\n')
+        plt.close()
+
+    # --------------------------------------------------------
+
+    for mass_label, (mass_min, mass_max) in mass_bins_dict.items():
+        
+        print(f'Plotting StellarMass dM/dt evolution for {mass_label} mass haloes')
+        
+        plt.figure(figsize=(10, 6))
+        ax = plt.subplot(111)
+        
+        stellar_rate_model1 = []
+        stellar_rate_model2 = []
+        lookback_centers = []
+        
+        for snap in range(FirstSnap+1, LastSnap+1):
+            try:
+                if isinstance(dT[snap], np.ndarray) and len(dT[snap]) > 0:
+                    dt = dT[snap][0]
+                elif isinstance(dT[snap], (int, float)):
+                    dt = dT[snap]
+                else:
+                    continue
+            except:
+                continue
+            
+            if dt <= 0:
+                continue
+            
+            dt_yr = dt * 1e6
+            
+            halo_masses_1 = np.log10(HaloMassFull[snap])
+            halo_masses_1_prev = np.log10(HaloMassFull[snap-1])
+            mask_1_curr = (halo_masses_1 >= mass_min) & (halo_masses_1 < mass_max)
+            mask_1_prev = (halo_masses_1_prev >= mass_min) & (halo_masses_1_prev < mass_max)
+            
+            if np.sum(mask_1_curr) > 0 and np.sum(mask_1_prev) > 0:
+                mean_curr_1 = np.mean(StellarMassFull[snap][mask_1_curr])
+                mean_prev_1 = np.mean(StellarMassFull[snap-1][mask_1_prev])
+                rate_1 = (mean_curr_1 - mean_prev_1) / dt_yr
+            else:
+                rate_1 = np.nan
+            
+            halo_masses_2 = np.log10(HaloMassFull2[snap])
+            halo_masses_2_prev = np.log10(HaloMassFull2[snap-1])
+            mask_2_curr = (halo_masses_2 >= mass_min) & (halo_masses_2 < mass_max)
+            mask_2_prev = (halo_masses_2_prev >= mass_min) & (halo_masses_2_prev < mass_max)
+            
+            if np.sum(mask_2_curr) > 0 and np.sum(mask_2_prev) > 0:
+                mean_curr_2 = np.mean(StellarMassFull2[snap][mask_2_curr])
+                mean_prev_2 = np.mean(StellarMassFull2[snap-1][mask_2_prev])
+                rate_2 = (mean_curr_2 - mean_prev_2) / dt_yr
+            else:
+                rate_2 = np.nan
+            
+            stellar_rate_model1.append(rate_1)
+            stellar_rate_model2.append(rate_2)
+            lookback_centers.append((lookback_time_Gyr[snap] + lookback_time_Gyr[snap-1]) / 2.0)
+        
+        stellar_rate_model1 = np.array(stellar_rate_model1)
+        stellar_rate_model2 = np.array(stellar_rate_model2)
+        lookback_centers = np.array(lookback_centers)
+        
+        valid1 = ~np.isnan(stellar_rate_model1)
+        valid2 = ~np.isnan(stellar_rate_model2)
+        
+        plt.plot(lookback_centers[valid1], stellar_rate_model1[valid1], 'b-', linewidth=2.5, label='SAGE CGM')
+        plt.plot(lookback_centers[valid2], stellar_rate_model2[valid2], 'r--', linewidth=2.5, label='evilSAGE')
+        plt.axhline(y=0, color='gray', linestyle=':', alpha=0.5)
+        
+        plt.xlabel(r'Lookback Time [Gyr]', fontsize=14)
+        plt.ylabel(r'$\mathrm{d}M_*/\mathrm{d}t$ [$M_\odot$ yr$^{-1}$]', fontsize=14)
+        plt.title(f'{mass_label} Mass Haloes: {mass_min:.1f} < log(M$_{{vir}}$) < {mass_max:.1f}', fontsize=12)
+        plt.legend(loc='best', frameon=False)
+        ax.xaxis.set_minor_locator(plt.MultipleLocator(0.5))
+        plt.tight_layout()
+        
+        outputFile = OutputDir + f'M.StellarMass_dMdt_{mass_label}Mass' + OutputFormat
+        plt.savefig(outputFile, dpi=300, bbox_inches='tight')
+        print('Saved file to', outputFile, '\n')
+        plt.close()
+
+    print('\nAll mass-binned plots completed!')
+
+    # --------------------------------------------------------
+
+    print('Plotting HotGas Mass evolution (Model Comparison)')
+
+    plt.figure(figsize=(10, 6))
+    ax = plt.subplot(111)
+
+    hotgas_mass_model1 = []
+    hotgas_mass_model2 = []
+    lookback_times = []
+
+    for snap in range(FirstSnap, LastSnap+1):
+        if len(hotgasFull[snap]) > 0:
+            mass_1 = np.mean(hotgasFull[snap])
+        else:
+            mass_1 = np.nan
+        
+        if len(hotgasFull2[snap]) > 0:
+            mass_2 = np.mean(hotgasFull2[snap])
+        else:
+            mass_2 = np.nan
+        
+        hotgas_mass_model1.append(mass_1)
+        hotgas_mass_model2.append(mass_2)
+        lookback_times.append(lookback_time_Gyr[snap])
+
+    hotgas_mass_model1 = np.array(hotgas_mass_model1)
+    hotgas_mass_model2 = np.array(hotgas_mass_model2)
+    lookback_times = np.array(lookback_times)
+
+    valid1 = ~np.isnan(hotgas_mass_model1)
+    valid2 = ~np.isnan(hotgas_mass_model2)
+
+    plt.plot(lookback_times[valid1], hotgas_mass_model1[valid1], 'b-', linewidth=2.5, label='SAGE CGM')
+    plt.plot(lookback_times[valid2], hotgas_mass_model2[valid2], 'r--', linewidth=2.5, label='evilSAGE')
+
+    plt.xlabel(r'Lookback Time [Gyr]', fontsize=14)
+    plt.ylabel(r'Mean HotGas Mass [$M_\odot$]', fontsize=14)
+    plt.legend(loc='best', frameon=False)
+    ax.xaxis.set_minor_locator(plt.MultipleLocator(0.5))
+    plt.yscale('log')
+    plt.tight_layout()
+
+    outputFile = OutputDir + 'N.HotGas_Mass_ModelComparison' + OutputFormat
+    plt.savefig(outputFile, dpi=300, bbox_inches='tight')
+    print('Saved file to', outputFile, '\n')
+    plt.close()
+
+    # --------------------------------------------------------
+
+    print('Plotting ColdGas Mass evolution (Model Comparison)')
+
+    plt.figure(figsize=(10, 6))
+    ax = plt.subplot(111)
+
+    coldgas_mass_model1 = []
+    coldgas_mass_model2 = []
+    lookback_times = []
+
+    for snap in range(FirstSnap, LastSnap+1):
+        if len(coldgasFull[snap]) > 0:
+            mass_1 = np.mean(coldgasFull[snap])
+        else:
+            mass_1 = np.nan
+        
+        if len(coldgasFull2[snap]) > 0:
+            mass_2 = np.mean(coldgasFull2[snap])
+        else:
+            mass_2 = np.nan
+        
+        coldgas_mass_model1.append(mass_1)
+        coldgas_mass_model2.append(mass_2)
+        lookback_times.append(lookback_time_Gyr[snap])
+
+    coldgas_mass_model1 = np.array(coldgas_mass_model1)
+    coldgas_mass_model2 = np.array(coldgas_mass_model2)
+    lookback_times = np.array(lookback_times)
+
+    valid1 = ~np.isnan(coldgas_mass_model1)
+    valid2 = ~np.isnan(coldgas_mass_model2)
+
+    plt.plot(lookback_times[valid1], coldgas_mass_model1[valid1], 'b-', linewidth=2.5, label='SAGE CGM')
+    plt.plot(lookback_times[valid2], coldgas_mass_model2[valid2], 'r--', linewidth=2.5, label='evilSAGE')
+
+    plt.xlabel(r'Lookback Time [Gyr]', fontsize=14)
+    plt.ylabel(r'Mean ColdGas Mass [$M_\odot$]', fontsize=14)
+    plt.legend(loc='best', frameon=False)
+    ax.xaxis.set_minor_locator(plt.MultipleLocator(0.5))
+    plt.yscale('log')
+    plt.tight_layout()
+
+    outputFile = OutputDir + 'O.ColdGas_Mass_ModelComparison' + OutputFormat
+    plt.savefig(outputFile, dpi=300, bbox_inches='tight')
+    print('Saved file to', outputFile, '\n')
+    plt.close()
+
+    # --------------------------------------------------------
+
+    print('Plotting CGM Mass evolution (Model Comparison)')
+
+    plt.figure(figsize=(10, 6))
+    ax = plt.subplot(111)
+
+    cgm_mass_model1 = []
+    cgm_mass_model2 = []
+    lookback_times = []
+
+    for snap in range(FirstSnap, LastSnap+1):
+        if len(cgmFull[snap]) > 0:
+            mass_1 = np.mean(cgmFull[snap])
+        else:
+            mass_1 = np.nan
+        
+        if len(cgmFull2[snap]) > 0:
+            mass_2 = np.mean(cgmFull2[snap])
+        else:
+            mass_2 = np.nan
+        
+        cgm_mass_model1.append(mass_1)
+        cgm_mass_model2.append(mass_2)
+        lookback_times.append(lookback_time_Gyr[snap])
+
+    cgm_mass_model1 = np.array(cgm_mass_model1)
+    cgm_mass_model2 = np.array(cgm_mass_model2)
+    lookback_times = np.array(lookback_times)
+
+    valid1 = ~np.isnan(cgm_mass_model1)
+    valid2 = ~np.isnan(cgm_mass_model2)
+
+    plt.plot(lookback_times[valid1], cgm_mass_model1[valid1], 'b-', linewidth=2.5, label='SAGE CGM')
+    plt.plot(lookback_times[valid2], cgm_mass_model2[valid2], 'r--', linewidth=2.5, label='evilSAGE')
+
+    plt.xlabel(r'Lookback Time [Gyr]', fontsize=14)
+    plt.ylabel(r'Mean CGM Mass [$M_\odot$]', fontsize=14)
+    plt.legend(loc='best', frameon=False)
+    ax.xaxis.set_minor_locator(plt.MultipleLocator(0.5))
+    plt.yscale('log')
+    plt.tight_layout()
+
+    outputFile = OutputDir + 'P.CGM_Mass_ModelComparison' + OutputFormat
+    plt.savefig(outputFile, dpi=300, bbox_inches='tight')
+    print('Saved file to', outputFile, '\n')
+    plt.close()
+
+    # --------------------------------------------------------
+
+    print('Plotting StellarMass evolution (Model Comparison)')
+
+    plt.figure(figsize=(10, 6))
+    ax = plt.subplot(111)
+
+    stellar_mass_model1 = []
+    stellar_mass_model2 = []
+    lookback_times = []
+
+    for snap in range(FirstSnap, LastSnap+1):
+        if len(StellarMassFull[snap]) > 0:
+            mass_1 = np.mean(StellarMassFull[snap])
+        else:
+            mass_1 = np.nan
+        
+        if len(StellarMassFull2[snap]) > 0:
+            mass_2 = np.mean(StellarMassFull2[snap])
+        else:
+            mass_2 = np.nan
+        
+        stellar_mass_model1.append(mass_1)
+        stellar_mass_model2.append(mass_2)
+        lookback_times.append(lookback_time_Gyr[snap])
+
+    stellar_mass_model1 = np.array(stellar_mass_model1)
+    stellar_mass_model2 = np.array(stellar_mass_model2)
+    lookback_times = np.array(lookback_times)
+
+    valid1 = ~np.isnan(stellar_mass_model1)
+    valid2 = ~np.isnan(stellar_mass_model2)
+
+    plt.plot(lookback_times[valid1], stellar_mass_model1[valid1], 'b-', linewidth=2.5, label='SAGE CGM')
+    plt.plot(lookback_times[valid2], stellar_mass_model2[valid2], 'r--', linewidth=2.5, label='evilSAGE')
+
+    plt.xlabel(r'Lookback Time [Gyr]', fontsize=14)
+    plt.ylabel(r'Mean Stellar Mass [$M_\odot$]', fontsize=14)
+    plt.legend(loc='best', frameon=False)
+    ax.xaxis.set_minor_locator(plt.MultipleLocator(0.5))
+    plt.yscale('log')
+    plt.tight_layout()
+
+    outputFile = OutputDir + 'Q.StellarMass_Mass_ModelComparison' + OutputFormat
+    plt.savefig(outputFile, dpi=300, bbox_inches='tight')
+    print('Saved file to', outputFile, '\n')
+    plt.close()
+
+    print('\nAll mass evolution plots completed!')

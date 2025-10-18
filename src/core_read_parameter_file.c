@@ -145,18 +145,6 @@ int read_parameter_file(const char *fname, struct params *run_params)
     ParamAddr[NParam] = &(run_params->AGNrecipeOn);
     ParamID[NParam++] = INT;
 
-    strncpy(ParamTag[NParam], "CGMrecipeOn", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->CGMrecipeOn);
-    ParamID[NParam++] = INT;
-
-    strncpy(ParamTag[NParam], "FIREMassLoading", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->FIREMassLoading);
-    ParamID[NParam++] = INT;
-
-    strncpy(ParamTag[NParam], "FIREejection", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->FIREejection);
-    ParamID[NParam++] = INT;
-
     strncpy(ParamTag[NParam], "BaryonFrac", MAXTAGLEN);
     ParamAddr[NParam] = &(run_params->BaryonFrac);
     ParamID[NParam++] = DOUBLE;
@@ -245,17 +233,13 @@ int read_parameter_file(const char *fname, struct params *run_params)
     ParamAddr[NParam] = &(run_params->Exponent_Forest_Dist_Scheme);
     ParamID[NParam++] = DOUBLE;
 
-    strncpy(ParamTag[NParam], "CGM_M0", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->CGM_M0);
-    ParamID[NParam++] = DOUBLE;
+    strncpy(ParamTag[NParam], "CGMrecipeOn", MAXTAGLEN);
+    ParamAddr[NParam] = &(run_params->CGMrecipeOn);
+    ParamID[NParam++] = INT;
 
-    strncpy(ParamTag[NParam], "CGM_SFR0", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->CGM_SFR0);
-    ParamID[NParam++] = DOUBLE;
-
-    strncpy(ParamTag[NParam], "CGM_OUTFLOW0", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->CGM_OUTFLOW0);
-    ParamID[NParam++] = DOUBLE;
+    strncpy(ParamTag[NParam], "CGMrecipeSAGEOn", MAXTAGLEN);
+    ParamAddr[NParam] = &(run_params->CGMrecipeSAGEOn);
+    ParamID[NParam++] = INT;
 
     used_tag = mymalloc(sizeof(int) * NParam);
     for(int i=0; i<NParam; i++) {

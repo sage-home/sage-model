@@ -17,7 +17,6 @@ struct HDF5_GALAXY_OUTPUT
     short isFlyby;
 #else
     int32_t *Type;
-    int32_t *Regime; // 0 = CGM, 1 = HOT
 #endif
     
     long long   *GalaxyIndex;
@@ -54,21 +53,22 @@ struct HDF5_GALAXY_OUTPUT
     
     /* baryonic reservoirs */
     float *ColdGas;
-    float *H2gas;
     float *StellarMass;
     float *BulgeMass;
     float *HotGas;
-    float *CGMgas;
+    float *EjectedMass;
     float *BlackHoleMass;
     float *ICS;
+    float *H2gas;
     
     /* metals */
     float *MetalsColdGas;
     float *MetalsStellarMass;
     float *MetalsBulgeMass;
     float *MetalsHotGas;
-    float *MetalsCGMgas;
+    float *MetalsEjectedMass;
     float *MetalsICS;
+    float *MassLoading;
     
     /* to calculate magnitudes */
     float *SfrDisk;
@@ -84,13 +84,16 @@ struct HDF5_GALAXY_OUTPUT
     float *TimeOfLastMajorMerger;
     float *TimeOfLastMinorMerger;
     float *OutflowRate;
-    float *RcoolToRvir;
-    float *MassLoading;
     
     /* infall properties */
     float *infallMvir;
     float *infallVvir;
     float *infallVmax;
+
+    /* CGM properties */
+    int32_t *Regime;  /* 0 = CGM-regime 1 = ICM-regime */
+    float *CGMgas;
+    float *MetalsCGMgas;
 };
     
     // Proto-Types //

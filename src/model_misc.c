@@ -3,8 +3,9 @@
 #include <string.h>
 #include <math.h>
 #include <time.h>
-#include "core_cool_func.h"
+
 #include "core_allvars.h"
+
 #include "model_misc.h"
 
 void init_galaxy(const int p, const int halonr, int *galaxycounter, const struct halo_data *halos,
@@ -16,8 +17,7 @@ void init_galaxy(const int p, const int halonr, int *galaxycounter, const struct
             halonr, halos[halonr].FirstHaloInFOFgroup);
 
     galaxies[p].Type = 0;
-    galaxies[p].Regime = -1; // Initialize as unassigned
-    galaxies[p].HasTransitionedToHot = 0;  // Initialize as false
+    galaxies[p].Regime = -1; // undefined at initialization
 
     galaxies[p].GalaxyNr = *galaxycounter;
     (*galaxycounter)++;
@@ -45,22 +45,21 @@ void init_galaxy(const int p, const int halonr, int *galaxycounter, const struct
     galaxies[p].deltaMvir = 0.0;
 
     galaxies[p].ColdGas = 0.0;
-    galaxies[p].H2gas = 0.0;
     galaxies[p].StellarMass = 0.0;
     galaxies[p].BulgeMass = 0.0;
     galaxies[p].HotGas = 0.0;
-    galaxies[p].CGMgas = 0.0;
+    galaxies[p].EjectedMass = 0.0;
     galaxies[p].BlackHoleMass = 0.0;
     galaxies[p].ICS = 0.0;
+    galaxies[p].CGMgas = 0.0;
 
     galaxies[p].MetalsColdGas = 0.0;
     galaxies[p].MetalsStellarMass = 0.0;
     galaxies[p].MetalsBulgeMass = 0.0;
     galaxies[p].MetalsHotGas = 0.0;
-    galaxies[p].MetalsCGMgas = 0.0;
+    galaxies[p].MetalsEjectedMass = 0.0;
     galaxies[p].MetalsICS = 0.0;
-    galaxies[p].RcoolToRvir = 0.0;
-    galaxies[p].MassLoading = 0.0;
+    galaxies[p].MetalsCGMgas = 0.0;
 
     for(int step = 0; step < STEPS; step++) {
         galaxies[p].SfrDisk[step] = 0.0;
@@ -167,147 +166,29 @@ double get_virial_radius(const int halonr, const struct halo_data *halos, const 
   return cbrt(get_virial_mass(halonr, halos, run_params) * fac);
 }
 
-void determine_and_store_regime(const int ngal, struct GALAXY *galaxies, const struct params *run_params)
+
+void determine_and_store_regime(const int ngal, struct GALAXY *galaxies, 
+                                const struct params *run_params)
 {
+    
+    // CGM recipe is on - classify based on virial temperature
     for(int p = 0; p < ngal; p++) {
         if(galaxies[p].mergeType > 0) continue;
         
-        // THIS IS LIKELY THE BUG - check these calculations
+        // Calculate virial temperature: Tvir = (mu * mp / 2k) * Vvir^2
+        // Simplifies to: Tvir ≈ 35.9 * Vvir^2 (Vvir in km/s, Tvir in K)
         const double z = run_params->ZZ[galaxies[p].SnapNum];
-        const double Tvir = 35.9 * galaxies[p].Vvir * galaxies[p].Vvir; // in Kelvin
-        const double Tvir_threshold_z0 = 8.0e5;
-        const double z_scaling = pow(1.0 + z, 1.2);
+        const double Tvir = 35.9 * galaxies[p].Vvir * galaxies[p].Vvir;
+        
+        // Threshold with redshift evolution
+        const double Tvir_threshold_z0 = 8.0e5;  // 800,000 K at z=0
+        const double z_scaling = pow(1.0 + z, 0.35);
         const double Tvir_threshold = Tvir_threshold_z0 * z_scaling;
-        const double Tvir_to_Tmax_ratio = Tvir_threshold / Tvir;  // BUG HERE?
         
-        galaxies[p].Regime = (Tvir_to_Tmax_ratio >= 1.0) ? 0 : 1;
+        // Regime 0: CGM regime (low-mass halos, Tvir < threshold)
+        // Regime 1: Hot-ICM regime (high-mass halos, Tvir >= threshold)
+        galaxies[p].Regime = (Tvir < Tvir_threshold) ? 0 : 1;
     }
-}
-
-void final_regime_check(const int ngal, struct GALAXY *galaxies, const struct params *run_params)
-{
-    if(run_params->CGMrecipeOn == 0) {
-        return;
-    }
-    
-    // static int total_galaxies_processed = 0;  // Track total galaxies across all calls
-    // int moves_this_batch = 0;                 // Track moves in this batch
-    
-    for(int p = 0; p < ngal; p++) {
-        if(galaxies[p].mergeType > 0) continue;
-        
-        // total_galaxies_processed++;
-        
-        // Use Vvir threshold instead of mass threshold
-        // const double Vvir_threshold = 90.0;  // km/s
-        // const double rcool_to_rvir = calculate_rcool_to_rvir_ratio(p, galaxies, run_params);
-        const double Tvir = 35.9 * galaxies[p].Vvir * galaxies[p].Vvir; // in Kelvin
-        const double Tvir_threshold = 2.5e5; // K, corresponds to Vvir ~52.7 km/s
-        const double Tvir_to_Tmax_ratio = Tvir_threshold / Tvir;
-
-        // Store original values for diagnostic output
-        // double original_hot_gas = galaxies[p].HotGas;
-        // double original_cgm_gas = galaxies[p].CGMgas;
-        // double original_metals_hot = galaxies[p].MetalsHotGas;
-        // double original_metals_cgm = galaxies[p].MetalsCGMgas;
-        // double original_reincorp = galaxies[p].ReincorporatedGas;
-        // int original_regime = galaxies[p].Regime;
-        
-        // int gas_moved = 0;  // Track if any gas was moved for this galaxy
-        
-        // ENFORCE VELOCITY THRESHOLD: Vvir < 90 km/s -> CGM, Vvir >= 90 km/s -> HOT
-        // This is the final arbiter that overrides physics-based regime determination
-
-        // if(Tvir_to_Tmax_ratio >= 1.0) {
-        //     // LOW-VELOCITY: Must be in CGM regime regardless of rcool/Rvir
-        //     if(galaxies[p].HotGas > 1e-20) {
-        //         galaxies[p].CGMgas += galaxies[p].HotGas;
-        //         galaxies[p].MetalsCGMgas += galaxies[p].MetalsHotGas;
-        //         galaxies[p].HotGas = 0.0;
-        //         galaxies[p].MetalsHotGas = 0.0;
-        //         // gas_moved = 1;
-        //     }
-        //     galaxies[p].Regime = 0;
-        // } else {
-        //     // HIGH-VELOCITY: Must be in HOT regime regardless of rcool/Rvir
-        //     if(galaxies[p].CGMgas > 1e-20) {
-        //         galaxies[p].HotGas += galaxies[p].CGMgas;
-        //         galaxies[p].MetalsHotGas += galaxies[p].MetalsCGMgas;
-        //         galaxies[p].CGMgas = 0.0;
-        //         galaxies[p].MetalsCGMgas = 0.0;
-        //         // gas_moved = 1;
-        //     }
-        //     galaxies[p].Regime = 1;
-        // }
-        
-        // Print diagnostics only when gas is moved
-        // if(gas_moved) {
-        //     printf("\n=== REGIME ENFORCEMENT DIAGNOSTICS (Galaxy #%d) ===\n", total_galaxies_processed);
-        //     printf("  *** GAS MOVED FOR THIS GALAXY ***\n");
-        //     printf("  Before -> After:\n");
-        //     printf("    HotGas:     %.3e -> %.3e Msun\n", original_hot_gas, galaxies[p].HotGas);
-        //     printf("    CGMgas:     %.3e -> %.3e Msun\n", original_cgm_gas, galaxies[p].CGMgas);
-        //     printf("    MetalsHot:  %.3e -> %.3e Msun\n", original_metals_hot, galaxies[p].MetalsHotGas);
-        //     printf("    MetalsCGM:  %.3e -> %.3e Msun\n", original_metals_cgm, galaxies[p].MetalsCGMgas);
-        //     printf("    Reincorp:   %.3e -> %.3e Msun\n", original_reincorp, galaxies[p].ReincorporatedGas);
-        //     // Total gas mass conservation check
-        //     double original_total = original_hot_gas + original_cgm_gas + original_reincorp;
-        //     double final_total = galaxies[p].HotGas + galaxies[p].CGMgas + galaxies[p].ReincorporatedGas;
-        //     printf("  Total gas: %.3e -> %.3e Msun", original_total, final_total);
-        //     if(fabs(original_total - final_total) > 1e-12) {
-        //         printf(" [WARNING: Mass not conserved!");
-        //     }
-        //     printf("\n======================================================\n");
-        // }
-    }
-}
-
-double calculate_rcool_to_rvir_ratio(const int gal, struct GALAXY *galaxies, const struct params *run_params)
-{
-    // Check basic requirements for physics calculation
-    if(galaxies[gal].Vvir <= 0.0) {
-        return 1.1;  // Return > 1.0 to indicate CGM regime for very small halos
-    }
-
-    const double tcool = galaxies[gal].Rvir / galaxies[gal].Vvir;
-    const double temp = 35.9 * galaxies[gal].Vvir * galaxies[gal].Vvir;         // in Kelvin
-
-    // SAFETY: Check for reasonable temperature
-    if(temp <= 0.0 || tcool <= 0.0) {
-        return 1.1;
-    }
-
-    // Use metallicity from either HotGas or CGM gas, whichever exists
-    double logZ = -10.0;
-    if(galaxies[gal].HotGas > 0.0 && galaxies[gal].MetalsHotGas > 0.0) {
-        logZ = log10(galaxies[gal].MetalsHotGas / galaxies[gal].HotGas);
-    } else if(galaxies[gal].CGMgas > 0.0 && galaxies[gal].MetalsCGMgas > 0.0) {
-        logZ = log10(galaxies[gal].MetalsCGMgas / galaxies[gal].CGMgas);
-    }
-
-    double lambda = get_metaldependent_cooling_rate(log10(temp), logZ);
-    double x = PROTONMASS * BOLTZMANN * temp / lambda;        // now this has units sec g/cm^3
-    x /= (run_params->UnitDensity_in_cgs * run_params->UnitTime_in_s);         // now in internal units
-    const double rho_rcool = x / tcool * 0.885;  // 0.885 = 3/2 * mu, mu=0.59 for a fully ionized gas
-
-    // For density calculation, use total gas (HotGas + CGMgas) to represent potential hot halo
-    double total_gas = galaxies[gal].HotGas + galaxies[gal].CGMgas;
-    if(total_gas <= 0.0) {
-        return 1.1;  // Return > 1.0 to indicate CGM regime if no gas at all
-    }
-
-    // an isothermal density profile for the hot gas is assumed here
-    const double rho0 = total_gas / (4 * M_PI * galaxies[gal].Rvir);
-    const double rcool = sqrt(rho0 / rho_rcool);
-
-    // Continue with physics but add bounds checking...
-    double result = rcool / galaxies[gal].Rvir;
-    
-    // SAFETY: Clamp to reasonable range
-    if(result < 0.001) result = 0.001;
-    if(result > 100.0) result = 100.0;
-    
-    return result;
 }
 
 float calculate_muratov_mass_loading(const int gal, struct GALAXY *galaxies, const double z)
@@ -341,6 +222,9 @@ float calculate_muratov_mass_loading(const int gal, struct GALAXY *galaxies, con
     }
     
     double eta = NORM * z_term * v_term;
+
+    // Store mass loading for analysis (cast to float)
+    galaxies[gal].MassLoading = (float)eta;
 
     // Safety check for the result
     if (!isfinite(eta)) {
@@ -430,152 +314,6 @@ float calculate_molecular_fraction_BR06(float gas_surface_density, float stellar
     // if (f_mol > 0.4) {
     //     f_mol = 0.4 + 0.2 * tanh((f_mol - 0.4) / 0.15);
     // }
-    
-    return f_mol;
-}
-
-
-float calculate_molecular_fraction_darksage_pressure(float gas_surface_density_msun_pc2, 
-                                                  float stellar_surface_density_msun_pc2,
-                                                  float gas_velocity_dispersion_km_s,
-                                                  float stellar_velocity_dispersion_km_s,
-                                                  float disk_alignment_angle_deg,
-                                                  const struct params *run_params)
-{
-    // Early termination for edge cases
-    if (gas_surface_density_msun_pc2 <= 1e-10) {
-        return 0.0;
-    }
-    
-    // DarkSAGE constants (these should match your parameter file values)
-    const float ThetaThresh = 30.0;  // degrees
-    const float H2FractionFactor = 1.0;  
-    const float H2FractionExponent = 0.92;  
-    const float P_0 = 4.3e4;  // Reference pressure in K cm^-3
-    
-    // Physical constants from your macros
-    const float G_cgs = GRAVITY;  // cm^3 g^-1 s^-2
-    const float kB = BOLTZMANN;   // erg K^-1
-    const float MSUN_g = SOLAR_MASS;  // g
-    const float PC_cm = CM_PER_MPC / 1e6;  // cm per pc
-    
-    // Convert surface densities to CGS (g cm^-2)
-    float sigma_gas_cgs = gas_surface_density_msun_pc2 * MSUN_g / (PC_cm * PC_cm);
-    float sigma_stars_cgs = stellar_surface_density_msun_pc2 * MSUN_g / (PC_cm * PC_cm);
-    
-    // Calculate velocity dispersion ratio (DarkSAGE approach)
-    float f_sigma = (stellar_velocity_dispersion_km_s > 0.0) ? 
-                    gas_velocity_dispersion_km_s / stellar_velocity_dispersion_km_s : 1.0;
-    
-    // Calculate midplane pressure using DarkSAGE formula
-    float pressure_cgs;  // dyne cm^-2
-    if (disk_alignment_angle_deg <= ThetaThresh) {
-        // Aligned discs - both gas and stars contribute
-        pressure_cgs = 0.5 * M_PI * G_cgs * sigma_gas_cgs * 
-                      (sigma_gas_cgs + f_sigma * sigma_stars_cgs);
-    } else {
-        // Misaligned discs - only gas self-gravity
-        pressure_cgs = 0.5 * M_PI * G_cgs * sigma_gas_cgs * sigma_gas_cgs;
-    }
-    
-    // Apply Hubble factor like DarkSAGE does
-    pressure_cgs *= run_params->Hubble_h * run_params->Hubble_h;
-    
-    // Convert to K cm^-3 (CORRECT FORMULA)
-    float pressure_K_cm3 = pressure_cgs / kB;
-    
-    // Safety checks
-    if (!isfinite(pressure_K_cm3) || pressure_K_cm3 <= 0.0) {
-        return 0.0;
-    }
-    
-    // Apply the DarkSAGE power-law relation
-    float pressure_ratio = pressure_K_cm3 / P_0;
-    float f_H2_HI = H2FractionFactor * pow(pressure_ratio, H2FractionExponent);
-    
-    // Safety check on power law result
-    if (!isfinite(f_H2_HI)) {
-        return 0.0;
-    }
-    
-    // Convert H2/(H2+HI) ratio to H2/total_gas fraction
-    const float X_H = 0.76;
-    double f_mol = X_H * f_H2_HI / (1.0 + f_H2_HI);
-    
-    // Apply physical bounds
-    // Apply aggressive capping for massive galaxies
-    // Cap at 40% for most galaxies, with smooth transition
-    // if (f_mol > 0.4) {
-    //     f_mol = 0.4 + 0.2 * tanh((f_mol - 0.4) / 0.15);
-    // }
-    
-    return f_mol;
-}
-
-
-float calculate_molecular_fraction_GD14(float gas_surface_density, float metallicity, float spatial_scale_pc)
-{
-    // Early termination for edge cases
-    if (gas_surface_density <= 0.0) {
-        return 0.0;
-    }
-    
-    // Convert metallicity to dust-to-gas ratio relative to Milky Way
-    // Following GD14: D_MW represents dust abundance relative to MW
-    const float zsun = 0.02;  // Solar metallicity (commonly used value)
-    float D_MW = metallicity / zsun;
-    
-    // UV field strength (can be modified based on galaxy properties)
-    float U_MW = 1.0;  // Milky Way UV field strength
-    
-    // Calculate spatial scale parameter S = L/100pc (GD14 equation after eq. 5)
-    float S = spatial_scale_pc / 100.0;
-    
-    // Calculate D* parameter (GD14 equation between 5 and 6)
-    float S5 = pow(S, 5.0);
-    float D_star = 0.17 * (2.0 + S5) / (1.0 + S5);
-    
-    // Calculate g parameter (GD14 equation between 5 and 6)
-    float g = sqrt(D_MW * D_MW + D_star * D_star);
-    
-    // ERRATUM formulation (more accurate):
-    // σ ≡ (0.001 + 0.1U_MW)^0.7
-    float sigma = pow(0.001 + 0.1 * U_MW, 0.7);
-    
-    // α = (1 + 0.7σ^(1/2))/(1 + σ^(1/2))  [Erratum eq. 9]
-    float sqrt_sigma = sqrt(sigma);
-    float alpha = (1.0 + 0.7 * sqrt_sigma) / (1.0 + sqrt_sigma);
-    
-    // Σ_R=1 = 40 M_☉/pc² × g/σ  [Erratum eq. 10]
-    float Sigma_R1 = 40.0 * g / sigma; // M_sun/pc^2
-    
-    // Calculate η parameter (erratum mentions η ≈ 0 on kpc scale, η = 0.25 on 500 pc scale)
-    float eta;
-    if (spatial_scale_pc >= 1000.0) {
-        eta = 0.0;  // kpc scale
-    } else if (spatial_scale_pc <= 500.0) {
-        eta = 0.25; // 500 pc scale
-    } else {
-        // Linear interpolation between 500 pc and 1000 pc
-        eta = 0.25 * (1000.0 - spatial_scale_pc) / 500.0;
-    }
-    
-    // Calculate R using the ERRATUM formula [Erratum eq. 8]:
-    // R ≈ (Σ_gas/Σ_R=1)^α / (1 + η(Σ_gas/Σ_R=1)^α)
-    float ratio = gas_surface_density / Sigma_R1;
-    float ratio_alpha = pow(ratio, alpha);
-    float R = ratio_alpha / (1.0 + eta * ratio_alpha);
-    
-    // Convert to molecular fraction: f_H2 = R / (1 + R)
-    // Since R = Σ_H2/Σ_HI, then f_H2 = Σ_H2/(Σ_HI + Σ_H2) = R/(1+R)
-    float f_mol = R / (1.0 + R);
-    
-    // Apply physical bounds
-    if (f_mol > 1.0) {
-        f_mol = 1.0;
-    } else if (f_mol < 0.0) {
-        f_mol = 0.0;
-    }
     
     return f_mol;
 }

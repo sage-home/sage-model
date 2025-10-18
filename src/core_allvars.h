@@ -92,9 +92,8 @@ enum sage_error_types {
 struct GALAXY
 {
     int32_t   SnapNum;
-    int32_t  Type;
-    int32_t  Regime; // 0 = CGM, 1 = HOT
-    int32_t HasTransitionedToHot;  // 0 = no, 1 = yes
+    int32_t   Type;
+    int32_t   Regime;
 
     int32_t   GalaxyNr;
     int32_t   CentralGal;
@@ -124,22 +123,23 @@ struct GALAXY
 
     /* baryonic reservoirs */
     float ColdGas;
-    float H2gas;
     float StellarMass;
     float BulgeMass;
     float HotGas;
-    float CGMgas;
+    float EjectedMass;
     float BlackHoleMass;
     float ICS;
-    float MassLoading;
+    float CGMgas;
+    float H2gas;
 
     /* metals */
     float MetalsColdGas;
     float MetalsStellarMass;
     float MetalsBulgeMass;
     float MetalsHotGas;
-    float MetalsCGMgas;
+    float MetalsEjectedMass;
     float MetalsICS;
+    float MetalsCGMgas;
 
     /* to calculate magnitudes */
     float SfrDisk[STEPS];
@@ -160,12 +160,13 @@ struct GALAXY
     float TimeOfLastMinorMerger;
     float OutflowRate;
     float TotalSatelliteBaryons;
-    float RcoolToRvir;
 
     /* infall properties */
     float infallMvir;
     float infallVvir;
     float infallVmax;
+
+    float MassLoading;
 };
 
 
@@ -430,10 +431,9 @@ struct params
     int32_t    AGNrecipeOn;
     int32_t    SupernovaRecipeOn;
     int32_t    ReionizationOn;
-    int32_t   DiskInstabilityOn;
+    int32_t    DiskInstabilityOn;
     int32_t    CGMrecipeOn;
-    int32_t    FIREMassLoading;
-    int32_t    FIREejection;
+    int32_t    CGMrecipeSAGEOn;
 
     double RecycleFraction;
     double Yield;
@@ -465,10 +465,6 @@ struct params
     double Hubble;
     double a0;
     double ar;
-
-    double CGM_M0;
-    double CGM_SFR0;
-    double CGM_OUTFLOW0;
 
     int32_t nsnapshots;
     int32_t LastSnapshotNr;

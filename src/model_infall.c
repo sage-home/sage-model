@@ -15,28 +15,33 @@ double infall_recipe(const int centralgal, const int ngal, const double Zcurr, s
     double tot_stellarMass, tot_BHMass, tot_coldMass, tot_hotMass, tot_ejected, tot_ICS;
     double tot_ejectedMetals, tot_ICSMetals;
     double infallingMass, reionization_modifier;
+    double tot_CGMgas, tot_MetalsCGMgas;
 
     // need to add up all the baryonic mass asociated with the full halo
-    tot_stellarMass = tot_coldMass = tot_hotMass = tot_ejected = tot_BHMass = tot_ejectedMetals = tot_ICS = tot_ICSMetals = 0.0;
+    tot_stellarMass = tot_coldMass = tot_hotMass = tot_ejected = tot_BHMass = tot_ejectedMetals = tot_ICS = tot_ICSMetals = tot_CGMgas = tot_MetalsCGMgas = 0.0;
 
-	// loop over all galaxies in the FoF-halo
+    // loop over all galaxies in the FoF-halo
     for(int i = 0; i < ngal; i++) {
         tot_stellarMass += galaxies[i].StellarMass;
         tot_BHMass += galaxies[i].BlackHoleMass;
         tot_coldMass += galaxies[i].ColdGas;
         tot_hotMass += galaxies[i].HotGas;
-        tot_ejected += galaxies[i].CGMgas;
-        tot_ejectedMetals += galaxies[i].MetalsCGMgas;
+        tot_ejected += galaxies[i].EjectedMass;
+        tot_ejectedMetals += galaxies[i].MetalsEjectedMass;
         tot_ICS += galaxies[i].ICS;
         tot_ICSMetals += galaxies[i].MetalsICS;
-
+        tot_CGMgas += galaxies[i].CGMgas;
+        tot_MetalsCGMgas += galaxies[i].MetalsCGMgas;
 
         if(i != centralgal) {
             // satellite ejected gas goes to central ejected reservior
-            galaxies[i].CGMgas = galaxies[i].MetalsCGMgas = 0.0;
+            galaxies[i].EjectedMass = galaxies[i].MetalsEjectedMass = 0.0;
 
             // satellite ICS goes to central ICS
             galaxies[i].ICS = galaxies[i].MetalsICS = 0.0;
+            
+            // satellite CGM goes to central - ZERO IT OUT
+            galaxies[i].CGMgas = galaxies[i].MetalsCGMgas = 0.0;
         }
     }
 
@@ -48,13 +53,47 @@ double infall_recipe(const int centralgal, const int ngal, const double Zcurr, s
     }
 
     infallingMass =
-        reionization_modifier * run_params->BaryonFrac * galaxies[centralgal].Mvir - (tot_stellarMass + tot_coldMass + tot_hotMass + tot_ejected + tot_BHMass + tot_ICS);
-    /* reionization_modifier * run_params->BaryonFrac * galaxies[centralgal].deltaMvir - newSatBaryons; */
+        reionization_modifier * run_params->BaryonFrac * galaxies[centralgal].Mvir - 
+        (tot_stellarMass + tot_coldMass + tot_hotMass + tot_ejected + tot_BHMass + tot_ICS + tot_CGMgas);
 
     // the central galaxy keeps all the ejected mass
-    galaxies[centralgal].CGMgas = tot_ejected;
-    galaxies[centralgal].MetalsCGMgas = tot_ejectedMetals;
+    galaxies[centralgal].EjectedMass = tot_ejected;
+    galaxies[centralgal].MetalsEjectedMass = tot_ejectedMetals;
 
+    if(galaxies[centralgal].MetalsEjectedMass > galaxies[centralgal].EjectedMass) {
+        galaxies[centralgal].MetalsEjectedMass = galaxies[centralgal].EjectedMass;
+    }
+
+    if(galaxies[centralgal].EjectedMass < 0.0) {
+        galaxies[centralgal].EjectedMass = galaxies[centralgal].MetalsEjectedMass = 0.0;
+    }
+
+    if(galaxies[centralgal].MetalsEjectedMass < 0.0) {
+        galaxies[centralgal].MetalsEjectedMass = 0.0;
+    }
+
+    // ========================================================================
+    // FIX: Transfer satellite CGMgas to appropriate reservoir based on regime
+    // ========================================================================
+    if(run_params->CGMrecipeOn == 1) {
+        if(galaxies[centralgal].Regime == 0) {
+            // Central is CGM-regime: keep in CGMgas
+            galaxies[centralgal].CGMgas = tot_CGMgas;
+            galaxies[centralgal].MetalsCGMgas = tot_MetalsCGMgas;
+        } else {
+            // Central is Hot-ICM-regime: transfer to HotGas
+            galaxies[centralgal].HotGas += tot_CGMgas;
+            galaxies[centralgal].MetalsHotGas += tot_MetalsCGMgas;
+            // Don't add to CGMgas!
+            // galaxies[centralgal].CGMgas stays as is (probably zero or very small)
+        }
+    } else {
+        // Original SAGE: transfer to HotGas
+        galaxies[centralgal].HotGas += tot_CGMgas;
+        galaxies[centralgal].MetalsHotGas += tot_MetalsCGMgas;
+    }
+
+    // Apply safety checks
     if(galaxies[centralgal].MetalsCGMgas > galaxies[centralgal].CGMgas) {
         galaxies[centralgal].MetalsCGMgas = galaxies[centralgal].CGMgas;
     }
@@ -221,128 +260,58 @@ double do_reionization(const int gal, const double Zcurr, struct GALAXY *galaxie
 
 
 
-void add_infall_to_hot(const int gal, double infallingGas, struct GALAXY *galaxies, const struct params *run_params)
+void add_infall_to_hot(const int gal, double infallingGas, struct GALAXY *galaxies, 
+                       const struct params *run_params)
 {
     float metallicity;
 
-    if (run_params->CGMrecipeOn > 0){
+    // if the halo has lost mass, subtract baryons from the ejected mass first
+    if(infallingGas < 0.0 && galaxies[gal].EjectedMass > 0.0) {
+        metallicity = get_metallicity(galaxies[gal].EjectedMass, galaxies[gal].MetalsEjectedMass);
+        galaxies[gal].MetalsEjectedMass += infallingGas*metallicity;
+        if(galaxies[gal].MetalsEjectedMass < 0.0) galaxies[gal].MetalsEjectedMass = 0.0;
+
+        galaxies[gal].EjectedMass += infallingGas;
+        if(galaxies[gal].EjectedMass < 0.0) {
+            infallingGas = galaxies[gal].EjectedMass;
+            galaxies[gal].EjectedMass = galaxies[gal].MetalsEjectedMass = 0.0;
+        } else {
+            infallingGas = 0.0;
+        }
+    }
+
+    if(run_params->CGMrecipeOn == 1) {
         if(galaxies[gal].Regime == 0) {
-            // if the halo has lost mass, subtract baryons from the ejected mass first, then the hot gas
-            if(infallingGas < 0.0 && galaxies[gal].CGMgas > 0.0) {
-                metallicity = get_metallicity(galaxies[gal].CGMgas, galaxies[gal].MetalsCGMgas);
-                galaxies[gal].MetalsCGMgas += infallingGas*metallicity;
-                if(galaxies[gal].MetalsCGMgas < 0.0) galaxies[gal].MetalsCGMgas = 0.0;
-
-                galaxies[gal].CGMgas += infallingGas;
-                if(galaxies[gal].CGMgas < 0.0) {
-                    infallingGas = galaxies[gal].CGMgas;
-                    galaxies[gal].CGMgas = galaxies[gal].MetalsCGMgas = 0.0;
-                } else {
-                    infallingGas = 0.0;
-                }
-            }
-
-            // if the halo has lost mass, subtract CGM metals mass next then the CGM gas
+            // CGM-regime: use CGMgas reservoir
+            
+            // if the halo has lost mass, subtract from CGM metals first
             if(infallingGas < 0.0 && galaxies[gal].MetalsCGMgas > 0.0) {
                 metallicity = get_metallicity(galaxies[gal].CGMgas, galaxies[gal].MetalsCGMgas);
                 galaxies[gal].MetalsCGMgas += infallingGas*metallicity;
                 if(galaxies[gal].MetalsCGMgas < 0.0) galaxies[gal].MetalsCGMgas = 0.0;
             }
 
-            // add (subtract) the ambient (enriched) infalling gas to the central galaxy CGM component
-            // galaxies[gal].ColdGas += infallingGas;
-            // double fraction_to_cold = 1.0;
-            // double fraction_to_cgm = 0.0;
-
-            // Calculate free-fall time
-            double t_ff = 0.0;
-            if(galaxies[gal].Vvir > 0.0 && galaxies[gal].Rvir > 0.0) {
-                // t_ff = sqrt(2*R/g) where g = GM/R^2
-                double g_accel = GRAVITY * galaxies[gal].Mvir / (galaxies[gal].Rvir * galaxies[gal].Rvir);
-                t_ff = sqrt(2.0 * galaxies[gal].Rvir / g_accel);
-            }
-
-            // Calculate cooling time (simplified)
-            double t_cool = 0.0;
-            if(galaxies[gal].Vvir > 0.0) {
-                // Rough cooling time estimate: t_cool ~ R/V for virial temperature gas
-                t_cool = galaxies[gal].Rvir / galaxies[gal].Vvir;
-                
-                // Adjust for temperature - cooler gas cools faster
-                // double temp = 35.9 * galaxies[gal].Vvir * galaxies[gal].Vvir; // Virial temperature in K
-                // if(temp < 1e4) {
-                //     t_cool *= 0.1; // Cool gas cools much faster
-                // }
-            }
-
-            // Calculate fraction that can cool during free-fall
-            double fraction_to_cold = 0.0;
-            if(t_ff > 0.0 && t_cool > 0.0) {
-                // Fraction that cools = t_ff / t_cool (capped at 1.0)
-                fraction_to_cold = fmin(t_ff / t_cool, 1.0);
-            } else {
-                // Fallback: assume some cooling based on halo mass
-                fraction_to_cold = (galaxies[gal].Mvir < 1.0) ? 0.8 : 0.2;
-            }
-
-            // Ensure reasonable bounds
-            if(fraction_to_cold < 0.05) fraction_to_cold = 0.05; // Minimum 5%
-            if(fraction_to_cold > 0.95) fraction_to_cold = 0.95; // Maximum 95%
-
-            double fraction_to_cgm = 1.0 - fraction_to_cold;
-
-            double infall_to_cold = infallingGas * fraction_to_cold;
-            double infall_to_cgm = infallingGas * fraction_to_cgm;
+            // add (subtract) the ambient (enriched) infalling gas to the CGM
+            galaxies[gal].CGMgas += infallingGas;
+            if(galaxies[gal].CGMgas < 0.0) galaxies[gal].CGMgas = galaxies[gal].MetalsCGMgas = 0.0;
             
-            galaxies[gal].ColdGas += infall_to_cold;
-            galaxies[gal].CGMgas += infall_to_cgm;
-            if(galaxies[gal].ColdGas < 0.0) galaxies[gal].ColdGas = galaxies[gal].MetalsColdGas = 0.0;
-        }
-        else {
-            // if the halo has lost mass, subtract baryons from the hot gas
-            if(infallingGas < 0.0 && galaxies[gal].CGMgas > 0.0) {
-                metallicity = get_metallicity(galaxies[gal].CGMgas, galaxies[gal].MetalsCGMgas);
-                galaxies[gal].MetalsCGMgas += infallingGas*metallicity;
-                if(galaxies[gal].MetalsCGMgas < 0.0) galaxies[gal].MetalsCGMgas = 0.0;
-
-                galaxies[gal].CGMgas += infallingGas;
-                if(galaxies[gal].CGMgas < 0.0) {
-                    infallingGas = galaxies[gal].CGMgas;
-                    galaxies[gal].CGMgas = galaxies[gal].MetalsCGMgas = 0.0;
-                } else {
-                    infallingGas = 0.0;
-                }
-            }
-
-            // if the halo has lost mass, subtract hot metals mass next, then the hot gas
+        } else {
+            // Hot-ICM-regime: use HotGas reservoir
+            
+            // if the halo has lost mass, subtract from hot metals first
             if(infallingGas < 0.0 && galaxies[gal].MetalsHotGas > 0.0) {
                 metallicity = get_metallicity(galaxies[gal].HotGas, galaxies[gal].MetalsHotGas);
                 galaxies[gal].MetalsHotGas += infallingGas*metallicity;
                 if(galaxies[gal].MetalsHotGas < 0.0) galaxies[gal].MetalsHotGas = 0.0;
             }
 
-            // add (subtract) the ambient (enriched) infalling gas to the central galaxy hot component
+            // add (subtract) the ambient (enriched) infalling gas to the hot component
             galaxies[gal].HotGas += infallingGas;
             if(galaxies[gal].HotGas < 0.0) galaxies[gal].HotGas = galaxies[gal].MetalsHotGas = 0.0;
-                
         }
-    }
-    else {
-        // if the halo has lost mass, subtract baryons from the ejected mass first, then the hot gas
-        if(infallingGas < 0.0 && galaxies[gal].CGMgas > 0.0) {
-            metallicity = get_metallicity(galaxies[gal].CGMgas, galaxies[gal].MetalsCGMgas);
-            galaxies[gal].MetalsCGMgas += infallingGas*metallicity;
-            if(galaxies[gal].MetalsCGMgas < 0.0) galaxies[gal].MetalsCGMgas = 0.0;
-
-            galaxies[gal].CGMgas += infallingGas;
-            if(galaxies[gal].CGMgas < 0.0) {
-                infallingGas = galaxies[gal].CGMgas;
-                galaxies[gal].CGMgas = galaxies[gal].MetalsCGMgas = 0.0;
-            } else {
-                infallingGas = 0.0;
-            }
-        }
-
+    } else {
+        // Original SAGE behavior: use HotGas reservoir
+        
         // if the halo has lost mass, subtract hot metals mass next, then the hot gas
         if(infallingGas < 0.0 && galaxies[gal].MetalsHotGas > 0.0) {
             metallicity = get_metallicity(galaxies[gal].HotGas, galaxies[gal].MetalsHotGas);
@@ -353,7 +322,5 @@ void add_infall_to_hot(const int gal, double infallingGas, struct GALAXY *galaxi
         // add (subtract) the ambient (enriched) infalling gas to the central galaxy hot component
         galaxies[gal].HotGas += infallingGas;
         if(galaxies[gal].HotGas < 0.0) galaxies[gal].HotGas = galaxies[gal].MetalsHotGas = 0.0;
-        
     }
-
 }

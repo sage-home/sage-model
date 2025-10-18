@@ -18,7 +18,7 @@
 #define NUM_OUTPUT_FIELDS 2
 #pragma message "Using SAGE in MCMC mode (will only write " STR(NUM_OUTPUT_FIELDS) " fields into the hdf5 file)"
 #else
-#define NUM_OUTPUT_FIELDS 58
+#define NUM_OUTPUT_FIELDS 59
 #endif
 
 #define NUM_GALS_PER_BUFFER 8192
@@ -311,7 +311,6 @@ int32_t initialize_hdf5_galaxy_files(const int filenr, struct save_info *save_in
 
         MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, SnapNum);
         MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, Type);
-        MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, Regime);
         MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, GalaxyIndex);
         MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, CentralGalaxyIndex);
         MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, SAGEHaloIndex);
@@ -339,18 +338,17 @@ int32_t initialize_hdf5_galaxy_files(const int filenr, struct save_info *save_in
         MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, Vmax);
         MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, VelDisp);
         MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, ColdGas);
-        MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, H2gas);
         MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, StellarMass);
         MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, BulgeMass);
         MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, HotGas);
-        MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, CGMgas);
+        MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, EjectedMass);
         MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, BlackHoleMass);
         MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, ICS);
         MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, MetalsColdGas);
         MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, MetalsStellarMass);
         MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, MetalsBulgeMass);
         MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, MetalsHotGas);
-        MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, MetalsCGMgas);
+        MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, MetalsEjectedMass);
         MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, MetalsICS);
         MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, SfrDisk);
         MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, SfrBulge);
@@ -366,8 +364,11 @@ int32_t initialize_hdf5_galaxy_files(const int filenr, struct save_info *save_in
         MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, infallMvir);
         MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, infallVvir);
         MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, infallVmax);
-        MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, RcoolToRvir);
+        MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, Regime);
+        MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, CGMgas);
+        MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, MetalsCGMgas);
         MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, MassLoading);
+        MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, H2gas);
     }
 
     return EXIT_SUCCESS;
@@ -583,7 +584,6 @@ int32_t finalize_hdf5_galaxy_files(const struct forest_info *forest_info, struct
 
         FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, SnapNum);
         FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, Type);
-        FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, Regime);
         FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, GalaxyIndex);
         FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, CentralGalaxyIndex);
         FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, SAGEHaloIndex);
@@ -611,18 +611,17 @@ int32_t finalize_hdf5_galaxy_files(const struct forest_info *forest_info, struct
         FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, Vmax);
         FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, VelDisp);
         FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, ColdGas);
-        FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, H2gas);
         FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, StellarMass);
         FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, BulgeMass);
         FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, HotGas);
-        FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, CGMgas);
+        FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, EjectedMass);
         FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, BlackHoleMass);
         FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, ICS);
         FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, MetalsColdGas);
         FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, MetalsStellarMass);
         FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, MetalsBulgeMass);
         FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, MetalsHotGas);
-        FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, MetalsCGMgas);
+        FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, MetalsEjectedMass);
         FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, MetalsICS);
         FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, SfrDisk);
         FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, SfrBulge);
@@ -638,8 +637,11 @@ int32_t finalize_hdf5_galaxy_files(const struct forest_info *forest_info, struct
         FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, infallMvir);
         FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, infallVvir);
         FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, infallVmax);
-        FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, RcoolToRvir);
+        FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, Regime);
+        FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, CGMgas);
+        FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, MetalsCGMgas);
         FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, MassLoading);
+        FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, H2gas);
     }
 
     myfree(save_info->buffer_output_gals);
@@ -753,21 +755,20 @@ int32_t generate_field_metadata(char (*field_names)[MAX_STRING_LEN], char (*fiel
     char tmp_units[NUM_OUTPUT_FIELDS][MAX_STRING_LEN] = {"", ""};
     hsize_t tmp_dtype[NUM_OUTPUT_FIELDS] = {H5T_NATIVE_INT, H5T_NATIVE_FLOAT};//, H5T_NATIVE_FLOAT};
 #else
-    char tmp_names[NUM_OUTPUT_FIELDS][MAX_STRING_LEN] = {"SnapNum", "Type", "Regime", "GalaxyIndex", "CentralGalaxyIndex", "SAGEHaloIndex",
+    char tmp_names[NUM_OUTPUT_FIELDS][MAX_STRING_LEN] = {"SnapNum", "Type", "GalaxyIndex", "CentralGalaxyIndex", "SAGEHaloIndex",
                                                          "SAGETreeIndex", "SimulationHaloIndex", "mergeType", "mergeIntoID",
                                                          "mergeIntoSnapNum", "dT", "Posx", "Posy", "Posz", "Velx", "Vely", "Velz",
                                                          "Spinx", "Spiny", "Spinz", "Len", "Mvir", "CentralMvir", "Rvir", "Vvir",
-                                                         "Vmax", "VelDisp", "ColdGas", "H2gas", "StellarMass", "BulgeMass", "HotGas", "CGMgas",
+                                                         "Vmax", "VelDisp", "ColdGas", "StellarMass", "BulgeMass", "HotGas", "EjectedMass",
                                                          "BlackHoleMass", "IntraClusterStars", "MetalsColdGas", "MetalsStellarMass", "MetalsBulgeMass",
-                                                         "MetalsHotGas", "MetalsCGMgas", "MetalsIntraClusterStars", "SfrDisk", "SfrBulge", "SfrDiskZ",
+                                                         "MetalsHotGas", "MetalsEjectedMass", "MetalsIntraClusterStars", "SfrDisk", "SfrBulge", "SfrDiskZ",
                                                          "SfrBulgeZ", "DiskRadius", "Cooling", "Heating", "QuasarModeBHaccretionMass",
                                                          "TimeOfLastMajorMerger", "TimeOfLastMinorMerger", "OutflowRate", "infallMvir",
-                                                         "infallVvir", "infallVmax", "RcoolToRvir", "MassLoading"};
+                                                         "infallVvir", "infallVmax", "Regime", "CGMgas", "MetalsCGMgas", "MassLoading", "H2gas"};
 
     // Must accurately describe what exactly each field is and any special considerations.
     char tmp_descriptions[NUM_OUTPUT_FIELDS][MAX_STRING_LEN] = {"Snapshot the galaxy is located at.",
                                                                 "0: Central galaxy of the main FoF halo. 1: Central of a sub-halo. 2: Orphan galaxy that will merge within the current timestep.",
-                                                                "0: CGM-regime. 1: HotGas-regime",
                                                                 "Galaxy ID, unique across all trees and files. Calculated as local galaxy number + tree number * factor + file number * factor ",
                                                                 "GalaxyIndex of the central galaxy within this galaxy's FoF group.  Calculated the same as 'GalaxyIndex'.",
                                                                 "Halo number from the restructured trees. This is different to the tree file because we order the trees. Note: This is the host halo, not necessarily the main FoF halo.",
@@ -784,12 +785,12 @@ int32_t generate_field_metadata(char (*field_names)[MAX_STRING_LEN], char (*fiel
                                                                 "Virial mass of this galaxy's halo.", "Virial mass of the main FoF halo.",
                                                                 "Virial radius of this galaxy's halo.", "Virial velocity of this galaxy's halo.",
                                                                 "Maximum circular speed for this galaxy's halo.", "Velocity dispersion for this galaxy's halo.",
-                                                                "Mass of gas in the cold reservoir.", "Mass of gas in the H2 reservoir.", "Mass of stars.",
+                                                                "Mass of gas in the cold reseroivr.", "Mass of stars.",
                                                                 "Mass of stars in the bulge. Bulge stars are added either through disk instabilities or mergers.",
-                                                                "Mass of gas in the hot reservoir.", "Mass of gas in the ejected reservoir.",
-                                                                "Mass of this galaxy's black hole.", "Mass of intra-cluster stars.", "Mass of metals in the cold reservoir.",
+                                                                "Mass of gas in the hot reservoir.", "Mass of gass in the ejected reseroivr.",
+                                                                "Mass of this galaxy's black hole.", "Mass of intra-cluster stars.", "Mass of metals in the cold reseroivr.",
                                                                 "Mass of metals in stars.", "Mass of metals in the bulge.",
-                                                                "Mass of metals in the hot reservoir.", "Mass of metals in the ejected reservoir.",
+                                                                "Mass of metals in the hot reservoir.", "Mass of metals in the ejected reseroivr.",
                                                                 "Mass of metals in intra-cluster stars.", "Star formation rate within the disk.",
                                                                 "Star formation rate within the bulge.", "Average metallicity of star-forming disk gas.",
                                                                 "Average metallicity of star-forming bulge gas.", "Disk scale radius based on Mo, Shude & White (1998)",
@@ -800,21 +801,25 @@ int32_t generate_field_metadata(char (*field_names)[MAX_STRING_LEN], char (*fiel
                                                                 "Virial mass of this galaxy's halo at the previous timestep.",
                                                                 "Virial velocity of this galaxy's halo at the previous timestep.",
                                                                 "Maximum circular speed of this galaxy's halo at the previous timestep.",
-                                                                "Ratio of the cooling radius to the virial radius in the current timestep.", "Mass-loading factor"};
+                                                                "Regime of gas accretion onto this galaxy's halo: 0 = CGM-regime 1 = ICM-regime.",
+                                                                "Mass of gas in the circum-galactic medium (CGM).",
+                                                                "Mass of metals in the circum-galactic medium (CGM).",
+                                                                "Mass loading factor defined as the ratio of outflow rate to star formation rate.",
+                                                                "Mass of molecular hydrogen (H2) in the cold gas reservoir."};
 
-    char tmp_units[NUM_OUTPUT_FIELDS][MAX_STRING_LEN] = {"Unitless", "Unitless", "Unitless", "Unitless", "Unitless", "Unitless",
+    char tmp_units[NUM_OUTPUT_FIELDS][MAX_STRING_LEN] = {"Unitless", "Unitless", "Unitless", "Unitless", "Unitless",
                                                          "Unitless", "Unitless", "Unitless", "Unitless",
                                                          "Unitless", "Myr", "Mpc/h", "Mpc/h", "Mpc/h", "km/s", "km/s", "km/s",
                                                          "Mpc * km/s", "Mpc * km/s", "Mpc * km/s", "Unitless", "1.0e10 Msun/h", "1.0e10 Msun/h",
                                                          "Mpc/h", "km/s",
-                                                         "km/s", "km/s", "1.0e10 Msun/h", "1.0e10 Msun/h", "1.0e10 Msun/h", "1.0e10 Msun/h", "1.0e10 Msun/h", "1.0e10 Msun/h",
+                                                         "km/s", "km/s", "1.0e10 Msun/h", "1.0e10 Msun/h", "1.0e10 Msun/h", "1.0e10 Msun/h", "1.0e10 Msun/h",
                                                          "1.0e10 Msun/h", "1.0e10 Msun/h", "1.0e10 Msun/h", "1.0e10 Msun/h", "1.0e10 Msun/h",
                                                          "1.0e10 Msun/h", "1.0e10 Msun/h", "1.0e10 Msun/h", "Msun/yr", "Msun/yr", "Msun/yr",
                                                          "Msun/yr", "Mpc/h", "erg/s", "erg/s", "1.0e10 Msun/h",
-                                                         "Myr", "Myr", "Msun/yr", "1.0e10 Msun/yr", "km/s", "km/s", "Unitless", "Unitless"};
+                                                         "Myr", "Myr", "Msun/yr", "1.0e10 Msun/yr", "km/s", "km/s", "Unitless", "1.0e10 Msun/h", "1.0e10 Msun/h", "Unitless", "1.0e10 Msun/h"};
 
     // These are the HDF5 datatypes for each field.
-    hsize_t tmp_dtype[NUM_OUTPUT_FIELDS] = {H5T_NATIVE_INT, H5T_NATIVE_INT, H5T_NATIVE_INT, H5T_NATIVE_LLONG, H5T_NATIVE_LLONG, H5T_NATIVE_INT,
+    hsize_t tmp_dtype[NUM_OUTPUT_FIELDS] = {H5T_NATIVE_INT, H5T_NATIVE_INT, H5T_NATIVE_LLONG, H5T_NATIVE_LLONG, H5T_NATIVE_INT,
                                             H5T_NATIVE_INT, H5T_NATIVE_LLONG, H5T_NATIVE_INT, H5T_NATIVE_INT,
                                             H5T_NATIVE_INT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT,
                                             H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_INT, H5T_NATIVE_FLOAT,
@@ -823,7 +828,7 @@ int32_t generate_field_metadata(char (*field_names)[MAX_STRING_LEN], char (*fiel
                                             H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT,
                                             H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT,
                                             H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT,
-                                            H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT};
+                                            H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_INT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT};
 #endif
     for(int32_t i = 0; i < NUM_OUTPUT_FIELDS; i++) {
         memcpy(field_names[i], tmp_names[i], MAX_STRING_LEN);
@@ -891,22 +896,23 @@ int32_t prepare_galaxy_for_hdf5_output(const struct GALAXY *g, struct save_info 
     save_info->buffer_output_gals[output_snap_idx].VelDisp[gals_in_buffer] = halos[g->HaloNr].VelDisp;
 
     save_info->buffer_output_gals[output_snap_idx].ColdGas[gals_in_buffer] = g->ColdGas;
-    save_info->buffer_output_gals[output_snap_idx].H2gas[gals_in_buffer] = g->H2gas;
     save_info->buffer_output_gals[output_snap_idx].StellarMass[gals_in_buffer] = g->StellarMass;
     save_info->buffer_output_gals[output_snap_idx].BulgeMass[gals_in_buffer] = g->BulgeMass;
     save_info->buffer_output_gals[output_snap_idx].HotGas[gals_in_buffer] = g->HotGas;
-    save_info->buffer_output_gals[output_snap_idx].CGMgas[gals_in_buffer] = g->CGMgas;
+    save_info->buffer_output_gals[output_snap_idx].EjectedMass[gals_in_buffer] = g->EjectedMass;
     save_info->buffer_output_gals[output_snap_idx].BlackHoleMass[gals_in_buffer] = g->BlackHoleMass;
     save_info->buffer_output_gals[output_snap_idx].ICS[gals_in_buffer] = g->ICS;
+    save_info->buffer_output_gals[output_snap_idx].CGMgas[gals_in_buffer] = g->CGMgas;
+    save_info->buffer_output_gals[output_snap_idx].MassLoading[gals_in_buffer] = g->MassLoading;
+    save_info->buffer_output_gals[output_snap_idx].H2gas[gals_in_buffer] = g->H2gas;
 
     save_info->buffer_output_gals[output_snap_idx].MetalsColdGas[gals_in_buffer] = g->MetalsColdGas;
     save_info->buffer_output_gals[output_snap_idx].MetalsStellarMass[gals_in_buffer] = g->MetalsStellarMass;
     save_info->buffer_output_gals[output_snap_idx].MetalsBulgeMass[gals_in_buffer] = g->MetalsBulgeMass;
     save_info->buffer_output_gals[output_snap_idx].MetalsHotGas[gals_in_buffer] = g->MetalsHotGas;
-    save_info->buffer_output_gals[output_snap_idx].MetalsCGMgas[gals_in_buffer] = g->MetalsCGMgas;
+    save_info->buffer_output_gals[output_snap_idx].MetalsEjectedMass[gals_in_buffer] = g->MetalsEjectedMass;
     save_info->buffer_output_gals[output_snap_idx].MetalsICS[gals_in_buffer] = g->MetalsICS;
-    save_info->buffer_output_gals[output_snap_idx].RcoolToRvir[gals_in_buffer] = g->RcoolToRvir;
-     save_info->buffer_output_gals[output_snap_idx].MassLoading[gals_in_buffer] = g->MassLoading;
+    save_info->buffer_output_gals[output_snap_idx].MetalsCGMgas[gals_in_buffer] = g->MetalsCGMgas;
 
     float tmp_SfrDisk = 0.0;
     float tmp_SfrBulge = 0.0;
@@ -1097,7 +1103,6 @@ int32_t trigger_buffer_write(const int32_t snap_idx, const int32_t num_to_write,
 #else
     EXTEND_AND_WRITE_GALAXY_DATASET(SnapNum);
     EXTEND_AND_WRITE_GALAXY_DATASET(Type);
-    EXTEND_AND_WRITE_GALAXY_DATASET(Regime);
     EXTEND_AND_WRITE_GALAXY_DATASET(GalaxyIndex);
     EXTEND_AND_WRITE_GALAXY_DATASET(CentralGalaxyIndex);
     EXTEND_AND_WRITE_GALAXY_DATASET(SAGEHaloIndex);
@@ -1124,18 +1129,17 @@ int32_t trigger_buffer_write(const int32_t snap_idx, const int32_t num_to_write,
     EXTEND_AND_WRITE_GALAXY_DATASET(Vmax);
     EXTEND_AND_WRITE_GALAXY_DATASET(VelDisp);
     EXTEND_AND_WRITE_GALAXY_DATASET(ColdGas);
-    EXTEND_AND_WRITE_GALAXY_DATASET(H2gas);
     EXTEND_AND_WRITE_GALAXY_DATASET(StellarMass);
     EXTEND_AND_WRITE_GALAXY_DATASET(BulgeMass);
     EXTEND_AND_WRITE_GALAXY_DATASET(HotGas);
-    EXTEND_AND_WRITE_GALAXY_DATASET(CGMgas);
+    EXTEND_AND_WRITE_GALAXY_DATASET(EjectedMass);
     EXTEND_AND_WRITE_GALAXY_DATASET(BlackHoleMass);
     EXTEND_AND_WRITE_GALAXY_DATASET(ICS);
     EXTEND_AND_WRITE_GALAXY_DATASET(MetalsColdGas);
     EXTEND_AND_WRITE_GALAXY_DATASET(MetalsStellarMass);
     EXTEND_AND_WRITE_GALAXY_DATASET(MetalsBulgeMass);
     EXTEND_AND_WRITE_GALAXY_DATASET(MetalsHotGas);
-    EXTEND_AND_WRITE_GALAXY_DATASET(MetalsCGMgas);
+    EXTEND_AND_WRITE_GALAXY_DATASET(MetalsEjectedMass);
     EXTEND_AND_WRITE_GALAXY_DATASET(MetalsICS);
     EXTEND_AND_WRITE_GALAXY_DATASET(SfrDisk);
     EXTEND_AND_WRITE_GALAXY_DATASET(SfrBulge);
@@ -1151,8 +1155,11 @@ int32_t trigger_buffer_write(const int32_t snap_idx, const int32_t num_to_write,
     EXTEND_AND_WRITE_GALAXY_DATASET(infallMvir);
     EXTEND_AND_WRITE_GALAXY_DATASET(infallVvir);
     EXTEND_AND_WRITE_GALAXY_DATASET(infallVmax);
-    EXTEND_AND_WRITE_GALAXY_DATASET(RcoolToRvir);
+    EXTEND_AND_WRITE_GALAXY_DATASET(Regime);
+    EXTEND_AND_WRITE_GALAXY_DATASET(CGMgas);
+    EXTEND_AND_WRITE_GALAXY_DATASET(MetalsCGMgas);
     EXTEND_AND_WRITE_GALAXY_DATASET(MassLoading);
+    EXTEND_AND_WRITE_GALAXY_DATASET(H2gas);
 #endif
     // We've performed a write, so future galaxies will overwrite the old data.
     save_info->num_gals_in_buffer[snap_idx] = 0;
@@ -1226,8 +1233,7 @@ int32_t write_header(hid_t file_id, const struct forest_info *forest_info, const
     CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "ReionizationOn", run_params->ReionizationOn, H5T_NATIVE_INT);
     CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "DiskInstabilityOn", run_params->DiskInstabilityOn, H5T_NATIVE_INT);
     CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "CGMrecipeOn", run_params->CGMrecipeOn, H5T_NATIVE_INT);
-    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "FIREMassLoading", run_params->FIREMassLoading, H5T_NATIVE_INT);
-    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "FIREejection", run_params->FIREejection, H5T_NATIVE_INT);
+    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "CGMrecipeSAGEOn", run_params->CGMrecipeSAGEOn, H5T_NATIVE_INT);
 
     // Model parameters.
     CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "SfrEfficiency", run_params->SfrEfficiency, H5T_NATIVE_DOUBLE);

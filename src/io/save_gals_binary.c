@@ -270,7 +270,7 @@ int32_t prepare_galaxy_for_output(struct GALAXY *g, struct GALAXY_OUTPUT *o, str
     o->StellarMass = g->StellarMass;
     o->BulgeMass = g->BulgeMass;
     o->HotGas = g->HotGas;
-    o->CGMgas = g->CGMgas;
+    o->EjectedMass = g->EjectedMass;
     o->BlackHoleMass = g->BlackHoleMass;
     o->ICS = g->ICS;
 
@@ -278,7 +278,7 @@ int32_t prepare_galaxy_for_output(struct GALAXY *g, struct GALAXY_OUTPUT *o, str
     o->MetalsStellarMass = g->MetalsStellarMass;
     o->MetalsBulgeMass = g->MetalsBulgeMass;
     o->MetalsHotGas = g->MetalsHotGas;
-    o->MetalsCGMgas = g->MetalsCGMgas;
+    o->MetalsEjectedMass = g->MetalsEjectedMass;
     o->MetalsICS = g->MetalsICS;
 
     o->SfrDisk = 0.0;

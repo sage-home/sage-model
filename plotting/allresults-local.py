@@ -14,7 +14,7 @@ warnings.filterwarnings("ignore")
 # ========================== USER OPTIONS ==========================
 
 # File details
-DirName = './output/millennium_complexCGM/'
+DirName = './output/millennium_CGM_precip/'
 FileName = 'model_0.hdf5'
 Snapshot = 'Snap_63'
 
