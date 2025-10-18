@@ -1604,35 +1604,118 @@ if __name__ == '__main__':
 
     print('Plotting specific SFR vs stellar mass')
 
-    plt.figure()  # New figure
-    ax = plt.subplot(111)  # 1 plot on the figure
+    plt.figure(figsize=(10, 8))
+    ax = plt.subplot(111)
+
+    dilute = 100000
 
     w2 = np.where(StellarMass > 0.0)[0]
     if(len(w2) > dilute): w2 = sample(list(range(len(w2))), dilute)
     mass = np.log10(StellarMass[w2])
-    starformationrate =  (SfrDisk[w2] + SfrBulge[w2])
+    starformationrate = (SfrDisk[w2] + SfrBulge[w2])
     sSFR = np.full_like(starformationrate, -99.0)
     mask = (StellarMass[w2] > 0)
     sSFR[mask] = np.log10(starformationrate[mask] / StellarMass[w2][mask])
 
-    sSFRcut = -11.0  # Define the sSFR cut for star-forming vs quiescent
+    sSFRcut = -11.0
     print(f'sSFR cut at {sSFRcut} yr^-1')
-    plt.axhline(y=sSFRcut, color='r', linestyle='--', linewidth=1, label='sSFR cut')
 
-    # Create scatter plot
-    plt.scatter(mass, sSFR, c='b', marker='o', s=1, alpha=0.7)
+    # Separate populations
+    sf_mask = (sSFR > sSFRcut) & (sSFR > -99.0)  # Star-forming
+    q_mask = (sSFR <= sSFRcut) & (sSFR > -99.0)  # Quiescent
 
-    plt.ylabel(r'$\log_{10} \mathrm{sSFR}\ (\mathrm{yr^{-1}})$')  # Set the y...
-    plt.xlabel(r'$\log_{10} M_{\mathrm{stars}}\ (M_{\odot})$')  # and the x-axis labels
+    mass_sf = mass[sf_mask]
+    sSFR_sf = sSFR[sf_mask]
+    mass_q = mass[q_mask]
+    sSFR_q = sSFR[q_mask]
 
-    # Set the x and y axis minor ticks
-    ax.xaxis.set_minor_locator(plt.MultipleLocator(0.05))
+    # Define grid for density calculation
+    x_bins = np.linspace(8.0, 12.2, 100)
+    y_bins = np.linspace(-13, -8, 100)
+
+    def plot_density_contours(x, y, color, label, clip_above=None, clip_below=None):
+        """Plot filled contours with 1, 2, 3 sigma levels"""
+        if len(x) < 10:
+            return
+        
+        # Create 2D histogram
+        H, xedges, yedges = np.histogram2d(x, y, bins=[x_bins, y_bins])
+        H = H.T  # Transpose for correct orientation
+        
+        # Smooth the histogram
+        from scipy.ndimage import gaussian_filter
+        H_smooth = gaussian_filter(H, sigma=1.5)
+        
+        # Apply clipping if specified
+        y_centers = (yedges[:-1] + yedges[1:]) / 2
+        if clip_above is not None:
+            # Mask out regions above the clip line
+            mask_2d = y_centers[:, np.newaxis] <= clip_above
+            H_smooth = H_smooth * mask_2d
+        if clip_below is not None:
+            # Mask out regions below the clip line
+            mask_2d = y_centers[:, np.newaxis] >= clip_below
+            H_smooth = H_smooth * mask_2d
+        
+        # Calculate contour levels
+        sorted_H = np.sort(H_smooth.flatten())[::-1]
+        sorted_H = sorted_H[sorted_H > 0]  # Remove zeros
+        if len(sorted_H) == 0:
+            return
+            
+        cumsum = np.cumsum(sorted_H)
+        cumsum = cumsum / cumsum[-1]
+        
+        level_3sigma = sorted_H[np.where(cumsum >= 0.997)[0][0]] if np.any(cumsum >= 0.997) else sorted_H[-1]
+        level_2sigma = sorted_H[np.where(cumsum >= 0.95)[0][0]] if np.any(cumsum >= 0.95) else sorted_H[-1]
+        level_1sigma = sorted_H[np.where(cumsum >= 0.68)[0][0]] if np.any(cumsum >= 0.68) else sorted_H[-1]
+        
+        levels = [level_3sigma, level_2sigma, level_1sigma]
+        alphas = [0.3, 0.5, 0.7]
+        
+        x_centers = (xedges[:-1] + xedges[1:]) / 2
+        
+        # Plot filled contours
+        for i, (level, alpha) in enumerate(zip(levels, alphas)):
+            if i == len(levels) - 1:
+                ax.contourf(x_centers, y_centers, H_smooth, 
+                        levels=[level, H_smooth.max()],
+                        colors=[color], alpha=alpha, label=label)
+            else:
+                ax.contourf(x_centers, y_centers, H_smooth, 
+                        levels=[level, levels[i+1] if i+1 < len(levels) else H_smooth.max()],
+                        colors=[color], alpha=alpha)
+        
+        # Add contour lines
+        ax.contour(x_centers, y_centers, H_smooth, 
+                levels=levels, colors=color, linewidths=1.0, alpha=0.8)
+
+    # Plot quiescent population (red) - clip above -11
+    if len(mass_q) > 0:
+        plot_density_contours(mass_q, sSFR_q, 'red', 'Quiescent', clip_above=sSFRcut)
+
+    # Plot star-forming population (blue) - clip below -11
+    if len(mass_sf) > 0:
+        plot_density_contours(mass_sf, sSFR_sf, 'blue', 'Star-forming', clip_below=sSFRcut)
+
+    # Add the sSFR cut line
+    plt.axhline(y=sSFRcut, color='black', linestyle='--', linewidth=2, 
+            label=f'sSFR cut = {sSFRcut}', zorder=10)
+
+    plt.ylabel(r'$\log_{10} \mathrm{sSFR}\ (\mathrm{yr^{-1}})$', fontsize=14)
+    plt.xlabel(r'$\log_{10} M_{\mathrm{stars}}\ (M_{\odot})$', fontsize=14)
+
+    ax.xaxis.set_minor_locator(plt.MultipleLocator(0.1))
     ax.yaxis.set_minor_locator(plt.MultipleLocator(0.25))
 
-    plt.xlim(6.0, 12.2)
-    plt.ylim(-13, -8)  # Set y-axis limits for sSFR
+    plt.xlim(8.0, 12.2)
+    plt.ylim(-13, -8)
 
-    plt.savefig(OutputDir + '23.specific_star_formation_rate' + OutputFormat)  # Save the figure
+    plt.legend(loc='upper right', fontsize=12, framealpha=0.9)
+    plt.grid(True, alpha=0.3, linestyle=':', linewidth=0.5)
+    plt.tight_layout()
+
+    plt.savefig(OutputDir + '23.specific_star_formation_rate' + OutputFormat, dpi=150)
     print('Saved to', OutputDir + '23.specific_star_formation_rate' + OutputFormat, '\n')
     plt.close()
 
