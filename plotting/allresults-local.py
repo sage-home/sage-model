@@ -5,7 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 from collections import defaultdict
-
+from scipy import stats
 from random import sample, seed
 
 import warnings
@@ -14,7 +14,7 @@ warnings.filterwarnings("ignore")
 # ========================== USER OPTIONS ==========================
 
 # File details
-DirName = './output/millennium_CGM_precip/'
+DirName = './output/millennium/'
 FileName = 'model_0.hdf5'
 Snapshot = 'Snap_63'
 
@@ -64,11 +64,38 @@ if __name__ == '__main__':
     BlackHoleMass = read_hdf(snap_num = Snapshot, param = 'BlackHoleMass') * 1.0e10 / Hubble_h
     ColdGas = read_hdf(snap_num = Snapshot, param = 'ColdGas') * 1.0e10 / Hubble_h
     MetalsColdGas = read_hdf(snap_num = Snapshot, param = 'MetalsColdGas') * 1.0e10 / Hubble_h
-    MetalsCGMgas = read_hdf(snap_num = Snapshot, param = 'MetalsCGMgas') * 1.0e10 / Hubble_h
+    MetalsEjectedMass = read_hdf(snap_num = Snapshot, param = 'MetalsEjectedMass') * 1.0e10 / Hubble_h
     HotGas = read_hdf(snap_num = Snapshot, param = 'HotGas') * 1.0e10 / Hubble_h
+    MetalsHotGas = read_hdf(snap_num = Snapshot, param = 'MetalsHotGas') * 1.0e10 / Hubble_h
+    EjectedMass = read_hdf(snap_num = Snapshot, param = 'EjectedMass') * 1.0e10 / Hubble_h
     CGMgas = read_hdf(snap_num = Snapshot, param = 'CGMgas') * 1.0e10 / Hubble_h
+    print('CGM gas sample:', CGMgas[:10], '\n')
+    MetalsCGMgas = read_hdf(snap_num = Snapshot, param = 'MetalsCGMgas') * 1.0e10 / Hubble_h
+    print('CGM metals sample:', MetalsCGMgas[:10], '\n')
+
+    print('Total Ejected gas mass in box:', np.sum(EjectedMass))
+    print('Minimum Ejected gas mass:', np.min(EjectedMass[np.where(EjectedMass>0.0)]))
+    print('Maximum Ejected gas mass:', np.max(EjectedMass))
+    print('Negative Ejected gas mass:', len(np.where(EjectedMass<0.0)[0]), '\n')
+    print('Negative Ejected gas mass sample:', EjectedMass[np.where(EjectedMass<0.0)[0]][:10], '\n')
+
+    print('Total CGM gas mass in box:', np.sum(CGMgas))
+    print('Minimum CGM gas mass:', np.min(CGMgas[np.where(CGMgas>0.0)]))
+    print('Maximum CGM gas mass:', np.max(CGMgas))
+    print('Negative CGM gas mass:', len(np.where(CGMgas<0.0)[0]), '\n')
+    print('Negative CGM gas mass sample:', CGMgas[np.where(CGMgas<0.0)[0]][:10], '\n')
+
+
     IntraClusterStars = read_hdf(snap_num = Snapshot, param = 'IntraClusterStars') * 1.0e10 / Hubble_h
-    RcoolToRvir = read_hdf(snap_num = Snapshot, param = 'RcoolToRvir')
+    DiskRadius = read_hdf(snap_num = Snapshot, param = 'DiskRadius')
+
+    H2gas = read_hdf(snap_num = Snapshot, param = 'H2gas') * 1.0e10 / Hubble_h
+
+    print('Total H2 gas mass in box:', np.sum(H2gas))
+    print('Minimum H2 gas mass:', np.min(H2gas[np.where(H2gas>0.0)]))
+    print('Maximum H2 gas mass:', np.max(H2gas))
+    print('Negative H2 gas mass:', len(np.where(H2gas<0.0)[0]), '\n')
+    print('Negative H2 gas mass sample:', H2gas[np.where(H2gas<0.0)[0]][:10], '\n')
 
     Vvir = read_hdf(snap_num = Snapshot, param = 'Vvir')
     Vmax = read_hdf(snap_num = Snapshot, param = 'Vmax')
@@ -82,6 +109,16 @@ if __name__ == '__main__':
     Posy = read_hdf(snap_num = Snapshot, param = 'Posy')
     Posz = read_hdf(snap_num = Snapshot, param = 'Posz')
 
+    OutflowRate = read_hdf(snap_num = Snapshot, param = 'OutflowRate')
+    print('Total outflow rate:', np.sum(OutflowRate), '\n')
+    print('Outflow rate sample:', OutflowRate[:10], '\n')
+
+    Massloading = OutflowRate / (SfrDisk + SfrBulge + 1.0e-10)
+
+    print('Mass loading factor sample:', Massloading[:10], '\n')
+    print('Maximum mass loading factor:', np.max(Massloading[np.where(Massloading<1.0e10)]), '\n')
+    print('Minimum mass loading factor:', np.min(Massloading[np.where(Massloading>0.0)]), '\n')
+
     w = np.where(StellarMass > 1.0e10)[0]
     print('Number of galaxies read:', len(StellarMass))
     print('Galaxies more massive than 10^10 h-1 Msun:', len(w), '\n')
@@ -89,8 +126,7 @@ if __name__ == '__main__':
     Tvir = 35.9 * (Vvir)**2  # in Kelvin
     Tmax = 2.5e5  # K, corresponds to Vvir ~52.7 km/s
 
-    H2gas = read_hdf(snap_num = Snapshot, param = 'H2gas') * 1.0e10 / Hubble_h
-
+    Regime = read_hdf(snap_num = Snapshot, param = 'Regime')
 
 # --------------------------------------------------------
 
@@ -768,7 +804,7 @@ if __name__ == '__main__':
     ax = plt.subplot(111)
 
     HaloMass = np.log10(Mvir)
-    Baryons = StellarMass + ColdGas + HotGas + CGMgas + IntraClusterStars + BlackHoleMass
+    Baryons = StellarMass + ColdGas + HotGas + CGMgas + IntraClusterStars + BlackHoleMass + EjectedMass
 
     MinHalo, MaxHalo, Interval = 11.0, 16.0, 0.1
     HaloBins = np.arange(MinHalo, MaxHalo + Interval, Interval)
@@ -796,6 +832,9 @@ if __name__ == '__main__':
     MeanBH = []
     MeanBHU = []
     MeanBHL = []
+    MeanEjected = []
+    MeanEjectedU = []
+    MeanEjectedL = []
 
     bin_indices = np.digitize(HaloMass, HaloBins) - 1
 
@@ -817,6 +856,7 @@ if __name__ == '__main__':
             CGMFractions = np.zeros(HalosFound)
             ICSFractions = np.zeros(HalosFound)
             BHFractions = np.zeros(HalosFound)
+            EjectedFractions = np.zeros(HalosFound)
             
             # Vectorized calculation for each halo
             for idx, halo_idx in enumerate(w1):
@@ -831,6 +871,7 @@ if __name__ == '__main__':
                 CGMFractions[idx] = np.sum(CGMgas[halo_galaxies]) / halo_mvir
                 ICSFractions[idx] = np.sum(IntraClusterStars[halo_galaxies]) / halo_mvir
                 BHFractions[idx] = np.sum(BlackHoleMass[halo_galaxies]) / halo_mvir
+                EjectedFractions[idx] = np.sum(EjectedMass[halo_galaxies]) / halo_mvir
             
             # Calculate statistics once for all arrays
             CentralHaloMass = np.log10(Mvir[w1])
@@ -841,9 +882,9 @@ if __name__ == '__main__':
             
             # Vectorized mean and std calculations
             means = [np.mean(arr) for arr in [BaryonFractions, StarsFractions, ColdFractions, 
-                                             HotFractions, CGMFractions, ICSFractions, BHFractions]]
+                                             HotFractions, CGMFractions, ICSFractions, BHFractions, EjectedFractions]]
             stds = [np.std(arr) / sqrt_n for arr in [BaryonFractions, StarsFractions, ColdFractions, 
-                                                    HotFractions, CGMFractions, ICSFractions, BHFractions]]
+                                                    HotFractions, CGMFractions, ICSFractions, BHFractions, EjectedFractions]]
             
             # Append all means and bounds
             MeanBaryonFraction.append(means[0])
@@ -874,6 +915,10 @@ if __name__ == '__main__':
             MeanBHU.append(means[6] + stds[6])
             MeanBHL.append(means[6] - stds[6])
 
+            MeanEjected.append(means[7])
+            MeanEjectedU.append(means[7] + stds[7])
+            MeanEjectedL.append(means[7] - stds[7])
+
     # Convert lists to arrays and ensure positive values for log scale
     MeanCentralHaloMass = np.array(MeanCentralHaloMass)
     MeanBaryonFraction = np.array(MeanBaryonFraction)
@@ -900,6 +945,10 @@ if __name__ == '__main__':
     MeanICSU = np.array(MeanICSU)
     MeanICSL = np.maximum(np.array(MeanICSL), 1e-6)
 
+    MeanEjected = np.array(MeanEjected)
+    MeanEjectedU = np.array(MeanEjectedU)
+    MeanEjectedL = np.maximum(np.array(MeanEjectedL), 1e-6)
+
     baryon_frac = 0.17
     plt.axhline(y=baryon_frac, color='grey', linestyle='--', linewidth=1.0, 
             label='Baryon Fraction = {:.2f}'.format(baryon_frac))
@@ -917,6 +966,8 @@ if __name__ == '__main__':
                      color='green', alpha=0.2)
     plt.fill_between(MeanCentralHaloMass, MeanICSL, MeanICSU, 
                      color='orange', alpha=0.2)
+    plt.fill_between(MeanCentralHaloMass, MeanEjectedL, MeanEjectedU, 
+                     color='yellow', alpha=0.2)
 
     plt.plot(MeanCentralHaloMass, MeanBaryonFraction, 'k-', label='Total')
     plt.plot(MeanCentralHaloMass, MeanStars, label='Stars', color='purple', linestyle='--')
@@ -924,6 +975,7 @@ if __name__ == '__main__':
     plt.plot(MeanCentralHaloMass, MeanHot, label='Hot gas', color='red')
     plt.plot(MeanCentralHaloMass, MeanCGM, label='Circumgalactic Medium', color='green', linestyle='-.')
     plt.plot(MeanCentralHaloMass, MeanICS, label='Intracluster Stars', color='orange', linestyle='-.')
+    plt.plot(MeanCentralHaloMass, MeanEjected, label='Ejected gas', color='yellow', linestyle='--')
 
     #plt.yscale('log')
 
@@ -958,10 +1010,11 @@ if __name__ == '__main__':
     plt.scatter(HaloMass, np.log10(StellarMass[w]), marker='o', s=0.3, c='k', alpha=0.5, label='Stars')
     plt.scatter(HaloMass, np.log10(ColdGas[w]), marker='o', s=0.3, color='blue', alpha=0.5, label='Cold gas')
     plt.scatter(HaloMass, np.log10(HotGas[w]), marker='o', s=0.3, color='red', alpha=0.5, label='Hot gas')
-    plt.scatter(HaloMass, np.log10(CGMgas[w]), marker='o', s=0.3, color='green', alpha=0.5, label='Ejected gas')
+    plt.scatter(HaloMass, np.log10(EjectedMass[w]), marker='o', s=0.3, color='green', alpha=0.5, label='Ejected gas')
     plt.scatter(HaloMass, np.log10(IntraClusterStars[w]), marker='o', s=10, color='yellow', alpha=0.5, label='Intracluster stars')
+    plt.scatter(HaloMass, np.log10(CGMgas[w]), marker='o', s=10, color='orange', alpha=0.5, label='CGM gas')
 
-    plt.ylabel(r'$\mathrm{stellar,\ cold,\ hot,\ ejected,\ ICS\ mass}$')  # Set the y...
+    plt.ylabel(r'$\mathrm{stellar,\ cold,\ hot,\ ejected,\ CGM,\ ICS\ mass}$')  # Set the y...
     plt.xlabel(r'$\log\ M_{\mathrm{vir}}\ (h^{-1}\ M_{\odot})$')  # and the x-axis labels
     
     plt.axis([10.0, 15.0, 7.5, 14.0])
@@ -1114,6 +1167,7 @@ if __name__ == '__main__':
     print('Saved file to', outputFile, '\n')
     plt.close()
 
+
     # -------------------------------------------------------
 
     print('Plotting Size-Mass relation split by star-forming and quiescent')
@@ -1197,11 +1251,11 @@ if __name__ == '__main__':
     log10_stellar_mass = np.log10(StellarMass[w])
 
     # Calculate total hot-type gas and CGM fraction
-    total_hot_gas = CGMgas[w] + HotGas[w]
+    total_hot_gas = EjectedMass[w] + HotGas[w]
     # Avoid division by zero
     mask = total_hot_gas > 0
     f_CGM = np.zeros_like(total_hot_gas)
-    f_CGM[mask] = CGMgas[w][mask] / total_hot_gas[mask]
+    f_CGM[mask] = EjectedMass[w][mask] / total_hot_gas[mask]
 
     # Only plot where there's actually gas
     valid = mask & (f_CGM >= 0) & (f_CGM <= 1)
@@ -1230,11 +1284,11 @@ if __name__ == '__main__':
     log10_BH_mass = np.log10(BlackHoleMass[w])
 
     # Calculate total hot-type gas and CGM fraction
-    total_hot_gas = CGMgas[w] + HotGas[w]
+    total_hot_gas = EjectedMass[w] + HotGas[w]
     # Avoid division by zero
     mask = total_hot_gas > 0
     f_CGM = np.zeros_like(total_hot_gas)
-    f_CGM[mask] = CGMgas[w][mask] / total_hot_gas[mask]
+    f_CGM[mask] = EjectedMass[w][mask] / total_hot_gas[mask]
 
     # Only plot where there's actually gas
     valid = mask & (f_CGM >= 0) & (f_CGM <= 1)
@@ -1251,7 +1305,7 @@ if __name__ == '__main__':
     plt.savefig(outputFile)
     plt.close()
 
-    # -------------------------------------------------------
+        # -------------------------------------------------------
 
     print('Plotting CGM vs Stellar Mass')
 
@@ -1397,4 +1451,212 @@ if __name__ == '__main__':
 
     outputFile = OutputDir + '20.CGM_mass_vs_stellar_mass_metallicity' + OutputFormat
     plt.savefig(outputFile)
+    plt.close()
+
+    # -------------------------------------------------------
+
+    print('Plotting Ejected vs Stellar Mass')
+
+    plt.figure()
+    w = np.where((StellarMass > 0.0) & (EjectedMass > 0.0))[0]
+    if(len(w) > dilute): w = sample(list(w), dilute)
+
+    log10_stellar_mass = np.log10(StellarMass[w])
+    log10_CGM_mass = np.log10(EjectedMass[w])
+    tvir = np.log10(35.9 * Vvir[w]**2)  # in Kelvin
+
+    plt.scatter(log10_stellar_mass, log10_CGM_mass, c=tvir, cmap='seismic', s=5)
+    plt.colorbar(label=r'$\log_{10} T_{\mathrm{vir}}\ (\mathrm{K})$')
+
+    plt.xlabel(r'$\log_{10} M_{\mathrm{stars}}\ (M_{\odot})$')
+    plt.ylabel(r'$\log_{10} M_{\mathrm{ejected}}\ (M_{\odot})$')
+
+    plt.xlim(8, 12)
+    plt.ylim(6, 12)
+
+    outputFile = OutputDir + '19.Ejected_mass_vs_stellar_mass_temperature' + OutputFormat
+    plt.savefig(outputFile)
+    plt.close()
+
+    # -------------------------------------------------------
+
+    print('Plotting Ejected vs Stellar Mass')
+
+    plt.figure()
+    w = np.where((StellarMass > 0.0) & (EjectedMass > 0.0))[0]
+    if(len(w) > dilute): w = sample(list(w), dilute)
+
+    log10_stellar_mass = np.log10(StellarMass[w])
+    log10_CGM_mass = np.log10(EjectedMass[w])
+    Z = np.log10((MetalsEjectedMass[w] / EjectedMass[w]) / 0.02) + 9.0
+
+    plt.scatter(log10_stellar_mass, log10_CGM_mass, c=Z, cmap='plasma', s=5, vmin=7, vmax=9)
+    plt.colorbar(label=r'$12\ +\ \log_{10}[\mathrm{O/H}]$')
+
+    plt.xlabel(r'$\log_{10} M_{\mathrm{stars}}\ (M_{\odot})$')
+    plt.ylabel(r'$\log_{10} M_{\mathrm{ejected}}\ (M_{\odot})$')
+
+    plt.xlim(8, 12)
+    plt.ylim(6, 12)
+
+    outputFile = OutputDir + '20.Ejected_mass_vs_stellar_mass_metallicity' + OutputFormat
+    plt.savefig(outputFile)
+    plt.close()
+
+     # -------------------------------------------------------
+
+    print('Plotting Hot gas vs Stellar Mass')
+
+    plt.figure()
+    w = np.where((StellarMass > 0.0) & (HotGas > 0.0))[0]
+    if(len(w) > dilute): w = sample(list(w), dilute)
+
+    log10_stellar_mass = np.log10(StellarMass[w])
+    log10_CGM_mass = np.log10(HotGas[w])
+    Z = np.log10((MetalsHotGas[w] / HotGas[w]) / 0.02) + 9.0
+
+    plt.scatter(log10_stellar_mass, log10_CGM_mass, c=Z, cmap='plasma', s=5, vmin=7, vmax=9)
+    plt.colorbar(label=r'$12\ +\ \log_{10}[\mathrm{O/H}]$')
+
+    plt.xlabel(r'$\log_{10} M_{\mathrm{stars}}\ (M_{\odot})$')
+    plt.ylabel(r'$\log_{10} M_{\mathrm{hot}}\ (M_{\odot})$')
+
+    plt.xlim(8, 12)
+    plt.ylim(6, 12)
+
+    outputFile = OutputDir + '20.Hot_gas_vs_stellar_mass_metallicity' + OutputFormat
+    plt.savefig(outputFile)
+    plt.close()
+
+    # -------------------------------------------------------
+
+    print('Plotting outflow vs stellar mass')
+
+    plt.figure()
+    w = np.where((StellarMass > 0.0) & (OutflowRate > 0.0))[0]
+    if(len(w) > dilute): w = sample(list(w), dilute)
+
+    log10_stellar_mass = np.log10(StellarMass[w])
+    mass_loading = OutflowRate[w] / (SfrDisk[w] + SfrBulge[w])
+
+    plt.scatter(Vvir[w], mass_loading, c='green', s=5, alpha=0.6)
+
+    plt.xlabel(r'$V_{\mathrm{vir}}\ (\mathrm{km/s})$')
+    plt.ylabel(r'$\eta = \dot{M}_{\mathrm{outflow}}/\mathrm{SFR}$')
+
+    # Add vertical line at critical velocity
+    plt.axvline(x=60, color='gray', linestyle=':', linewidth=2, alpha=0.7, 
+                label='$V_{\\mathrm{crit}} = 60$ km/s')
+
+    plt.xlim(min(Vvir[w]), 300)
+    plt.ylim(0.01, max(mass_loading)*1.1)
+
+    outputFile = OutputDir + '21.outflow_rate_vs_stellar_mass' + OutputFormat
+    plt.savefig(outputFile)
+    plt.close()
+
+    # -------------------------------------------------------
+
+    # Regime = read_hdf(snap_num = Snapshot, param = 'Regime')
+
+    print('Regime fractions:')
+    print('Cool regime:', np.mean(Regime == 0))
+    print('Hot regime:', np.mean(Regime == 1))
+
+    print('Plotting stellar mass vs halo mass colored by regime')
+
+    plt.figure()
+
+    w = np.where((Mvir > 0.0) & (StellarMass > 0.0))[0]
+    if(len(w) > dilute): w = sample(list(w), dilute)
+
+    log10_halo_mass = np.log10(Mvir[w])
+    log10_stellar_mass = np.log10(StellarMass[w])
+    regime_values = Regime[w]
+    
+    # Separate the data by regime for different colors
+    cgm_regime = (regime_values == 0)
+    hot_regime = (regime_values == 1)
+    
+    # Plot each regime separately with different colors
+    if np.any(cgm_regime):
+        plt.scatter(log10_halo_mass[cgm_regime], log10_stellar_mass[cgm_regime], 
+                   c='blue', s=5, alpha=0.6, label='CGM Regime')
+    
+    if np.any(hot_regime):
+        plt.scatter(log10_halo_mass[hot_regime], log10_stellar_mass[hot_regime], 
+                   c='red', s=5, alpha=0.6, label='Hot Regime')
+
+    plt.xlabel(r'$\log_{10} M_{\mathrm{vir}}\ (M_{\odot})$')
+    plt.ylabel(r'$\log_{10} M_{\mathrm{stars}}\ (M_{\odot})$')
+    plt.xlim(10, 15)
+    plt.ylim(8, 12)
+    
+    # Add legend
+    plt.legend(loc='upper left', frameon=False)
+
+    outputFile = OutputDir + '22.stellar_vs_halo_mass_by_regime' + OutputFormat
+    plt.savefig(outputFile)
+    print('Saved file to', outputFile, '\n')
+    plt.close()
+
+    # -------------------------------------------------------
+
+    print('Plotting specific SFR vs stellar mass')
+
+    plt.figure()  # New figure
+    ax = plt.subplot(111)  # 1 plot on the figure
+
+    w2 = np.where(StellarMass > 0.0)[0]
+    if(len(w2) > dilute): w2 = sample(list(range(len(w2))), dilute)
+    mass = np.log10(StellarMass[w2])
+    starformationrate =  (SfrDisk[w2] + SfrBulge[w2])
+    sSFR = np.full_like(starformationrate, -99.0)
+    mask = (StellarMass[w2] > 0)
+    sSFR[mask] = np.log10(starformationrate[mask] / StellarMass[w2][mask])
+
+    sSFRcut = -11.0  # Define the sSFR cut for star-forming vs quiescent
+    print(f'sSFR cut at {sSFRcut} yr^-1')
+    plt.axhline(y=sSFRcut, color='r', linestyle='--', linewidth=1, label='sSFR cut')
+
+    # Create scatter plot
+    plt.scatter(mass, sSFR, c='b', marker='o', s=1, alpha=0.7)
+
+    plt.ylabel(r'$\log_{10} \mathrm{sSFR}\ (\mathrm{yr^{-1}})$')  # Set the y...
+    plt.xlabel(r'$\log_{10} M_{\mathrm{stars}}\ (M_{\odot})$')  # and the x-axis labels
+
+    # Set the x and y axis minor ticks
+    ax.xaxis.set_minor_locator(plt.MultipleLocator(0.05))
+    ax.yaxis.set_minor_locator(plt.MultipleLocator(0.25))
+
+    plt.xlim(6.0, 12.2)
+    plt.ylim(-13, -8)  # Set y-axis limits for sSFR
+
+    plt.savefig(OutputDir + '23.specific_star_formation_rate' + OutputFormat)  # Save the figure
+    print('Saved to', OutputDir + '23.specific_star_formation_rate' + OutputFormat, '\n')
+    plt.close()
+
+    # -------------------------------------------------------
+
+    MassLoading = read_hdf(snap_num = Snapshot, param = 'MassLoading')
+
+    print('Mass loading factor statistics:')
+    print('Mean:', np.mean(MassLoading))
+    print('Median:', np.median(MassLoading))
+    print('Std Dev:', np.std(MassLoading))
+    print('Max:', np.max(MassLoading))
+    print('Min:', np.min(MassLoading))
+    print('Sample of values:', MassLoading[:10])
+
+    print('Plotting Mass Loading Factor vs Stellar Mass')
+
+    plt.figure()
+    plt.scatter(np.log10(StellarMass), MassLoading, c='b', marker='o', s=1, alpha=0.7)
+    plt.xlabel(r'$\log_{10} M_{\mathrm{stars}}\ (M_{\odot})$')
+    plt.ylabel(r'$\mathrm{Mass\ Loading\ Factor}$')
+    plt.xlim(6.0, 12.2)
+    plt.ylim(0, None)
+
+    plt.savefig(OutputDir + '24.mass_loading_factor_vs_stellar_mass' + OutputFormat)
+    print('Saved to', OutputDir + '24.mass_loading_factor_vs_stellar_mass' + OutputFormat, '\n')
     plt.close()

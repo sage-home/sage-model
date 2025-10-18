@@ -13,7 +13,7 @@ warnings.filterwarnings("ignore")
 # ========================== USER OPTIONS ==========================
 
 # File details
-DirName = './output/millennium_CGM_precip/'
+DirName = './output/millennium/'
 FileName = 'model_0.hdf5'
 
 # Simulation details
@@ -76,6 +76,7 @@ if __name__ == '__main__':
     OutflowRateFull = [0]*(LastSnap-FirstSnap+1)
     coldgasFull = [0]*(LastSnap-FirstSnap+1)
     dT = [0]*(LastSnap-FirstSnap+1)
+    RegimeFull = [0]*(LastSnap-FirstSnap+1)
 
     for snap in range(FirstSnap,LastSnap+1):
 
@@ -94,6 +95,7 @@ if __name__ == '__main__':
         OutflowRateFull[snap] = read_hdf(snap_num = Snapshot, param = 'OutflowRate')
         coldgasFull[snap] = read_hdf(snap_num = Snapshot, param = 'ColdGas') * 1.0e10 / Hubble_h
         dT[snap] = read_hdf(snap_num = Snapshot, param = 'dT')
+        RegimeFull[snap] = read_hdf(snap_num = Snapshot, param = 'Regime')
 
 
 # --------------------------------------------------------
@@ -1947,6 +1949,205 @@ if __name__ == '__main__':
     plt.tight_layout()
 
     outputFile = OutputDir + 'Q.StellarMass_Mass_ModelComparison' + OutputFormat
+    plt.savefig(outputFile, dpi=300, bbox_inches='tight')
+    print('Saved file to', outputFile, '\n')
+    plt.close()
+
+    # --------------------------------------------------------
+    
+    print('Plotting stellar mass vs halo mass colored by regime across redshifts')
+    dilute = 30000
+    plt.figure(figsize=(12, 8))
+
+    # Select a subset of snapshots for clarity (every other snapshot from SMFsnaps)
+    regime_snaps = [63, 32, 23, 18]  # z=0, z~1, z~2, z~3
+    regime_redshifts = [redshifts[snap] for snap in regime_snaps]
+    
+    # Color maps for the two regimes - different shades of blue and red
+    blue_colors = ['#08519c', '#3182bd', '#6baed6', '#9ecae1']  # Dark to light blue
+    red_colors = ['#a50f15', '#de2d26', '#fb6a4a', '#fcae91']   # Dark to light red
+    
+    for i, snap in enumerate(regime_snaps):
+        # Get valid galaxies for this snapshot
+        w = np.where((HaloMassFull[snap] > 0.0) & (StellarMassFull[snap] > 0.0))[0]
+        if len(w) > dilute: 
+            w = sample(list(w), dilute)
+        
+        if len(w) == 0:
+            continue
+            
+        log10_halo_mass = np.log10(HaloMassFull[snap][w])
+        log10_stellar_mass = np.log10(StellarMassFull[snap][w])
+        regime_values = RegimeFull[snap][w]
+        
+        # Separate by regime
+        cgm_regime = (regime_values == 0)
+        hot_regime = (regime_values == 1)
+        
+        # Plot CGM regime (blue shades)
+        if np.any(cgm_regime):
+            plt.scatter(log10_halo_mass[cgm_regime], log10_stellar_mass[cgm_regime], 
+                       c=blue_colors[i], s=8, alpha=0.7, 
+                       label=f'CGM z={regime_redshifts[i]:.1f}')
+        
+        # Plot Hot regime (red shades)
+        if np.any(hot_regime):
+            plt.scatter(log10_halo_mass[hot_regime], log10_stellar_mass[hot_regime], 
+                       c=red_colors[i], s=8, alpha=0.7, 
+                       label=f'Hot z={regime_redshifts[i]:.1f}')
+
+    plt.xlabel(r'$\log_{10} M_{\mathrm{vir}}\ (M_{\odot})$', fontsize=14)
+    plt.ylabel(r'$\log_{10} M_{\mathrm{stars}}\ (M_{\odot})$', fontsize=14)
+    plt.xlim(10, 15)
+    plt.ylim(6, 12)
+    
+    # Add legend with two columns
+    plt.legend(loc='upper left', frameon=False, ncol=2, fontsize=10)
+    plt.tight_layout()
+
+    outputFile = OutputDir + 'R.stellar_vs_halo_mass_by_regime_redshift' + OutputFormat
+    plt.savefig(outputFile, dpi=300, bbox_inches='tight')
+    print('Saved file to', outputFile, '\n')
+    plt.close()
+
+    # --------------------------------------------------------
+    
+    print('Plotting regime distribution histograms across redshifts')
+    dilute = 30000
+    fig, axes = plt.subplots(2, 2, figsize=(12, 10))
+    axes = axes.flatten()
+    
+    # Use the same snapshots and redshifts as before
+    regime_snaps = [63, 32, 23, 18]  # z=0, z~1, z~2, z~3
+    regime_redshifts = [redshifts[snap] for snap in regime_snaps]
+    
+    # Histogram bins for halo mass
+    halo_mass_bins = np.arange(10.0, 15.5, 0.2)
+    bin_centers = (halo_mass_bins[:-1] + halo_mass_bins[1:]) / 2
+    
+    for i, snap in enumerate(regime_snaps):
+        ax = axes[i]
+        
+        # Get valid galaxies for this snapshot
+        w = np.where((HaloMassFull[snap] > 0.0) & (StellarMassFull[snap] > 0.0))[0]
+        
+        if len(w) == 0:
+            continue
+            
+        log10_halo_mass = np.log10(HaloMassFull[snap][w])
+        regime_values = RegimeFull[snap][w]
+        
+        # Separate by regime
+        cgm_regime_masses = log10_halo_mass[regime_values == 0]
+        hot_regime_masses = log10_halo_mass[regime_values == 1]
+        
+        # Create histograms of galaxy counts in halo mass bins
+        cgm_hist, _ = np.histogram(cgm_regime_masses, bins=halo_mass_bins)
+        hot_hist, _ = np.histogram(hot_regime_masses, bins=halo_mass_bins)
+        
+        # Plot stacked histograms showing actual galaxy counts
+        ax.bar(bin_centers, cgm_hist, width=0.18, color='blue', alpha=0.7, 
+               label='CGM Regime', bottom=0)
+        ax.bar(bin_centers, hot_hist, width=0.18, color='red', alpha=0.7, 
+               label='Hot Regime', bottom=cgm_hist)
+        
+        # Formatting
+        ax.set_title(f'z = {regime_redshifts[i]:.1f}', fontsize=12, fontweight='bold')
+        ax.set_xlabel(r'$\log_{10} M_{\mathrm{vir}}\ (M_{\odot})$', fontsize=10)
+        ax.set_ylabel('Galaxy Count', fontsize=10)
+        ax.set_xlim(10.0, 15.0)
+        ax.set_ylim(0, None)  # Auto-scale based on actual counts
+        ax.grid(True, alpha=0.3)
+        
+        # Add regime statistics as text
+        total_galaxies = len(w)
+        cgm_count = np.sum(regime_values == 0)
+        hot_count = np.sum(regime_values == 1)
+        cgm_percent = (cgm_count / total_galaxies * 100) if total_galaxies > 0 else 0
+        hot_percent = (hot_count / total_galaxies * 100) if total_galaxies > 0 else 0
+        
+        ax.text(0.02, 0.95, f'CGM: {cgm_percent:.1f}%\nHot: {hot_percent:.1f}%', 
+                transform=ax.transAxes, verticalalignment='top', fontsize=9,
+                bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
+    
+    # Add legend to the first subplot
+    axes[0].legend(loc='upper right', frameon=False, fontsize=10)
+    
+    plt.tight_layout()
+    plt.suptitle('Regime Distribution vs Halo Mass Across Redshift', fontsize=14, y=0.98)
+    
+    outputFile = OutputDir + 'S.regime_distribution_histograms_redshift' + OutputFormat
+    plt.savefig(outputFile, dpi=300, bbox_inches='tight')
+    print('Saved file to', outputFile, '\n')
+    plt.close()
+
+    # --------------------------------------------------------
+    
+    print('Plotting regime distribution histograms vs stellar mass across redshifts')
+
+    fig, axes = plt.subplots(2, 2, figsize=(12, 10))
+    axes = axes.flatten()
+    dilute = 30000
+    # Use the same snapshots and redshifts as before
+    regime_snaps = [63, 32, 23, 18]  # z=0, z~1, z~2, z~3
+    regime_redshifts = [redshifts[snap] for snap in regime_snaps]
+    
+    # Histogram bins for stellar mass
+    stellar_mass_bins = np.arange(8.0, 12.5, 0.2)
+    bin_centers = (stellar_mass_bins[:-1] + stellar_mass_bins[1:]) / 2
+    
+    for i, snap in enumerate(regime_snaps):
+        ax = axes[i]
+        
+        # Get valid galaxies for this snapshot
+        w = np.where((HaloMassFull[snap] > 0.0) & (StellarMassFull[snap] > 0.0))[0]
+        
+        if len(w) == 0:
+            continue
+            
+        log10_stellar_mass = np.log10(StellarMassFull[snap][w])
+        regime_values = RegimeFull[snap][w]
+        
+        # Separate by regime
+        cgm_regime_masses = log10_stellar_mass[regime_values == 0]
+        hot_regime_masses = log10_stellar_mass[regime_values == 1]
+        
+        # Create histograms of galaxy counts in stellar mass bins
+        cgm_hist, _ = np.histogram(cgm_regime_masses, bins=stellar_mass_bins)
+        hot_hist, _ = np.histogram(hot_regime_masses, bins=stellar_mass_bins)
+        
+        # Plot stacked histograms showing actual galaxy counts
+        ax.bar(bin_centers, cgm_hist, width=0.18, color='blue', alpha=0.7, 
+               label='CGM Regime', bottom=0)
+        ax.bar(bin_centers, hot_hist, width=0.18, color='red', alpha=0.7, 
+               label='Hot Regime', bottom=cgm_hist)
+        
+        # Formatting
+        ax.set_title(f'z = {regime_redshifts[i]:.1f}', fontsize=12, fontweight='bold')
+        ax.set_xlabel(r'$\log_{10} M_{\mathrm{stars}}\ (M_{\odot})$', fontsize=10)
+        ax.set_ylabel('Galaxy Count', fontsize=10)
+        ax.set_xlim(8.0, 12.0)
+        ax.set_ylim(0, None)  # Auto-scale based on actual counts
+        ax.grid(True, alpha=0.3)
+        
+        # Add regime statistics as text
+        total_galaxies = len(w)
+        cgm_count = np.sum(regime_values == 0)
+        hot_count = np.sum(regime_values == 1)
+        cgm_percent = (cgm_count / total_galaxies * 100) if total_galaxies > 0 else 0
+        hot_percent = (hot_count / total_galaxies * 100) if total_galaxies > 0 else 0
+        
+        ax.text(0.02, 0.95, f'CGM: {cgm_percent:.1f}%\nHot: {hot_percent:.1f}%', 
+                transform=ax.transAxes, verticalalignment='top', fontsize=9,
+                bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
+    
+    # Add legend to the first subplot
+    axes[0].legend(loc='upper right', frameon=False, fontsize=10)
+    
+    plt.tight_layout()
+    plt.suptitle('Regime Distribution vs Stellar Mass Across Redshift', fontsize=14, y=0.98)
+    
+    outputFile = OutputDir + 'T.regime_distribution_stellar_mass_histograms_redshift' + OutputFormat
     plt.savefig(outputFile, dpi=300, bbox_inches='tight')
     print('Saved file to', outputFile, '\n')
     plt.close()

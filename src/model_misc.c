@@ -52,6 +52,7 @@ void init_galaxy(const int p, const int halonr, int *galaxycounter, const struct
     galaxies[p].BlackHoleMass = 0.0;
     galaxies[p].ICS = 0.0;
     galaxies[p].CGMgas = 0.0;
+    galaxies[p].H2gas = 0.0;
 
     galaxies[p].MetalsColdGas = 0.0;
     galaxies[p].MetalsStellarMass = 0.0;
@@ -190,6 +191,37 @@ void determine_and_store_regime(const int ngal, struct GALAXY *galaxies,
         galaxies[p].Regime = (Tvir < Tvir_threshold) ? 0 : 1;
     }
 }
+
+// void determine_and_store_regime(const int ngal, struct GALAXY *galaxies, 
+//                                 const struct params *run_params)
+// {
+//     for(int p = 0; p < ngal; p++) {
+//         if(galaxies[p].mergeType > 0) continue;
+        
+//         const double z = run_params->ZZ[galaxies[p].SnapNum];
+//         const double Tvir = 35.9 * galaxies[p].Vvir * galaxies[p].Vvir;
+        
+//         const double Tvir_threshold_z0 = 8.0e5;
+//         const double z_scaling = pow(1.0 + z, 0.35);
+//         const double Tvir_threshold = Tvir_threshold_z0 * z_scaling;
+        
+//         // Smooth transition using tanh
+//         // width controls how sharp the transition is (smaller = sharper)
+//         const double transition_width = 0.5;  // in dex, or use run_params->RegimeTransitionWidth
+        
+//         // Calculate how far we are from threshold in log space
+//         const double log_ratio = log10(Tvir / Tvir_threshold);
+        
+//         // Smooth weight: 0 = pure CGM, 1 = pure Hot-ICM
+//         const double smooth_weight = 0.5 * (1.0 + tanh(log_ratio / transition_width));
+        
+//         // Store as continuous weight instead of discrete regime
+//         // galaxies[p].RegimeWeight = smooth_weight;
+        
+//         // Optional: still store discrete regime for diagnostics
+//         galaxies[p].Regime = (smooth_weight < 0.5) ? 0 : 1;
+//     }
+// }
 
 float calculate_muratov_mass_loading(const int gal, struct GALAXY *galaxies, const double z)
 {

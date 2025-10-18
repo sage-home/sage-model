@@ -15,7 +15,7 @@ warnings.filterwarnings("ignore")
 # Define multiple models to compare
 MODELS = [
     {
-        'name': 'SAGE25',
+        'name': 'SAGE (latest)',
         'dir': './output/millennium/',
         'box_size': 62.5,
         'volume_fraction': 1.0,
@@ -31,13 +31,13 @@ MODELS = [
         'box_size': 62.5,
         'volume_fraction': 1.0,
         'hubble_h': 0.73,
-        'color': 'darkred',
+        'color': 'blue',
         'linestyle': '--',
         'linewidth': 2,
         'zorder': 9
     },
     {
-        'name': 'SAGE Broken',
+        'name': 'evilSAGE',
         'dir': '/Users/mbradley/Documents/PhD/SAGE_BROKEN/sage-model/output/millennium/',
         'box_size': 62.5,
         'volume_fraction': 1.0,
@@ -46,28 +46,6 @@ MODELS = [
         'linestyle': ':',
         'linewidth': 2,
         'zorder': 8
-    },
-    {
-        'name': 'SAGE CGM',
-        'dir': './output/millennium_complexCGM/',
-        'box_size': 62.5,
-        'volume_fraction': 1.0,
-        'hubble_h': 0.73,
-        'color': 'green',
-        'linestyle': '-.',
-        'linewidth': 2,
-        'zorder': 7
-    },
-    {
-        'name': 'SAGE CGM Precipitation',
-        'dir': './output/millennium_CGM_precip/',
-        'box_size': 62.5,
-        'volume_fraction': 1.0,
-        'hubble_h': 0.73,
-        'color': 'magenta',
-        'linestyle': '-.',
-        'linewidth': 2,
-        'zorder': 7
     }
 ]
 

@@ -145,7 +145,7 @@ Main_VolumeFraction = 1.0  # Fraction of the full volume output by the model
 SFR_SimDirs = [
     {
         'path': './output/millennium/', 
-        'label': 'SAGE25', 
+        'label': 'SAGE (latest)', 
         'color': 'black', 
         'linestyle': '-',
         'BoxSize': 62.5,  # h-1 Mpc
@@ -163,7 +163,25 @@ SFR_SimDirs = [
     },
     {
         'path': '/Users/mbradley/Documents/PhD/SAGE_BROKEN/sage-model/output/millennium/', 
-        'label': 'SAGE Broken Model', 
+        'label': 'evilSAGE', 
+        'color': 'purple', 
+        'linestyle': ':',
+        'BoxSize': 62.5,  # h-1 Mpc
+        'Hubble_h': 0.73,
+        'VolumeFraction': 1.0,
+        'FirstSnap': 0,
+        'LastSnap': 63,
+        'redshifts': [127.000, 79.998, 50.000, 30.000, 19.916, 18.244, 16.725, 15.343, 14.086, 12.941, 11.897, 10.944, 10.073, 
+                     9.278, 8.550, 7.883, 7.272, 6.712, 6.197, 5.724, 5.289, 4.888, 4.520, 4.179, 3.866, 3.576, 3.308, 3.060, 
+                     2.831, 2.619, 2.422, 2.239, 2.070, 1.913, 1.766, 1.630, 1.504, 1.386, 1.276, 1.173, 1.078, 0.989, 0.905, 
+                     0.828, 0.755, 0.687, 0.624, 0.564, 0.509, 0.457, 0.408, 0.362, 0.320, 0.280, 0.242, 0.208, 0.175, 0.144, 
+                     0.116, 0.089, 0.064, 0.041, 0.020, 0.000],
+        'SMFsnaps': [63, 40, 32, 27, 23, 20, 18, 16],
+        'BHMFsnaps': [63, 40, 32, 27, 23, 20, 18, 16]
+    },
+    {
+        'path': './output/millennium_vanilla/', 
+        'label': 'SAGE C16', 
         'color': 'blue', 
         'linestyle': '--',
         'BoxSize': 62.5,  # h-1 Mpc
@@ -171,60 +189,6 @@ SFR_SimDirs = [
         'VolumeFraction': 1.0,
         'FirstSnap': 0,
         'LastSnap': 63,
-        'redshifts': [127.000, 79.998, 50.000, 30.000, 19.916, 18.244, 16.725, 15.343, 14.086, 12.941, 11.897, 10.944, 10.073, 
-                     9.278, 8.550, 7.883, 7.272, 6.712, 6.197, 5.724, 5.289, 4.888, 4.520, 4.179, 3.866, 3.576, 3.308, 3.060, 
-                     2.831, 2.619, 2.422, 2.239, 2.070, 1.913, 1.766, 1.630, 1.504, 1.386, 1.276, 1.173, 1.078, 0.989, 0.905, 
-                     0.828, 0.755, 0.687, 0.624, 0.564, 0.509, 0.457, 0.408, 0.362, 0.320, 0.280, 0.242, 0.208, 0.175, 0.144, 
-                     0.116, 0.089, 0.064, 0.041, 0.020, 0.000],
-        'SMFsnaps': [63, 40, 32, 27, 23, 20, 18, 16],
-        'BHMFsnaps': [63, 40, 32, 27, 23, 20, 18, 16]
-    },
-    {
-        'path': './output/millennium_complexCGM/', 
-        'label': ' SAGE CGM Method 3', 
-        'color': 'red', 
-        'linestyle': ':',
-        'BoxSize': 62.5,  # h-1 Mpc  (example - adjust to your actual values)
-        'Hubble_h': 0.73,  # (example - adjust to your actual values)
-        'VolumeFraction': 1.0,
-        'FirstSnap': 0,  # (adjust to your actual values)
-        'LastSnap': 63,  # (adjust to your actual values)
-        'redshifts': [127.000, 79.998, 50.000, 30.000, 19.916, 18.244, 16.725, 15.343, 14.086, 12.941, 11.897, 10.944, 10.073, 
-                     9.278, 8.550, 7.883, 7.272, 6.712, 6.197, 5.724, 5.289, 4.888, 4.520, 4.179, 3.866, 3.576, 3.308, 3.060, 
-                     2.831, 2.619, 2.422, 2.239, 2.070, 1.913, 1.766, 1.630, 1.504, 1.386, 1.276, 1.173, 1.078, 0.989, 0.905, 
-                     0.828, 0.755, 0.687, 0.624, 0.564, 0.509, 0.457, 0.408, 0.362, 0.320, 0.280, 0.242, 0.208, 0.175, 0.144, 
-                     0.116, 0.089, 0.064, 0.041, 0.020, 0.000],
-        'SMFsnaps': [63, 40, 32, 27, 23, 20, 18, 16],
-        'BHMFsnaps': [63, 40, 32, 27, 23, 20, 18, 16]
-    },
-    {
-        'path': '/Users/mbradley/Documents/PhD/SAGE-VANILLA/sage-model/output/millennium/', 
-        'label': 'SAGE C16', 
-        'color': 'green', 
-        'linestyle': '-.',
-        'BoxSize': 62.5,  # h-1 Mpc
-        'Hubble_h': 0.73,
-        'VolumeFraction': 1.0,
-        'FirstSnap': 0,
-        'LastSnap': 63,
-        'redshifts': [127.000, 79.998, 50.000, 30.000, 19.916, 18.244, 16.725, 15.343, 14.086, 12.941, 11.897, 10.944, 10.073, 
-                     9.278, 8.550, 7.883, 7.272, 6.712, 6.197, 5.724, 5.289, 4.888, 4.520, 4.179, 3.866, 3.576, 3.308, 3.060, 
-                     2.831, 2.619, 2.422, 2.239, 2.070, 1.913, 1.766, 1.630, 1.504, 1.386, 1.276, 1.173, 1.078, 0.989, 0.905, 
-                     0.828, 0.755, 0.687, 0.624, 0.564, 0.509, 0.457, 0.408, 0.362, 0.320, 0.280, 0.242, 0.208, 0.175, 0.144, 
-                     0.116, 0.089, 0.064, 0.041, 0.020, 0.000],
-        'SMFsnaps': [63, 40, 32, 27, 23, 20, 18, 16],
-        'BHMFsnaps': [63, 40, 32, 27, 23, 20, 18, 16]
-    },
-    {
-        'path': './output/millennium_CGM_precip/', 
-        'label': ' SAGE CGM Precipitation', 
-        'color': 'magenta', 
-        'linestyle': ':',
-        'BoxSize': 62.5,  # h-1 Mpc  (example - adjust to your actual values)
-        'Hubble_h': 0.73,  # (example - adjust to your actual values)
-        'VolumeFraction': 1.0,
-        'FirstSnap': 0,  # (adjust to your actual values)
-        'LastSnap': 63,  # (adjust to your actual values)
         'redshifts': [127.000, 79.998, 50.000, 30.000, 19.916, 18.244, 16.725, 15.343, 14.086, 12.941, 11.897, 10.944, 10.073, 
                      9.278, 8.550, 7.883, 7.272, 6.712, 6.197, 5.724, 5.289, 4.888, 4.520, 4.179, 3.866, 3.576, 3.308, 3.060, 
                      2.831, 2.619, 2.422, 2.239, 2.070, 1.913, 1.766, 1.630, 1.504, 1.386, 1.276, 1.173, 1.078, 0.989, 0.905, 
@@ -240,7 +204,7 @@ SMF_SimConfigs = [
     # SAGE25 simulations (solid lines)
     {
         'path': './output/millennium/', 
-        'label': 'SAGE25', 
+        'label': 'SAGE (latest)', 
         'color': 'black', 
         'linestyle': '-',  # solid line
         'BoxSize': 62.5,  # h-1 Mpc
@@ -249,38 +213,18 @@ SMF_SimConfigs = [
     },
     {
         'path': '/Users/mbradley/Documents/PhD/SAGE_BROKEN/sage-model/output/millennium/', 
-        'label': 'Broken Model', 
+        'label': 'evilSAGE', 
         'color': 'blue', 
-        'linestyle': '--',  # solid line
-        'BoxSize': 62.5,  # h-1 Mpc
-        'Hubble_h': 0.73,
-        'VolumeFraction': 1.0
-    },
-    # Vanilla SAGE simulation (dashed lines)
-    {
-        'path': './output/millennium_complexCGM/', 
-        'label': 'SAGE CGM Method 3', 
-        'color': 'red', 
-        'linestyle': ':',  # dashed line
+        'linestyle': '-',  # solid line
         'BoxSize': 62.5,  # h-1 Mpc
         'Hubble_h': 0.73,
         'VolumeFraction': 1.0
     },
     {
-        'path': '/Users/mbradley/Documents/PhD/SAGE-VANILLA/sage-model/output/millennium/', 
+        'path': './output/millennium_vanilla/', 
         'label': 'SAGE C16', 
-        'color': 'green', 
-        'linestyle': '-.',  # dashed line
-        'BoxSize': 62.5,  # h-1 Mpc
-        'Hubble_h': 0.73,
-        'VolumeFraction': 1.0
-    },
-    # Vanilla SAGE simulation (dashed lines)
-    {
-        'path': './output/millennium_CGM_precip/', 
-        'label': 'SAGE CGM Precipitation', 
-        'color': 'magenta', 
-        'linestyle': ':',  # dashed line
+        'color': 'blue', 
+        'linestyle': '--',  # dashed line
         'BoxSize': 62.5,  # h-1 Mpc
         'Hubble_h': 0.73,
         'VolumeFraction': 1.0
@@ -291,7 +235,7 @@ GAS_SimConfigs = [
     # Main simulation (your current one)
     {
         'path': './output/millennium/', 
-        'label': 'SAGE25', 
+        'label': 'SAGE (latest)', 
         'color': 'black', 
         'linestyle': '-',
         'BoxSize': 62.5,
@@ -302,42 +246,20 @@ GAS_SimConfigs = [
     },
     {
         'path': '/Users/mbradley/Documents/PhD/SAGE_BROKEN/sage-model/output/millennium/', 
-        'label': 'Broken Model', 
+        'label': 'evilSAGE', 
+        'color': 'blue', 
+        'linestyle': ':',
+        'BoxSize': 62.5,
+        'Hubble_h': 0.73,
+        'VolumeFraction': 1.0,
+        'linewidth': 3,
+        'alpha': 0.9
+    },
+    {
+        'path': './output/millennium_vanilla/', 
+        'label': 'SAGE C16', 
         'color': 'blue', 
         'linestyle': '--',
-        'BoxSize': 62.5,
-        'Hubble_h': 0.73,
-        'VolumeFraction': 1.0,
-        'linewidth': 3,
-        'alpha': 0.9
-    },
-    {
-        'path': './output/millennium_complexCGM/', 
-        'label': 'SAGE CGM Method 3', 
-        'color': 'red', 
-        'linestyle': ':',
-        'BoxSize': 62.5,
-        'Hubble_h': 0.73,
-        'VolumeFraction': 1.0,
-        'linewidth': 3,
-        'alpha': 0.9
-    },
-    {
-        'path': '/Users/mbradley/Documents/PhD/SAGE-VANILLA/sage-model/output/millennium/', 
-        'label': 'SAGE C16', 
-        'color': 'green', 
-        'linestyle': '-.',
-        'BoxSize': 62.5,
-        'Hubble_h': 0.73,
-        'VolumeFraction': 1.0,
-        'linewidth': 3,
-        'alpha': 0.9
-    },
-    {
-        'path': './output/millennium_CGM_precip/', 
-        'label': 'SAGE CGM Precipitation', 
-        'color': 'magenta', 
-        'linestyle': ':',
         'BoxSize': 62.5,
         'Hubble_h': 0.73,
         'VolumeFraction': 1.0,
