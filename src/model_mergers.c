@@ -235,7 +235,7 @@ void collisional_starburst_recipe(const double mass_ratio, const int merger_cent
                                   const double time, const double dt, const int halonr, const int mode, const int step,
                                   struct GALAXY *galaxies, const struct params *run_params)
 {
-    double stars, reheated_mass, ejected_mass, fac, metallicity, eburst, eta;
+    double stars, reheated_mass, ejected_mass, fac, metallicity, eburst;
 
     // This is the major and minor merger starburst recipe of Somerville et al. 2001.
     // The coefficients in eburst are taken from TJ Cox's PhD thesis and should be more accurate then previous.

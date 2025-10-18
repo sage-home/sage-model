@@ -1365,9 +1365,9 @@ if __name__ == '__main__':
     tng_x = np.array(x)
     tng_y = np.array(y)
 
-    plt.scatter(log10_stellar_mass, log10_CGM_mass, c=tvir, cmap='seismic', s=5)
+    plt.scatter(log10_stellar_mass, log10_CGM_mass, c=Vvir[w], cmap='seismic', s=5)
     plt.plot(tng_x, tng_y, 'k--', lw=2, label='TNG-Cluster')
-    plt.colorbar(label=r'$\log_{10} T_{\mathrm{vir}}\ (\mathrm{K})$')
+    plt.colorbar(label=r'$V_{\mathrm{vir}}\ (\mathrm{km/s})$')
 
     plt.xlabel(r'$\log_{10} M_{\mathrm{stars}}\ (M_{\odot})$')
     plt.ylabel(r'$\log_{10} M_{\mathrm{CGM}}\ (M_{\odot})$')
@@ -1465,8 +1465,8 @@ if __name__ == '__main__':
     log10_CGM_mass = np.log10(EjectedMass[w])
     tvir = np.log10(35.9 * Vvir[w]**2)  # in Kelvin
 
-    plt.scatter(log10_stellar_mass, log10_CGM_mass, c=tvir, cmap='seismic', s=5)
-    plt.colorbar(label=r'$\log_{10} T_{\mathrm{vir}}\ (\mathrm{K})$')
+    plt.scatter(log10_stellar_mass, log10_CGM_mass, c=Vvir[w], cmap='seismic', s=5)
+    plt.colorbar(label=r'$V_{\mathrm{vir}}\ (\mathrm{km/s})$')
 
     plt.xlabel(r'$\log_{10} M_{\mathrm{stars}}\ (M_{\odot})$')
     plt.ylabel(r'$\log_{10} M_{\mathrm{ejected}}\ (M_{\odot})$')

@@ -364,7 +364,7 @@ int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals
             if(run_params->CGMrecipeOn == 1) {
 
                 coolingGas = cooling_recipe_regime_aware(p, deltaT / STEPS, galaxies, run_params);
-                cool_gas_onto_galaxy_regime_aware(p, coolingGas, galaxies);
+                // cool_gas_onto_galaxy_regime_aware(p, coolingGas, galaxies);
             } else {
                 coolingGas = cooling_recipe(p, deltaT / STEPS, galaxies, run_params);
                 cool_gas_onto_galaxy(p, coolingGas, galaxies);

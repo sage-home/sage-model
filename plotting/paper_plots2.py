@@ -1195,7 +1195,7 @@ def plot_gas_mass_functions(sim_configs, snapshot, output_dir):
             
             # Plot H1 gas line for each model - use original label for main model
             if i == 0:
-                h1_label = 'SAGE25'
+                h1_label = 'SAGE (latest)'
             else:
                 h1_label = label
             
@@ -1460,7 +1460,7 @@ def plot_gas_mass_functions(sim_configs, snapshot, output_dir):
             
             # Plot H2 gas line for each model - use original label for main model
             if i == 0:
-                h2_label = 'SAGE25'
+                h2_label = 'SAGE (latest)'
             else:
                 h2_label = label
             
@@ -2941,16 +2941,16 @@ def plot_bh_bulge_mass_relation(sim_configs, snapshot, output_dir):
             std_bh = np.array(std_bh)
             valid_centers = np.array(valid_centers)
             
-            if 'SAGE25' in model_name or i == 0:  # Main model - thick black line with grey shading
+            if 'SAGE (latest)' in model_name or i == 0:  # Main model - thick black line with grey shading
                 # Plot thick black median line
                 ax.plot(valid_centers, median_bh, color='black', linewidth=2.5, 
-                       label='SAGE25', alpha=0.9, zorder=10)
+                       label='SAGE (latest)', alpha=0.9, zorder=10)
                 
                 # Plot grey shading for 1-sigma errors
                 ax.fill_between(valid_centers, median_bh - std_bh, median_bh + std_bh,
                                color='grey', alpha=0.3, zorder=8)
                 
-                logger.info(f'  SAGE25 median line: {len(valid_centers)} bins')
+                logger.info(f'  SAGE (latest) median line: {len(valid_centers)} bins')
                 
             elif 'C16' in model_name or 'Vanilla' in model_name:  # C16 model - dashed dark red line
                 # Plot dashed dark red median line (no error bars)
@@ -2966,10 +2966,10 @@ def plot_bh_bulge_mass_relation(sim_configs, snapshot, output_dir):
 
                 logger.info(f'  SAGE (CGM Method 3) median line: {len(valid_centers)} bins')
         
-            elif 'Broken Model' in model_name:  # C16 model - dashed dark red line
+            elif 'evilSAGE' in model_name:  # C16 model - dashed dark red line
                 # Plot dashed dark red median line (no error bars)
                 ax.plot(valid_centers, median_bh, color='green', linewidth=1.5, 
-                       linestyle='--', label='Broken Model', alpha=0.9, zorder=8)
+                       linestyle='--', label='evilSAGE', alpha=0.9, zorder=8)
                 
                 logger.info(f'  SAGE (C16) median line: {len(valid_centers)} bins')
 
@@ -3125,7 +3125,7 @@ def plot_bh_bulge_mass_relation(sim_configs, snapshot, output_dir):
     
     # Categorize legend entries
     for handle, label in zip(handles, labels):
-        if any(model_name in label for model_name in ['SAGE25', 'SAGE C16', 'Centrals', 'Satellites', 'Median', '1σ', 'Broken Model', 'CGM Method 3', 'CGM Precipitation']):
+        if any(model_name in label for model_name in ['SAGE (latest)', 'SAGE C16', 'Centrals', 'Satellites', 'Median', '1σ', 'evilSAGE', 'CGM Method 3', 'CGM Precipitation']):
             model_handles.append(handle)
             model_labels.append(label)
         elif any(obs_name in label for obs_name in ['Terrazas', 'Davis', 'Sahu']):
@@ -3190,8 +3190,8 @@ def plot_bh_bulge_mass_relation(sim_configs, snapshot, output_dir):
             
             # Print median line statistics
             logger.info(f'  Median lines plotted with 0.2 dex bins')
-            if 'SAGE25' in main_model_name or main_model_name == list(model_data.keys())[0]:
-                logger.info(f'  SAGE25: Thick black line with 1σ error bars')
+            if 'SAGE (latest)' in main_model_name or main_model_name == list(model_data.keys())[0]:
+                logger.info(f'  SAGE (latest): Thick black line with 1σ error bars')
             if len(model_data) > 1:
                 second_model_name = list(model_data.keys())[1]
                 if 'C16' in second_model_name or 'Vanilla' in second_model_name:
@@ -3274,19 +3274,19 @@ def plot_mass_metallicity_relation(sim_configs, snapshot, output_dir):
                 sigma_Z = np.array(sigma_Z)
                 valid_centers = np.array(valid_centers)
                 
-                if 'SAGE25' in label or i == 0:  # Main model - thick black line with error bars
+                if 'SAGE (latest)' in label or i == 0:  # Main model - thick black line with error bars
                     # Plot thick black median line
                     line = ax.plot(valid_centers, median_Z, color='black', linewidth=2.5, 
-                                  label='SAGE25', alpha=0.9, zorder=10)[0]
+                                  label='SAGE (latest)', alpha=0.9, zorder=10)[0]
                     model_handles.append(line)
-                    model_labels.append('SAGE25')
+                    model_labels.append('SAGE (latest)')
                     
                     # Plot 1-sigma error bars (standard error of the mean)
                     # Plot grey shading for 1-sigma errors
                     ax.fill_between(valid_centers, median_Z - sigma_Z, median_Z + sigma_Z,
                                    color='grey', alpha=0.3, zorder=8)
                     
-                    logger.info(f'  SAGE25 median line: {len(valid_centers)} bins')
+                    logger.info(f'  SAGE (latest) median line: {len(valid_centers)} bins')
                     
                 elif 'C16' in label or 'Vanilla' in label:  # C16 model - dashed dark red line
                     # Plot dashed dark red median line (no error bars)
@@ -3640,18 +3640,18 @@ def plot_mass_bulge_fraction(sim_configs, snapshot, output_dir):
                 sigma_bf = np.array(sigma_bf)
                 valid_centers = np.array(valid_centers)
                 
-                if 'SAGE25' in label or i == 0:  # Main model - thick black line with error bars
+                if 'SAGE (latest)' in label or i == 0:  # Main model - thick black line with error bars
                     # Plot thick black median line
                     line = ax.plot(valid_centers, median_bf, color='black', linewidth=2.5, 
-                                  label='SAGE25', alpha=0.9, zorder=10)[0]
+                                  label='SAGE (latest)', alpha=0.9, zorder=10)[0]
                     model_handles.append(line)
-                    model_labels.append('SAGE25')
+                    model_labels.append('SAGE (latest)')
                     
                     # Plot grey shading for 1-sigma errors
                     ax.fill_between(valid_centers, median_bf - sigma_bf, median_bf + sigma_bf,
                                    color='grey', alpha=0.3, zorder=8)
                     
-                    logger.info(f'  SAGE25 median line: {len(valid_centers)} bins')
+                    logger.info(f'  SAGE (latest) median line: {len(valid_centers)} bins')
                     
                 elif 'C16' in label or 'Vanilla' in label:  # C16 model - dashed dark red line
                     # Plot dashed dark red median line (no error bars)
@@ -3810,7 +3810,8 @@ def plot_baryon_fraction_vs_halo_mass(sim_configs, snapshot, output_dir):
         'hot': 'red',
         'cgm': 'green',
         'ics': 'orange',
-        'bh': 'brown'
+        'bh': 'brown',
+        'ej': 'yellow'
     }
     
     # Mass bins for analysis
@@ -3844,11 +3845,12 @@ def plot_baryon_fraction_vs_halo_mass(sim_configs, snapshot, output_dir):
             BlackHoleMass = read_hdf_ultra_optimized(snap_num=snapshot, param='BlackHoleMass', directory=directory) * 1.0e10 / hubble_h
             Type = read_hdf_ultra_optimized(snap_num=snapshot, param='Type', directory=directory)
             CentralGalaxyIndex = read_hdf_ultra_optimized(snap_num=snapshot, param='CentralGalaxyIndex', directory=directory)
+            EjectedMass = read_hdf_ultra_optimized(snap_num=snapshot, param='EjectedMass', directory=directory) * 1.0e10 / hubble_h
             
             logger.info(f'  Total galaxies: {len(Mvir)}')
             
             # Calculate total baryons
-            Baryons = StellarMass + ColdGas + HotGas + CGMgas + IntraClusterStars + BlackHoleMass
+            Baryons = StellarMass + ColdGas + HotGas + CGMgas + IntraClusterStars + BlackHoleMass + EjectedMass
             
             # Calculate halo mass in log scale
             HaloMass = np.log10(Mvir)
@@ -3872,6 +3874,8 @@ def plot_baryon_fraction_vs_halo_mass(sim_configs, snapshot, output_dir):
                 'hot': {'mean': [], 'upper': [], 'lower': []},
                 'cgm': {'mean': [], 'upper': [], 'lower': []},
                 'ics': {'mean': [], 'upper': [], 'lower': []},
+                'bh': {'mean': [], 'upper': [], 'lower': []},
+                'ej': {'mean': [], 'upper': [], 'lower': []}
             }
             
             # Calculate fractions for each bin
@@ -3887,6 +3891,8 @@ def plot_baryon_fraction_vs_halo_mass(sim_configs, snapshot, output_dir):
                     HotFractions = np.zeros(HalosFound)
                     CGMFractions = np.zeros(HalosFound)
                     ICSFractions = np.zeros(HalosFound)
+                    BHFractions = np.zeros(HalosFound)
+                    EJFractions = np.zeros(HalosFound)
                     
                     # Calculate fractions for each halo
                     for idx, halo_idx in enumerate(w1):
@@ -3902,6 +3908,17 @@ def plot_baryon_fraction_vs_halo_mass(sim_configs, snapshot, output_dir):
                                 HotFractions[idx] = np.sum(HotGas[halo_galaxies]) / halo_mvir
                                 CGMFractions[idx] = np.sum(CGMgas[halo_galaxies]) / halo_mvir
                                 ICSFractions[idx] = np.sum(IntraClusterStars[halo_galaxies]) / halo_mvir
+                                BHFractions[idx] = np.sum(BlackHoleMass[halo_galaxies]) / halo_mvir
+                                EJFractions[idx] = np.sum(EjectedMass[halo_galaxies]) / halo_mvir
+                            else:
+                                BaryonFractions[idx] = 0.0
+                                StarsFractions[idx] = 0.0
+                                ColdFractions[idx] = 0.0
+                                HotFractions[idx] = 0.0
+                                CGMFractions[idx] = 0.0
+                                ICSFractions[idx] = 0.0
+                                BHFractions[idx] = 0.0
+                                EJFractions[idx] = 0.0
                     
                     # Store mean halo mass for this bin
                     CentralHaloMass = np.log10(Mvir[w1])
@@ -3916,7 +3933,9 @@ def plot_baryon_fraction_vs_halo_mass(sim_configs, snapshot, output_dir):
                         ('cold', ColdFractions),
                         ('hot', HotFractions),
                         ('cgm', CGMFractions),
-                        ('ics', ICSFractions)
+                        ('ics', ICSFractions),
+                        ('bh', BHFractions),
+                        ('ej', EJFractions)
                     ]:
                         mean_val = np.mean(fractions)
                         std_val = np.std(fractions) / sqrt_n
@@ -3998,6 +4017,8 @@ def plot_baryon_fraction_vs_halo_mass(sim_configs, snapshot, output_dir):
         Line2D([0], [0], color=reservoir_colors['hot'], linewidth=2, label='Hot Gas'),
         Line2D([0], [0], color=reservoir_colors['cgm'], linewidth=2, label='CGM'),
         Line2D([0], [0], color=reservoir_colors['ics'], linewidth=2, label='Intracluster Stars'),
+        Line2D([0], [0], color=reservoir_colors['bh'], linewidth=2, label='Black Holes'),
+        Line2D([0], [0], color=reservoir_colors['ej'], linewidth=2, label='Ejected Mass')
     ]
     
     # Add cosmic baryon fraction to reservoir legend
@@ -4602,7 +4623,7 @@ if __name__ == '__main__':
         # Color SAGE galaxies by stellar mass
         scatter = ax.scatter(Vvir_plot, MassLoading_plot, c=np.log10(StellarMass_plot), 
                            s=5, alpha=0.7, marker='o', 
-                           label='SAGE25 galaxies', zorder=5, cmap='plasma')
+                           label='SAGE (latest) galaxies', zorder=5, cmap='plasma')
         
         # Add colorbar for stellar mass
         cbar = plt.colorbar(scatter, ax=ax, pad=0.02, shrink=0.8)

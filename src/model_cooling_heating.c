@@ -152,18 +152,21 @@ double cooling_recipe_cgm(const int gal, const double dt, struct GALAXY *galaxie
     // ========================================================================
     
     const double precipitation_threshold = 10.0;  // McCourt et al. 2012
-    const double transition_width = 5.0;  // Smooth transition over factor ~2
+    const double transition_width = 2.0;  // Smooth transition over factor ~2
     
     double precipitation_fraction = 0.0;
     
     if(tcool_over_tff < precipitation_threshold) {
-        // Fully unstable - precipitates at maximum rate
-        precipitation_fraction = 1.0;
-        
-    } else if(tcool_over_tff < precipitation_threshold + transition_width) {
-        // Transition regime - smooth with hyperbolic tangent
-        const double x = (tcool_over_tff - precipitation_threshold) / transition_width;
-        precipitation_fraction = 0.5 * (1.0 - tanh(x));
+        // Don't always precipitate at free-fall rate!
+        // Scale by how much tcool < tff
+        double instability_factor = precipitation_threshold / tcool_over_tff;
+        instability_factor = fmin(instability_factor, 3.0);  // Cap at 3x
+        precipitation_fraction = tanh(instability_factor / 2.0);  // Smooth scaling
+
+        } else if(tcool_over_tff < precipitation_threshold + transition_width) {
+            // Transition regime - smooth with hyperbolic tangent
+            const double x = (tcool_over_tff - precipitation_threshold) / transition_width;
+            precipitation_fraction = 0.5 * (1.0 - tanh(x));
     }
     // else: tcool_over_tff >= 15, precipitation_fraction = 0.0 (thermally stable)
 
@@ -186,6 +189,20 @@ double cooling_recipe_cgm(const int gal, const double dt, struct GALAXY *galaxie
         }
     }
 
+    // if(run_params->AGNrecipeOn > 0 && coolingGas > 0.0) {
+    //         // Calculate x parameter (same as hot halo case)
+    //         double x = PROTONMASS * BOLTZMANN * temp / lambda;
+    //         x /= (run_params->UnitDensity_in_cgs * run_params->UnitTime_in_s);
+            
+    //         // For CGM, use free-fall time as characteristic radius scale
+    //         // (analogous to cooling radius in hot halo case)
+    //         const double rcool_cgm = sqrt(galaxies[gal].CGMgas / (4 * M_PI * galaxies[gal].Rvir));
+            
+    //         // Call the existing AGN heating function (works for CGM too!)
+    //         coolingGas = do_AGN_heating_cgm(coolingGas, gal, dt, x, rcool_cgm, 
+    //                                        galaxies, run_params);
+    //     }
+
     // ========================================================================
     // STEP 5: TRACK COOLING ENERGY
     // ========================================================================
@@ -200,47 +217,47 @@ double cooling_recipe_cgm(const int gal, const double dt, struct GALAXY *galaxie
     // DIAGNOSTIC OUTPUT (every 50,000 galaxies)
     // ========================================================================
     
-    if(precipitation_debug_counter % 50000 == 0) {
-        printf("\n=== PRECIPITATION COOLING DEBUG [Galaxy #%ld] ===\n", precipitation_debug_counter);
+    // if(precipitation_debug_counter % 50000 == 0) {
+    //     printf("\n=== PRECIPITATION COOLING DEBUG [Galaxy #%ld] ===\n", precipitation_debug_counter);
         
-        printf("BASIC PROPERTIES:\n");
-        printf("  CGMgas:      %.3e (10^10 Msun/h)\n", galaxies[gal].CGMgas);
-        printf("  Mvir:        %.3e (10^10 Msun/h)\n", galaxies[gal].Mvir);
-        printf("  Vvir:        %.2f km/s\n", galaxies[gal].Vvir);
-        printf("  Rvir:        %.3e Mpc/h\n", galaxies[gal].Rvir);
-        printf("  T_vir:       %.2e K\n", temp);
-        printf("  Metallicity: log10(Z/Zsun) = %.2f\n", logZ);
+    //     printf("BASIC PROPERTIES:\n");
+    //     printf("  CGMgas:      %.3e (10^10 Msun/h)\n", galaxies[gal].CGMgas);
+    //     printf("  Mvir:        %.3e (10^10 Msun/h)\n", galaxies[gal].Mvir);
+    //     printf("  Vvir:        %.2f km/s\n", galaxies[gal].Vvir);
+    //     printf("  Rvir:        %.3e Mpc/h\n", galaxies[gal].Rvir);
+    //     printf("  T_vir:       %.2e K\n", temp);
+    //     printf("  Metallicity: log10(Z/Zsun) = %.2f\n", logZ);
         
-        printf("\nCOOLING PHYSICS:\n");
-        printf("  Lambda:      %.3e erg cm^3 s^-1\n", lambda);
-        printf("  n_gas:       %.3e cm^-3\n", number_density);
-        printf("  t_cool:      %.2f Myr\n", tcool * run_params->UnitTime_in_s / (1e6 * SEC_PER_YEAR));
-        printf("  t_ff:        %.2f Myr\n", tff * run_params->UnitTime_in_s / (1e6 * SEC_PER_YEAR));
-        printf("  t_cool/t_ff: %.2f", tcool_over_tff);
+    //     printf("\nCOOLING PHYSICS:\n");
+    //     printf("  Lambda:      %.3e erg cm^3 s^-1\n", lambda);
+    //     printf("  n_gas:       %.3e cm^-3\n", number_density);
+    //     printf("  t_cool:      %.2f Myr\n", tcool * run_params->UnitTime_in_s / (1e6 * SEC_PER_YEAR));
+    //     printf("  t_ff:        %.2f Myr\n", tff * run_params->UnitTime_in_s / (1e6 * SEC_PER_YEAR));
+    //     printf("  t_cool/t_ff: %.2f", tcool_over_tff);
         
-        if(tcool_over_tff < precipitation_threshold) {
-            printf(" [THERMALLY UNSTABLE - FULL PRECIPITATION]\n");
-        } else if(tcool_over_tff < precipitation_threshold + transition_width) {
-            printf(" [TRANSITION REGIME - PARTIAL PRECIPITATION]\n");
-        } else {
-            printf(" [THERMALLY STABLE - NO PRECIPITATION]\n");
-        }
+    //     if(tcool_over_tff < precipitation_threshold) {
+    //         printf(" [THERMALLY UNSTABLE - FULL PRECIPITATION]\n");
+    //     } else if(tcool_over_tff < precipitation_threshold + transition_width) {
+    //         printf(" [TRANSITION REGIME - PARTIAL PRECIPITATION]\n");
+    //     } else {
+    //         printf(" [THERMALLY STABLE - NO PRECIPITATION]\n");
+    //     }
         
-        printf("\nPRECIPITATION RESULTS:\n");
-        printf("  Precip frac: %.4f\n", precipitation_fraction);
-        printf("  Cooling:     %.3e Msun (this timestep)\n", coolingGas);
-        printf("  Fraction:    %.4f (of total CGM)\n", 
-               galaxies[gal].CGMgas > 0 ? coolingGas/galaxies[gal].CGMgas : 0.0);
+    //     printf("\nPRECIPITATION RESULTS:\n");
+    //     printf("  Precip frac: %.4f\n", precipitation_fraction);
+    //     printf("  Cooling:     %.3e Msun (this timestep)\n", coolingGas);
+    //     printf("  Fraction:    %.4f (of total CGM)\n", 
+    //            galaxies[gal].CGMgas > 0 ? coolingGas/galaxies[gal].CGMgas : 0.0);
         
-        // Depletion timescale
-        if(coolingGas > 0.0) {
-            const double depletion_time = galaxies[gal].CGMgas * tff / (precipitation_fraction * galaxies[gal].CGMgas);
-            const double depletion_time_myr = depletion_time * run_params->UnitTime_in_s / (1e6 * SEC_PER_YEAR);
-            printf("  Depletion t: %.2f Myr\n", depletion_time_myr);
-        }
+    //     // Depletion timescale
+    //     if(coolingGas > 0.0) {
+    //         const double depletion_time = galaxies[gal].CGMgas * tff / (precipitation_fraction * galaxies[gal].CGMgas);
+    //         const double depletion_time_myr = depletion_time * run_params->UnitTime_in_s / (1e6 * SEC_PER_YEAR);
+    //         printf("  Depletion t: %.2f Myr\n", depletion_time_myr);
+    //     }
         
-        printf("============================================\n\n");
-    }
+    //     printf("============================================\n\n");
+    // }
 
     // Sanity check
     XASSERT(coolingGas >= 0.0, -1, "Error: Cooling gas mass = %g should be >= 0.0", coolingGas);
@@ -311,7 +328,8 @@ double cooling_recipe_cgm_sage(const int gal, const double dt, struct GALAXY *ga
 
 double cooling_recipe_regime_aware(const int gal, const double dt, struct GALAXY *galaxies, const struct params *run_params)
 {
-    double total_cooling = 0.0;
+    double cgm_cooling = 0.0;
+    double hot_cooling = 0.0;
     
     if(galaxies[gal].Regime == 0) {
         // CGM REGIME: CGM physics dominates
@@ -319,18 +337,15 @@ double cooling_recipe_regime_aware(const int gal, const double dt, struct GALAXY
         // Primary: Precipitation cooling from CGMgas
         if(galaxies[gal].CGMgas > 0.0) {
             if (run_params->CGMrecipeSAGEOn == 1) {
-                double cgm_cooling = cooling_recipe_cgm_sage(gal, dt, galaxies, run_params);
-                total_cooling += cgm_cooling;
+                cgm_cooling = cooling_recipe_cgm_sage(gal, dt, galaxies, run_params);
             } else {
-                double cgm_cooling = cooling_recipe_cgm(gal, dt, galaxies, run_params);
-                total_cooling += cgm_cooling;
+                cgm_cooling = cooling_recipe_cgm(gal, dt, galaxies, run_params);
             }
         }
         
         // Secondary: Traditional cooling from HotGas  
         if(galaxies[gal].HotGas > 0.0) {
-            double hot_cooling = cooling_recipe_hot(gal, dt, galaxies, run_params);
-            total_cooling += hot_cooling;
+            hot_cooling = cooling_recipe_hot(gal, dt, galaxies, run_params);
         }
         
     } else {
@@ -338,22 +353,39 @@ double cooling_recipe_regime_aware(const int gal, const double dt, struct GALAXY
         
         // Primary: Traditional cooling from HotGas
         if(galaxies[gal].HotGas > 0.0) {
-            double hot_cooling = cooling_recipe_hot(gal, dt, galaxies, run_params);
-            total_cooling += hot_cooling;
+            hot_cooling = cooling_recipe_hot(gal, dt, galaxies, run_params);
         }
         
         // Secondary: Precipitation cooling from CGMgas (gradually depletes)
         if(galaxies[gal].CGMgas > 0.0) {
             if (run_params->CGMrecipeSAGEOn == 1) {
-                double cgm_cooling = cooling_recipe_cgm_sage(gal, dt, galaxies, run_params);
-                total_cooling += cgm_cooling;
+                cgm_cooling = cooling_recipe_cgm_sage(gal, dt, galaxies, run_params);
             } else {
-                double cgm_cooling = cooling_recipe_cgm(gal, dt, galaxies, run_params);
-                total_cooling += cgm_cooling;
+                cgm_cooling = cooling_recipe_cgm(gal, dt, galaxies, run_params);
             }
         }
     }
 
+    // Now apply the cooling directly to preserve the physics-based split
+    // Apply CGM cooling
+    if(cgm_cooling > 0.0) {
+        const double metallicity = get_metallicity(galaxies[gal].CGMgas, galaxies[gal].MetalsCGMgas);
+        galaxies[gal].ColdGas += cgm_cooling;
+        galaxies[gal].MetalsColdGas += metallicity * cgm_cooling;
+        galaxies[gal].CGMgas -= cgm_cooling;
+        galaxies[gal].MetalsCGMgas -= metallicity * cgm_cooling;
+    }
+    
+    // Apply HotGas cooling
+    if(hot_cooling > 0.0) {
+        const double metallicity = get_metallicity(galaxies[gal].HotGas, galaxies[gal].MetalsHotGas);
+        galaxies[gal].ColdGas += hot_cooling;
+        galaxies[gal].MetalsColdGas += metallicity * hot_cooling;
+        galaxies[gal].HotGas -= hot_cooling;
+        galaxies[gal].MetalsHotGas -= metallicity * hot_cooling;
+    }
+
+    double total_cooling = cgm_cooling + hot_cooling;
     XASSERT(total_cooling >= 0.0, -1,
             "Error: Cooling gas mass = %g should be >= 0.0", total_cooling);
     return total_cooling;
@@ -541,39 +573,41 @@ double do_AGN_heating_cgm(double coolingGas, const int centralgal, const double 
 
 
 
-void cool_gas_onto_galaxy_regime_aware(const int centralgal, const double coolingGas, struct GALAXY *galaxies)
-{
+// void cool_gas_onto_galaxy_regime_aware(const int centralgal, const double coolingGas, struct GALAXY *galaxies)
+// {
+//     if(coolingGas <= 0.0) return;
     
-    if(coolingGas <= 0.0) return;
+//     double total_available = galaxies[centralgal].CGMgas + galaxies[centralgal].HotGas;
+//     if(total_available <= 0.0) return;
     
-    double total_available = galaxies[centralgal].CGMgas + galaxies[centralgal].HotGas;
-    if(total_available <= 0.0) return;
+//     // Cap cooling to what's actually available
+//     double actual_cooling = (coolingGas > total_available) ? total_available : coolingGas;
     
-    // Calculate what fraction of cooling comes from each reservoir
-    double cgm_fraction = galaxies[centralgal].CGMgas / total_available;
-    double hot_fraction = galaxies[centralgal].HotGas / total_available;
+//     // Calculate what fraction comes from each reservoir
+//     double cgm_fraction = galaxies[centralgal].CGMgas / total_available;
+//     double hot_fraction = galaxies[centralgal].HotGas / total_available;
     
-    double cgm_cooling = coolingGas * cgm_fraction;
-    double hot_cooling = coolingGas * hot_fraction;
+//     double cgm_cooling = actual_cooling * cgm_fraction;
+//     double hot_cooling = actual_cooling * hot_fraction;
     
-    // Apply CGM cooling
-    if(cgm_cooling > 0.0 && cgm_cooling <= galaxies[centralgal].CGMgas) {
-        const double metallicity = get_metallicity(galaxies[centralgal].CGMgas, galaxies[centralgal].MetalsCGMgas);
-        galaxies[centralgal].ColdGas += cgm_cooling;
-        galaxies[centralgal].MetalsColdGas += metallicity * cgm_cooling;
-        galaxies[centralgal].CGMgas -= cgm_cooling;
-        galaxies[centralgal].MetalsCGMgas -= metallicity * cgm_cooling;
-    }
+//     // Apply CGM cooling
+//     if(cgm_cooling > 0.0) {
+//         const double metallicity = get_metallicity(galaxies[centralgal].CGMgas, galaxies[centralgal].MetalsCGMgas);
+//         galaxies[centralgal].ColdGas += cgm_cooling;
+//         galaxies[centralgal].MetalsColdGas += metallicity * cgm_cooling;
+//         galaxies[centralgal].CGMgas -= cgm_cooling;
+//         galaxies[centralgal].MetalsCGMgas -= metallicity * cgm_cooling;
+//     }
     
-    // Apply HotGas cooling
-    if(hot_cooling > 0.0 && hot_cooling <= galaxies[centralgal].HotGas) {
-        const double metallicity = get_metallicity(galaxies[centralgal].HotGas, galaxies[centralgal].MetalsHotGas);
-        galaxies[centralgal].ColdGas += hot_cooling;
-        galaxies[centralgal].MetalsColdGas += metallicity * hot_cooling;
-        galaxies[centralgal].HotGas -= hot_cooling;
-        galaxies[centralgal].MetalsHotGas -= metallicity * hot_cooling;
-    }
-}
+//     // Apply HotGas cooling
+//     if(hot_cooling > 0.0) {
+//         const double metallicity = get_metallicity(galaxies[centralgal].HotGas, galaxies[centralgal].MetalsHotGas);
+//         galaxies[centralgal].ColdGas += hot_cooling;
+//         galaxies[centralgal].MetalsColdGas += metallicity * hot_cooling;
+//         galaxies[centralgal].HotGas -= hot_cooling;
+//         galaxies[centralgal].MetalsHotGas -= metallicity * hot_cooling;
+//     }
+// }
 
 void cool_gas_onto_galaxy(const int centralgal, const double coolingGas, struct GALAXY *galaxies)
 {
