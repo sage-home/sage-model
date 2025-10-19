@@ -223,7 +223,7 @@ void determine_and_store_regime(const int ngal, struct GALAXY *galaxies,
 //     }
 // }
 
-float calculate_muratov_mass_loading(const int gal, struct GALAXY *galaxies, const double z)
+float calculate_muratov_mass_loading(const int gal, struct GALAXY *galaxies, const double z, const struct params *run_params)
 {
     // Get circular velocity in km/s
     double vc = galaxies[gal].Vvir;  // Using virial velocity (already in km/s)
@@ -253,7 +253,7 @@ float calculate_muratov_mass_loading(const int gal, struct GALAXY *galaxies, con
         v_term = pow(vc / V_CRIT, HIGH_V_EXP);
     }
     
-    double eta = NORM * z_term * v_term;
+    double eta = run_params->FeedbackReheatingEpsilon * NORM * z_term * v_term;
 
     // Store mass loading for analysis (cast to float)
     galaxies[gal].MassLoading = (float)eta;

@@ -12,8 +12,9 @@ scripts=(
     "plotting/paper_plots3.py"
     "plotting/smhm.py"
     "plotting/smf_analysis_obs_sam.py"
-    # "plotting/sf_pop_trace.py"
-    # "plotting/spatial_analysis.py"
+    "plotting/cgm-diag.py"
+    "plotting/sf_pop_trace.py"
+    "plotting/stat_test.py"
 )
 
 # Run each script

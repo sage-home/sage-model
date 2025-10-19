@@ -116,7 +116,7 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
     }
 
     // double reheated_mass = (run_params->SupernovaRecipeOn == 1) ? run_params->FeedbackReheatingEpsilon * stars: 0.0;
-    double reheated_mass = (run_params->SupernovaRecipeOn == 1) ? calculate_muratov_mass_loading(centralgal, galaxies, run_params->ZZ[galaxies[centralgal].SnapNum]) * stars: 0.0;
+    double reheated_mass = (run_params->SupernovaRecipeOn == 1) ? calculate_muratov_mass_loading(centralgal, galaxies, run_params->ZZ[galaxies[centralgal].SnapNum], run_params) * stars: 0.0;
     // double eta = calculate_muratov_mass_loading(centralgal, galaxies, run_params->ZZ[galaxies[centralgal].SnapNum]);
 
 	XASSERT(reheated_mass >= 0.0, -1,
@@ -137,7 +137,7 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
             //      run_params->FeedbackReheatingEpsilon) * stars;
             ejected_mass =
                 (run_params->FeedbackEjectionEfficiency * (run_params->EtaSNcode * run_params->EnergySNcode) / (galaxies[centralgal].Vvir * galaxies[centralgal].Vvir) -
-                 calculate_muratov_mass_loading(centralgal, galaxies, run_params->ZZ[galaxies[centralgal].SnapNum])) * stars;
+                 calculate_muratov_mass_loading(centralgal, galaxies, run_params->ZZ[galaxies[centralgal].SnapNum], run_params)) * stars;
         } else {
             ejected_mass = 0.0;
         }

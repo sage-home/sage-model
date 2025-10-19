@@ -113,11 +113,11 @@ if __name__ == '__main__':
     print('Total outflow rate:', np.sum(OutflowRate), '\n')
     print('Outflow rate sample:', OutflowRate[:10], '\n')
 
-    Massloading = OutflowRate / (SfrDisk + SfrBulge + 1.0e-10)
+    MassLoading = read_hdf(snap_num = Snapshot, param = 'MassLoading')
 
-    print('Mass loading factor sample:', Massloading[:10], '\n')
-    print('Maximum mass loading factor:', np.max(Massloading[np.where(Massloading<1.0e10)]), '\n')
-    print('Minimum mass loading factor:', np.min(Massloading[np.where(Massloading>0.0)]), '\n')
+    print('Mass loading factor sample:', MassLoading[:10], '\n')
+    print('Maximum mass loading factor:', np.max(MassLoading[np.where(MassLoading<1.0e10)]), '\n')
+    print('Minimum mass loading factor:', np.min(MassLoading[np.where(MassLoading>0.0)]), '\n')
 
     w = np.where(StellarMass > 1.0e10)[0]
     print('Number of galaxies read:', len(StellarMass))
@@ -1503,7 +1503,7 @@ if __name__ == '__main__':
     plt.savefig(outputFile)
     plt.close()
 
-     # -------------------------------------------------------
+    # -------------------------------------------------------
 
     print('Plotting Hot gas vs Stellar Mass')
 
@@ -1525,6 +1525,31 @@ if __name__ == '__main__':
     plt.ylim(6, 12)
 
     outputFile = OutputDir + '20.Hot_gas_vs_stellar_mass_metallicity' + OutputFormat
+    plt.savefig(outputFile)
+    plt.close()
+
+    # -------------------------------------------------------
+
+    print('Plotting ICS vs Hot Gas Mass')
+
+    plt.figure()
+    w = np.where((IntraClusterStars > 0.0) & (CGMgas > 0.0))[0]
+    if(len(w) > dilute): w = sample(list(w), dilute)
+
+    log10_stellar_mass = np.log10(CGMgas[w] + HotGas[w])
+    log10_CGM_mass = np.log10(IntraClusterStars[w])
+    Z = np.log10((MetalsCGMgas[w] + MetalsHotGas[w]) / (CGMgas[w] + HotGas[w]) / 0.02) + 9.0
+
+    plt.scatter(log10_stellar_mass, log10_CGM_mass, c=Z, cmap='plasma', s=5, vmin=7, vmax=9)
+    plt.colorbar(label=r'$12\ +\ \log_{10}[\mathrm{O/H}]$')
+
+    plt.xlabel(r'$\log_{10} M_{\mathrm{CGM\ +\ hot}}\ (M_{\odot})$')
+    plt.ylabel(r'$\log_{10} M_{\mathrm{ICS}}\ (M_{\odot})$')
+
+    plt.xlim(8, 12)
+    plt.ylim(6, 12)
+
+    outputFile = OutputDir + '20.ICS_vs_hot_gas_mass_metallicity' + OutputFormat
     plt.savefig(outputFile)
     plt.close()
 
@@ -1720,8 +1745,6 @@ if __name__ == '__main__':
     plt.close()
 
     # -------------------------------------------------------
-
-    MassLoading = read_hdf(snap_num = Snapshot, param = 'MassLoading')
 
     print('Mass loading factor statistics:')
     print('Mean:', np.mean(MassLoading))
