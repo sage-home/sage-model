@@ -167,6 +167,12 @@ struct GALAXY
     float infallVmax;
 
     float MassLoading;
+
+    // Diagnostic variables for CGM precipitation model
+    float tcool;
+    float tff;
+    float tcool_over_tff;
+    float tdeplete;
 };
 
 

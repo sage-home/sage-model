@@ -139,13 +139,19 @@ double cooling_recipe_cgm(const int gal, const double dt, struct GALAXY *galaxie
     // ========================================================================
     
     // Gravitational acceleration at Rvir
-    const double g_accel = run_params->G * galaxies[gal].Mvir / (galaxies[gal].Rvir * galaxies[gal].Rvir);
+    const float g_accel = run_params->G * galaxies[gal].Mvir / (galaxies[gal].Rvir * galaxies[gal].Rvir);
     
     // Free-fall time: tff = sqrt(2*R/g)
-    const double tff = sqrt(2.0 * galaxies[gal].Rvir / g_accel); // code units
-    
+    const float tff = sqrt(2.0 * galaxies[gal].Rvir / g_accel); // code units
+
     // Critical ratio for precipitation
-    const double tcool_over_tff = tcool / tff;
+    const float tcool_over_tff = tcool / tff;
+
+
+    // Save to galaxy struct for potential diagnostics
+    galaxies[gal].tcool = tcool;
+    galaxies[gal].tff = tff;
+    galaxies[gal].tcool_over_tff = tcool_over_tff;
 
     // ========================================================================
     // STEP 3: PRECIPITATION CRITERION
@@ -222,6 +228,7 @@ double cooling_recipe_cgm(const int gal, const double dt, struct GALAXY *galaxie
         
         printf("BASIC PROPERTIES:\n");
         printf("  CGMgas:      %.3e (10^10 Msun/h)\n", galaxies[gal].CGMgas);
+        printf("  CGM density: %.3e g/cm^3\n", mass_density_cgs);
         printf("  Mvir:        %.3e (10^10 Msun/h)\n", galaxies[gal].Mvir);
         printf("  Vvir:        %.2f km/s\n", galaxies[gal].Vvir);
         printf("  Rvir:        %.3e Mpc/h\n", galaxies[gal].Rvir);
@@ -251,8 +258,11 @@ double cooling_recipe_cgm(const int gal, const double dt, struct GALAXY *galaxie
         
         // Depletion timescale
         if(coolingGas > 0.0) {
-            const double depletion_time = galaxies[gal].CGMgas * tff / (precipitation_fraction * galaxies[gal].CGMgas);
-            const double depletion_time_myr = depletion_time * run_params->UnitTime_in_s / (1e6 * SEC_PER_YEAR);
+            const float depletion_time = galaxies[gal].CGMgas * tff / (precipitation_fraction * galaxies[gal].CGMgas);
+            const float depletion_time_myr = depletion_time * run_params->UnitTime_in_s / (1e6 * SEC_PER_YEAR);
+
+            // Store depletion time for diagnostics
+            galaxies[gal].tdeplete = depletion_time;
             printf("  Depletion t: %.2f Myr\n", depletion_time_myr);
         }
         

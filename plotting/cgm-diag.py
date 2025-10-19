@@ -1,611 +1,455 @@
 #!/usr/bin/env python
-"""
-CGM Precipitation Analysis for SAGE - ENHANCED DIAGNOSTIC VERSION
-Handles extreme distributions and provides detailed diagnostics
-"""
 
 import h5py as h5
 import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib.gridspec as gridspec
-from matplotlib.colors import LogNorm
 import os
+from collections import defaultdict
+from scipy import stats
+from random import sample, seed
+
 import warnings
 warnings.filterwarnings("ignore")
 
-# ========================== PHYSICAL CONSTANTS ==========================
-GRAVITY = 6.672e-8  # cm^3 g^-1 s^-2
-SOLAR_MASS = 1.989e33  # g
-PROTONMASS = 1.6726e-24  # g
-BOLTZMANN = 1.3806e-16  # erg K^-1
-CM_PER_MPC = 3.085678e24  # cm
-SEC_PER_MEGAYEAR = 3.155e13  # s
-
 # ========================== USER OPTIONS ==========================
+
+# File details
 DirName = './output/millennium/'
 FileName = 'model_0.hdf5'
-Snapshot = 'Snap_63'
+Snapshot = 'Snap_41'
 
-Hubble_h = 0.73
-BoxSize = 62.5
-VolumeFraction = 1.0
+# Simulation details
+Hubble_h = 0.73        # Hubble parameter
+BoxSize = 62.5         # h-1 Mpc
+VolumeFraction = 1.0   # Fraction of the full volume output by the model
+
+# Plotting options
+whichimf = 1        # 0=Slapeter; 1=Chabrier
+dilute = 1000       # Number of galaxies to plot in scatter plots
+sSFRcut = -11.0     # Divide quiescent from star forming galaxies
+
+OutputFormat = '.png'
+plt.rcParams["figure.figsize"] = (8.34,6.25)
+plt.rcParams["figure.dpi"] = 96
+plt.rcParams["font.size"] = 14
+
+
+# ==================================================================
+
+def read_hdf(filename = None, snap_num = None, param = None):
+
+    property = h5.File(DirName+FileName,'r')
+    return np.array(property[snap_num][param])
+
+
+# ==================================================================
+
+seed(2222)
+volume = (BoxSize/Hubble_h)**3.0 * VolumeFraction
 
 OutputDir = DirName + 'plots/'
-if not os.path.exists(OutputDir): 
-    os.makedirs(OutputDir)
-
-# ========================== HELPER FUNCTIONS ==========================
-
-def get_cooling_rate(logTemp, logZ):
-    """Simplified cooling function based on SAGE's metal-dependent cooling"""
-    if logTemp < 4.0:
-        logTemp = 4.0
-    elif logTemp > 8.5:
-        logTemp = 8.5
-    
-    # Base cooling rate
-    if logTemp < 5.0:
-        log_lambda = -22.0
-    elif logTemp < 6.0:
-        log_lambda = -21.5 + (logTemp - 5.0) * (-0.5)
-    elif logTemp < 7.0:
-        log_lambda = -22.0 - (logTemp - 6.0) * 0.5
-    else:
-        log_lambda = -22.5
-    
-    # Metallicity dependence
-    Z_sun = 0.02
-    if logZ > np.log10(Z_sun):
-        logZ = np.log10(Z_sun)
-    
-    if logZ > -10:
-        metal_factor = 0.5 * (logZ - np.log10(Z_sun))
-        log_lambda += metal_factor
-    
-    return 10.0**log_lambda
-
-
-def calculate_tcool_tff(Mvir, Rvir, Vvir, CGMgas, MetalsCGMgas, Hubble_h):
-    """Calculate cooling time and free-fall time ratio with detailed output"""
-    
-    Mvir_cgs = Mvir * 1e10 * SOLAR_MASS / Hubble_h
-    Rvir_cgs = Rvir * CM_PER_MPC / Hubble_h
-    CGMgas_cgs = CGMgas * 1e10 * SOLAR_MASS / Hubble_h
-    
-    if CGMgas <= 0 or Rvir <= 0 or Vvir <= 0:
-        return np.nan, np.nan, np.nan, np.nan, np.nan
-    
-    # Virial temperature
-    Tvir = 35.9 * Vvir**2
-    
-    # Metallicity
-    if MetalsCGMgas > 0 and CGMgas > 0:
-        logZ = np.log10(MetalsCGMgas / CGMgas)
-    else:
-        logZ = -10.0
-    
-    # Density
-    volume_cgs = (4.0 * np.pi / 3.0) * Rvir_cgs**3
-    mass_density_cgs = CGMgas_cgs / volume_cgs
-    mu = 0.59
-    mean_particle_mass = mu * PROTONMASS
-    n_gas = mass_density_cgs / mean_particle_mass
-    
-    # Cooling time
-    lambda_cool = get_cooling_rate(np.log10(Tvir), logZ)
-    tcool_s = (1.5 * BOLTZMANN * Tvir) / (n_gas * lambda_cool)
-    tcool_myr = tcool_s / SEC_PER_MEGAYEAR
-    
-    # Free-fall time
-    g_accel = GRAVITY * Mvir_cgs / Rvir_cgs**2
-    tff_s = np.sqrt(2.0 * Rvir_cgs / g_accel)
-    tff_myr = tff_s / SEC_PER_MEGAYEAR
-    
-    tcool_tff = tcool_myr / tff_myr
-    
-    return tcool_tff, tcool_myr, tff_myr, n_gas, logZ
-
-
-def calculate_precipitation_quantities(tcool_tff, CGMgas, tff_myr, dt_myr=10.0):
-    """Calculate precipitation-related quantities"""
-    
-    if np.isnan(tcool_tff) or CGMgas <= 0 or tff_myr <= 0:
-        return 0.0, np.nan, 0.0, 0.0
-    
-    threshold = 10.0
-    transition_width = 5.0
-    
-    if tcool_tff < threshold:
-        precip_frac = 1.0
-    elif tcool_tff < threshold + transition_width:
-        x = (tcool_tff - threshold) / transition_width
-        precip_frac = 0.5 * (1.0 - np.tanh(x))
-    else:
-        precip_frac = 0.0
-    
-    if precip_frac > 0:
-        depletion_time = tff_myr / precip_frac
-    else:
-        depletion_time = np.inf
-    
-    precip_efficiency = precip_frac
-    
-    if precip_frac > 0:
-        instant_cool_rate = (precip_frac / tff_myr) * dt_myr * 100.0
-    else:
-        instant_cool_rate = 0.0
-    
-    return precip_frac, depletion_time, precip_efficiency, instant_cool_rate
-
-
-def read_hdf(filename=None, snap_num=None, param=None):
-    """Read HDF5 data"""
-    property_file = h5.File(DirName + FileName, 'r')
-    return np.array(property_file[snap_num][param])
-
-
-# ========================== DATA READING ==========================
-
-print('=' * 70)
-print('CGM PRECIPITATION ANALYSIS - ENHANCED DIAGNOSTICS')
-print('=' * 70)
-print(f'\nReading data from: {DirName + FileName}')
-print(f'Snapshot: {Snapshot}')
-print(f'Box size: {BoxSize} Mpc/h\n')
+if not os.path.exists(OutputDir): os.makedirs(OutputDir)
 
 # Read galaxy properties
-Mvir = read_hdf(snap_num=Snapshot, param='Mvir') * 1.0e10 / Hubble_h
-CentralMvir = read_hdf(snap_num=Snapshot, param='CentralMvir') * 1.0e10 / Hubble_h
-StellarMass = read_hdf(snap_num=Snapshot, param='StellarMass') * 1.0e10 / Hubble_h
-CGMgas = read_hdf(snap_num=Snapshot, param='CGMgas') * 1.0e10 / Hubble_h
-MetalsCGMgas = read_hdf(snap_num=Snapshot, param='MetalsCGMgas') * 1.0e10 / Hubble_h
-HotGas = read_hdf(snap_num=Snapshot, param='HotGas') * 1.0e10 / Hubble_h
-Vvir = read_hdf(snap_num=Snapshot, param='Vvir')
-Rvir = read_hdf(snap_num=Snapshot, param='Rvir')
-Type = read_hdf(snap_num=Snapshot, param='Type')
-Regime = read_hdf(snap_num=Snapshot, param='Regime')
+print('Reading galaxy properties from', DirName+FileName)
 
-print(f'Number of galaxies: {len(Mvir)}')
-print(f'Galaxies with CGM gas > 0: {np.sum(CGMgas > 0)}')
-print(f'Regime 0 (CGM) galaxies: {np.sum(Regime == 0)}')
-print(f'Regime 1 (Hot-ICM) galaxies: {np.sum(Regime == 1)}')
+CentralMvir = read_hdf(snap_num = Snapshot, param = 'CentralMvir') * 1.0e10 / Hubble_h
+Mvir = read_hdf(snap_num = Snapshot, param = 'Mvir') * 1.0e10 / Hubble_h
+StellarMass = read_hdf(snap_num = Snapshot, param = 'StellarMass') * 1.0e10 / Hubble_h
+BulgeMass = read_hdf(snap_num = Snapshot, param = 'BulgeMass') * 1.0e10 / Hubble_h
+BlackHoleMass = read_hdf(snap_num = Snapshot, param = 'BlackHoleMass') * 1.0e10 / Hubble_h
+ColdGas = read_hdf(snap_num = Snapshot, param = 'ColdGas') * 1.0e10 / Hubble_h
+MetalsColdGas = read_hdf(snap_num = Snapshot, param = 'MetalsColdGas') * 1.0e10 / Hubble_h
+MetalsEjectedMass = read_hdf(snap_num = Snapshot, param = 'MetalsEjectedMass') * 1.0e10 / Hubble_h
+HotGas = read_hdf(snap_num = Snapshot, param = 'HotGas') * 1.0e10 / Hubble_h
+MetalsHotGas = read_hdf(snap_num = Snapshot, param = 'MetalsHotGas') * 1.0e10 / Hubble_h
+EjectedMass = read_hdf(snap_num = Snapshot, param = 'EjectedMass') * 1.0e10 / Hubble_h
+CGMgas = read_hdf(snap_num = Snapshot, param = 'CGMgas') * 1.0e10 / Hubble_h
+MetalsCGMgas = read_hdf(snap_num = Snapshot, param = 'MetalsCGMgas') * 1.0e10 / Hubble_h
+IntraClusterStars = read_hdf(snap_num = Snapshot, param = 'IntraClusterStars') * 1.0e10 / Hubble_h
+DiskRadius = read_hdf(snap_num = Snapshot, param = 'DiskRadius')
+H2gas = read_hdf(snap_num = Snapshot, param = 'H2gas') * 1.0e10 / Hubble_h
 
-# ========================== DETAILED DIAGNOSTICS ==========================
+Vvir = read_hdf(snap_num = Snapshot, param = 'Vvir')
+Vmax = read_hdf(snap_num = Snapshot, param = 'Vmax')
+Rvir = read_hdf(snap_num = Snapshot, param = 'Rvir')
 
-print('\n' + '=' * 70)
-print('DETAILED DIAGNOSTICS')
-print('=' * 70)
+SfrDisk = read_hdf(snap_num = Snapshot, param = 'SfrDisk')
+SfrBulge = read_hdf(snap_num = Snapshot, param = 'SfrBulge')
 
-# CGM properties
-cgm_present = CGMgas > 0
-print(f'\nCGM Mass Statistics:')
-print(f'  Total CGM mass: {np.sum(CGMgas):.2e} M_sun')
-print(f'  Mean CGM mass: {np.mean(CGMgas[cgm_present]):.2e} M_sun')
-print(f'  Median CGM mass: {np.median(CGMgas[cgm_present]):.2e} M_sun')
-print(f'  Min CGM mass: {np.min(CGMgas[cgm_present]):.2e} M_sun')
-print(f'  Max CGM mass: {np.max(CGMgas[cgm_present]):.2e} M_sun')
+CentralGalaxyIndex = read_hdf(snap_num = Snapshot, param = 'CentralGalaxyIndex')
+Type = read_hdf(snap_num = Snapshot, param = 'Type')
 
-# Metallicity
-Z = MetalsCGMgas[cgm_present] / CGMgas[cgm_present]
-Z_solar = Z / 0.02
-print(f'\nCGM Metallicity (Z/Z_sun):')
-print(f'  Mean: {np.mean(Z_solar):.3f}')
-print(f'  Median: {np.median(Z_solar):.3f}')
-print(f'  16th-84th percentile: {np.percentile(Z_solar, 16):.3f} - {np.percentile(Z_solar, 84):.3f}')
+Posx = read_hdf(snap_num = Snapshot, param = 'Posx')
+Posy = read_hdf(snap_num = Snapshot, param = 'Posy')
+Posz = read_hdf(snap_num = Snapshot, param = 'Posz')
 
-# Halo properties
-print(f'\nHalo Mass Statistics:')
-print(f'  Mean log10(Mvir/Msun): {np.mean(np.log10(Mvir[Mvir>0])):.2f}')
-print(f'  Median log10(Mvir/Msun): {np.median(np.log10(Mvir[Mvir>0])):.2f}')
-print(f'  Range: {np.log10(np.min(Mvir[Mvir>0])):.2f} - {np.log10(np.max(Mvir)):.2f}')
+OutflowRate = read_hdf(snap_num = Snapshot, param = 'OutflowRate')
+MassLoading = read_hdf(snap_num = Snapshot, param = 'MassLoading')
 
-print(f'\nVirial Velocity Statistics:')
-print(f'  Mean Vvir: {np.mean(Vvir[Vvir>0]):.1f} km/s')
-print(f'  Median Vvir: {np.median(Vvir[Vvir>0]):.1f} km/s')
-print(f'  Range: {np.min(Vvir[Vvir>0]):.1f} - {np.max(Vvir):.1f} km/s')
+Tvir = 35.9 * (Vvir)**2  # in Kelvin
+Tmax = 2.5e5  # K, corresponds to Vvir ~52.7 km/s
+Regime = read_hdf(snap_num = Snapshot, param = 'Regime')
+tcool = read_hdf(snap_num = Snapshot, param = 'tcool')
+tff = read_hdf(snap_num = Snapshot, param = 'tff')
+tcool_over_tff = read_hdf(snap_num = Snapshot, param = 'tcool_over_tff')
+tdeplete = read_hdf(snap_num = Snapshot, param = 'tdeplete')
 
-Tvir_sample = 35.9 * Vvir[cgm_present]**2
-print(f'\nVirial Temperature Statistics:')
-print(f'  Mean log10(Tvir/K): {np.mean(np.log10(Tvir_sample)):.2f}')
-print(f'  Median log10(Tvir/K): {np.median(np.log10(Tvir_sample)):.2f}')
-print(f'  Range: {np.log10(np.min(Tvir_sample)):.2f} - {np.log10(np.max(Tvir_sample)):.2f}')
+unit_time_in_s = 3.08568e+24 / 100000
+sec_per_year = 3.155e+7
+solar_mass_in_g = 1.989e+33
+cm_per_mpc = 3.085678e+24
 
-# ========================== CALCULATE PHYSICS ==========================
+# Check the constants - these seem to be causing overflow
+print(f'Checking constants:')
+print(f'solar_mass_in_g: {solar_mass_in_g:.3e}')
+print(f'cm_per_mpc: {cm_per_mpc:.3e}')
 
-print('\n' + '=' * 70)
-print('CALCULATING PRECIPITATION PHYSICS')
-print('=' * 70)
+# Test a typical value to see if it overflows
+test_cgm = 1.0  # 1 solar mass
+test_rvir = 0.1  # 0.1 Mpc/h
+print(f'Test: 1 solar mass * solar_mass_in_g = {test_cgm * solar_mass_in_g:.3e}')
+print(f'Test: 0.1 Mpc/h * cm_per_mpc / Hubble_h = {test_rvir * cm_per_mpc / Hubble_h:.3e}')
 
-n_gal = len(Mvir)
-tcool_tff = np.full(n_gal, np.nan)
-tcool = np.full(n_gal, np.nan)
-tff = np.full(n_gal, np.nan)
-n_gas = np.full(n_gal, np.nan)
-logZ = np.full(n_gal, np.nan)
-Tvir = 35.9 * Vvir**2
+tcool = tcool * unit_time_in_s / (1e6 * sec_per_year)
+tff = tff * unit_time_in_s / (1e6 * sec_per_year)
+tdeplete = tdeplete * unit_time_in_s / (1e6 * sec_per_year)
 
-# Calculate for all galaxies
-for i in range(n_gal):
-    if CGMgas[i] > 0:
-        tcool_tff[i], tcool[i], tff[i], n_gas[i], logZ[i] = calculate_tcool_tff(
-            Mvir[i], Rvir[i], Vvir[i], CGMgas[i], MetalsCGMgas[i], Hubble_h
-        )
+# Calculate precipitation factor (McCourt et al. 2012)
+precipitation_threshold = 10.0  # McCourt et al. 2012
+transition_width = 2.0  # Smooth transition over factor ~2
 
-# Calculate precipitation quantities
-precip_frac = np.zeros(n_gal)
-depletion_time = np.full(n_gal, np.nan)
-precip_efficiency = np.zeros(n_gal)
-instant_cool_rate = np.zeros(n_gal)
+precipitation_fraction = np.zeros_like(tcool_over_tff)
 
-for i in range(n_gal):
-    if not np.isnan(tcool_tff[i]):
-        precip_frac[i], depletion_time[i], precip_efficiency[i], instant_cool_rate[i] = \
-            calculate_precipitation_quantities(tcool_tff[i], CGMgas[i], tff[i])
+# Case 1: tcool_over_tff < precipitation_threshold
+mask1 = tcool_over_tff < precipitation_threshold
+instability_factor = precipitation_threshold / tcool_over_tff[mask1]
+instability_factor = np.minimum(instability_factor, 3.0)  # Cap at 3x
+precipitation_fraction[mask1] = np.tanh(instability_factor / 2.0)  # Smooth scaling
 
-# CGM mass fraction
-CGM_mass_fraction = np.zeros(n_gal)
-valid_mvir = Mvir > 0
-CGM_mass_fraction[valid_mvir] = 100.0 * CGMgas[valid_mvir] / Mvir[valid_mvir]
+# Debug unit conversions - work with raw units first
+print(f'Sample Rvir values (raw): {Rvir[:5]}')
+print(f'Sample CGMgas values (raw): {CGMgas[:5]}')
+print(f'Max CGMgas value: {np.max(CGMgas):.2e}')
+print(f'Min CGMgas value: {np.min(CGMgas):.2e}')
+print(f'Number of galaxies with CGMgas > 0: {np.sum(CGMgas > 0)}')
 
-print(f'\nValid tcool/tff calculations: {np.sum(~np.isnan(tcool_tff))}')
+# Let's also check other gas components for comparison
+print(f'Sample ColdGas values: {ColdGas[:5]}')
+print(f'Sample HotGas values: {HotGas[:5]}')
+print(f'Sample EjectedMass values: {EjectedMass[:5]}')
 
-# Distribution statistics
-valid_ratio = tcool_tff[~np.isnan(tcool_tff)]
-print(f'\ntcool/tff Statistics:')
-print(f'  Mean: {np.mean(valid_ratio):.3e}')
-print(f'  Median: {np.median(valid_ratio):.3e}')
-print(f'  Min: {np.min(valid_ratio):.3e}')
-print(f'  Max: {np.max(valid_ratio):.3e}')
-print(f'  16th-84th percentile: {np.percentile(valid_ratio, 16):.3e} - {np.percentile(valid_ratio, 84):.3e}')
+# Check typical ratios
+nonzero_mask = CGMgas > 0
+if np.sum(nonzero_mask) > 0:
+    print(f'Median CGMgas/ColdGas ratio: {np.median(CGMgas[nonzero_mask]/ColdGas[nonzero_mask]):.2e}')
+    print(f'Median CGMgas/HotGas ratio: {np.median(CGMgas[nonzero_mask]/HotGas[nonzero_mask]):.2e}')
 
-# Regime breakdown
-print(f'\nPrecipitation Regime Distribution:')
-print(f'  Ultra-fast (tcool/tff < 0.15): {np.sum(tcool_tff < 0.15)} ({100*np.sum(tcool_tff < 0.15)/np.sum(~np.isnan(tcool_tff)):.1f}%)')
-print(f'  Fast (0.15 < tcool/tff < 0.5): {np.sum((tcool_tff >= 0.15) & (tcool_tff < 0.5))} ({100*np.sum((tcool_tff >= 0.15) & (tcool_tff < 0.5))/np.sum(~np.isnan(tcool_tff)):.1f}%)')
-print(f'  Marginal (0.5 < tcool/tff < 2): {np.sum((tcool_tff >= 0.5) & (tcool_tff < 2))} ({100*np.sum((tcool_tff >= 0.5) & (tcool_tff < 2))/np.sum(~np.isnan(tcool_tff)):.1f}%)')
-print(f'  Weak (2 < tcool/tff < 10): {np.sum((tcool_tff >= 2) & (tcool_tff < 10))} ({100*np.sum((tcool_tff >= 2) & (tcool_tff < 10))/np.sum(~np.isnan(tcool_tff)):.1f}%)')
-print(f'  Stable (tcool/tff > 10): {np.sum(tcool_tff >= 10)} ({100*np.sum(tcool_tff >= 10)/np.sum(~np.isnan(tcool_tff)):.1f}%)')
+# Work with CGM mass in solar masses (no conversion yet)
+print(f'Median CGM mass in CGM-regime galaxies: {np.median(CGMgas[Regime==0]):.2e} solar masses')
 
-# Physical interpretation
-print(f'\n' + '=' * 70)
-print('PHYSICAL INTERPRETATION')
-print('=' * 70)
+# Work with Rvir in Mpc/h (no conversion yet) 
+print(f'Median Rvir in CGM-regime galaxies: {np.median(Rvir[Regime==0]):.2e} Mpc/h')
 
-if np.sum(tcool_tff < 0.15) / np.sum(~np.isnan(tcool_tff)) > 0.9:
-    print('\n⚠️  WARNING: >90% of galaxies show ultra-fast precipitation!')
-    print('   This is EXPECTED for small boxes with mostly low-mass halos.')
-    print('   Physical reasons:')
-    print('   1. Low-mass halos (< 10^12 Msun) naturally have short t_cool/t_ff')
-    print('   2. Small box volumes preferentially sample low-mass halos')
-    print('   3. CGM in these halos is dense and metal-enriched')
-    print('   4. Virial temperatures are low (few × 10^5 K)')
-    print('\n   This means your CGM implementation is working correctly!')
-    print('   The precipitation cooling is very efficient, as expected.')
-    print('\n   For larger boxes (500 Mpc), you should see:')
-    print('   - More high-mass halos (> 10^12 Msun)')
-    print('   - Higher fraction in stable regime (>10%)')
-    print('   - Broader distribution of t_cool/t_ff')
+# Calculate volume in (Mpc/h)^3 - this is the FULL halo volume
+volume_cgm_mpc = (4.0 * np.pi / 3.0) * (Rvir**3)
+print(f'Median CGM volume in CGM-regime galaxies: {np.median(volume_cgm_mpc[Regime==0]):.2e} (Mpc/h)^3')
 
-# Sample a few galaxies for detailed output
-print(f'\n' + '=' * 70)
-print('SAMPLE GALAXY DETAILS (Random Selection)')
-print('=' * 70)
+# Maybe we should use a different radius? CGM typically extends from ~0.1*Rvir to Rvir
+# Let's try calculating density assuming CGM occupies the volume from 0.1*Rvir to Rvir
+volume_cgm_shell = (4.0 * np.pi / 3.0) * (Rvir**3 - (0.1*Rvir)**3)
+print(f'CGM shell volume (0.1*Rvir to Rvir): {np.median(volume_cgm_shell[Regime==0]):.2e} (Mpc/h)^3')
 
-valid = (CGMgas > 0) & ~np.isnan(tcool_tff)
-valid_indices = np.where(valid)[0]
-if len(valid_indices) >= 5:
-    sample_indices = np.random.choice(valid_indices, 5, replace=False)
-    for i, idx in enumerate(sample_indices):
-        print(f'\nGalaxy {i+1}:')
-        print(f'  Mvir = {Mvir[idx]:.2e} M_sun (log = {np.log10(Mvir[idx]):.2f})')
-        print(f'  Vvir = {Vvir[idx]:.1f} km/s')
-        print(f'  Tvir = {Tvir[idx]:.2e} K (log = {np.log10(Tvir[idx]):.2f})')
-        print(f'  CGM mass = {CGMgas[idx]:.2e} M_sun')
-        print(f'  CGM metallicity = {MetalsCGMgas[idx]/CGMgas[idx]/0.02:.3f} Z_sun')
-        print(f'  Gas density = {n_gas[idx]:.2e} cm^-3')
-        print(f'  t_cool = {tcool[idx]:.2f} Myr')
-        print(f'  t_ff = {tff[idx]:.2f} Myr')
-        print(f'  t_cool/t_ff = {tcool_tff[idx]:.4f}')
-        if tcool_tff[idx] < 0.15:
-            print(f'  Regime: ULTRA-FAST precipitation ⚡')
-        elif tcool_tff[idx] < 0.5:
-            print(f'  Regime: Fast precipitation')
-        elif tcool_tff[idx] < 2:
-            print(f'  Regime: Marginal precipitation')
-        elif tcool_tff[idx] < 10:
-            print(f'  Regime: Weak precipitation')
-        else:
-            print(f'  Regime: Stable (no precipitation)')
+# Calculate density in solar masses per (Mpc/h)^3
+mask_nonzero = (CGMgas > 0) & (Rvir > 0)
+density_cgm_raw = np.zeros_like(CGMgas)
+density_cgm_raw[mask_nonzero] = CGMgas[mask_nonzero] / volume_cgm_mpc[mask_nonzero]
 
-# ========================== FIGURE 1 ==========================
+# Also try with CGM shell volume
+density_cgm_shell = np.zeros_like(CGMgas)
+density_cgm_shell[mask_nonzero] = CGMgas[mask_nonzero] / volume_cgm_shell[mask_nonzero]
 
-print(f'\n' + '=' * 70)
-print('CREATING FIGURES')
-print('=' * 70)
+# Convert to physical units (g/cm^3) for ALL galaxies
+conversion_factor = solar_mass_in_g / (cm_per_mpc / Hubble_h)**3
+density_physical = density_cgm_raw * conversion_factor
+density_physical_shell = density_cgm_shell * conversion_factor
 
-print('\nCreating Figure 1: Physical Drivers of CGM Precipitation...')
+finite_density_mask = mask_nonzero & (Regime == 0) & np.isfinite(density_cgm_raw)
+if np.sum(finite_density_mask) > 0:
+    print(f'Median CGM density (full halo) in CGM-regime galaxies: {np.median(density_cgm_raw[finite_density_mask]):.2e} solar masses/(Mpc/h)^3')
+    print(f'Median CGM density (shell 0.1-1 Rvir) in CGM-regime galaxies: {np.median(density_cgm_shell[finite_density_mask]):.2e} solar masses/(Mpc/h)^3')
+    print(f'Number of galaxies with finite CGM density: {np.sum(finite_density_mask)}')
+    
+    print(f'Conversion factor: {conversion_factor:.2e}')
+    print(f'Median CGM density (full halo): {np.median(density_physical[finite_density_mask]):.2e} g/cm^3')
+    print(f'Median CGM density (shell): {np.median(density_physical_shell[finite_density_mask]):.2e} g/cm^3')
+    
+    # Let's also check what this would be in terms of number density (assuming hydrogen)
+    # 1 g/cm^3 of hydrogen = 6.02e23 particles/cm^3 (Avogadro's number)
+    proton_mass = 1.67e-24  # g
+    n_density = np.median(density_physical[finite_density_mask]) / proton_mass
+    n_density_shell = np.median(density_physical_shell[finite_density_mask]) / proton_mass
+    print(f'Median number density (full halo): {n_density:.2e} particles/cm^3')
+    print(f'Median number density (shell): {n_density_shell:.2e} particles/cm^3')
+else:
+    print('No finite, non-zero CGM density values in CGM-regime galaxies')
 
-fig = plt.figure(figsize=(14, 10))
-gs = gridspec.GridSpec(2, 2, figure=fig, hspace=0.3, wspace=0.3)
+# Case 2: transition regime
+mask2 = (tcool_over_tff >= precipitation_threshold) & (tcool_over_tff < precipitation_threshold + transition_width)
+x = (tcool_over_tff[mask2] - precipitation_threshold) / transition_width
+precipitation_fraction[mask2] = 0.5 * (1.0 - np.tanh(x))
 
-valid = (CGMgas > 0) & ~np.isnan(tcool_tff) & (n_gas > 0) & ~np.isnan(logZ)
+# Case 3: tcool_over_tff >= precipitation_threshold + transition_width
+# precipitation_fraction remains 0.0 (already initialized)
 
-# For color scale, use actual data range or set reasonable limits
-tcool_tff_min = max(np.nanmin(tcool_tff[valid]), 0.001)
-tcool_tff_max = min(np.nanmax(tcool_tff[valid]), 100)
-if tcool_tff_max <= tcool_tff_min:
-    tcool_tff_max = tcool_tff_min * 10
+print(f'Median cooling time in CGM-regime galaxies: {np.median(tcool[Regime==0]):.2e} Myr')
+print(f'Median free-fall time in CGM-regime galaxies: {np.median(tff[Regime==0]):.2e} Myr')
+print(f'Median cooling time over free-fall time in CGM-regime galaxies: {np.median(tcool_over_tff[Regime==0]):.2e}')
+print(f'Median depletion time in CGM-regime galaxies: {np.median(tdeplete[Regime==0]):.2e} Myr')
+print(f'Median precipitation fraction in CGM-regime galaxies: {np.median(precipitation_fraction[Regime==0]):.3f}')
 
-# Subplot 1: Gas Density vs Metallicity
-ax1 = fig.add_subplot(gs[0, 0])
-sc1 = ax1.scatter(n_gas[valid], logZ[valid], c=tcool_tff[valid], 
-                  cmap='RdYlBu_r', norm=LogNorm(vmin=tcool_tff_min, vmax=tcool_tff_max),
-                  s=50, alpha=0.6, edgecolors='k', linewidth=0.3)
+print(f'Sample of cooling times: {sample(list(tcool[Regime==0]), 10)}')
+print(f'Sample of free-fall times: {sample(list(tff[Regime==0]), 10)}')
+print(f'Sample of tcool/tff: {sample(list(tcool_over_tff[Regime==0]), 10)}')
+print(f'Sample of depletion times: {sample(list(tdeplete[Regime==0]), 10)}')
+print(f'Sample of precipitation fractions: {sample(list(precipitation_fraction[Regime==0]), 10)}')
+if np.sum(finite_density_mask) > 0:
+    print(f'Sample of CGM densities: {sample(list(density_cgm_raw[finite_density_mask]), min(10, len(density_cgm_raw[finite_density_mask])))}')
+else:
+    print('Sample of CGM densities: No finite densities available')
+
+# ========================== PLOTTING ==========================
+
+# Create the multi-panel figure
+fig = plt.figure(figsize=(18, 10))
+
+# Define precipitation regimes based on tcool/tff
+ultra_fast_mask = tcool_over_tff < 0.15
+fast_mask = (tcool_over_tff >= 0.15) & (tcool_over_tff < 0.5)
+marginal_mask = (tcool_over_tff >= 0.5) & (tcool_over_tff < 2.0)
+weak_mask = (tcool_over_tff >= 2.0) & (tcool_over_tff < 10.0)
+stable_mask = tcool_over_tff >= 10.0
+
+# Colors for each regime
+colors = {
+    'ultra_fast': '#ff6b6b',    # Red
+    'fast': '#ffa500',          # Orange  
+    'marginal': '#ffd700',      # Gold
+    'weak': '#87ceeb',          # Light blue
+    'stable': '#808080'         # Gray
+}
+
+# Only plot CGM-regime galaxies with finite values (for scatter plots)
+cgm_mask = (Regime == 0) & mask_nonzero & np.isfinite(density_physical) & (density_physical > 0)
+
+# For histogram, use ALL CGM-regime galaxies
+cgm_hist_mask = (Regime == 0)
+
+# Debug: Check how many galaxies we have in each regime
+print(f'Total galaxies: {len(Regime)}')
+print(f'Regime values: {np.unique(Regime, return_counts=True)}')
+print(f'CGM-regime galaxies (Regime=0): {np.sum(Regime == 0)}')
+print(f'Galaxies with CGMgas > 0: {np.sum(CGMgas > 0)}')
+print(f'CGM-regime galaxies with CGMgas > 0: {np.sum((Regime == 0) & (CGMgas > 0))}')
+
+# Panel 1: Histogram of tcool/tff distribution (spanning all 3 columns)
+ax1 = plt.subplot2grid((3, 3), (0, 0), colspan=3)
+bins = np.logspace(-2, 2.5, 30)
+hist_data = tcool_over_tff[cgm_hist_mask]
+n, bins_out, patches = ax1.hist(hist_data, bins=bins, alpha=1.0, color='lightblue', edgecolor='black', linewidth=0.5)
+
+print(f'Histogram showing {len(hist_data)} CGM-regime galaxies (Regime=0)')
+
+# Keep histogram bars light blue with black outlines (don't recolor them)
+
+# Add vertical lines for regime boundaries (grey dashed lines)
+ax1.axvline(0.15, color='grey', linestyle='--', alpha=0.7, linewidth=1)
+ax1.axvline(0.5, color='grey', linestyle='--', alpha=0.7, linewidth=1)
+ax1.axvline(2.0, color='grey', linestyle='--', alpha=0.7, linewidth=1)
+ax1.axvline(10.0, color='grey', linestyle='--', alpha=0.7, linewidth=1)
+ax1.axvline(10.0, color='lightblue', linestyle='--', alpha=0.7)
+
 ax1.set_xscale('log')
-ax1.set_xlabel('Gas Density [cm$^{-3}$]', fontsize=12, fontweight='bold')
-ax1.set_ylabel('log$_{10}$(Z/Z$_\\odot$)', fontsize=12, fontweight='bold')
-if np.sum(valid) > 0:
-    ax1.set_xlim(np.nanmin(n_gas[valid])*0.5, np.nanmax(n_gas[valid])*2)
-    ax1.set_ylim(np.nanmin(logZ[valid])-0.5, np.nanmax(logZ[valid])+0.5)
-ax1.text(0.05, 0.95, 'Stronger\nCooling', transform=ax1.transAxes,
-         fontsize=11, fontweight='bold', color='red',
-         bbox=dict(boxstyle='round', facecolor='white', edgecolor='red', linewidth=2),
-         verticalalignment='top')
-cbar1 = plt.colorbar(sc1, ax=ax1, label='$t_{\\rm cool}/t_{\\rm ff}$')
+ax1.set_xlim(0.01, 100)
+ax1.set_xlabel('$t_{cool}/t_{ff}$')
+ax1.set_ylabel('Number of Galaxies')
+ax1.set_title('CGM Precipitation Cooling: Physical Regimes and Behaviors\n\nDistribution of Cooling-to-Freefall Time Ratio')
 ax1.grid(True, alpha=0.3)
-ax1.set_title('Drivers of Precipitation:\nHigher Density + Higher Metallicity → Faster Cooling',
-              fontsize=11, fontweight='bold', pad=10)
-
-# Subplot 2: Halo Mass vs CGM Mass Fraction
-ax2 = fig.add_subplot(gs[0, 1])
-valid2 = valid & (CentralMvir > 0) & (CGM_mass_fraction > 0)
-if np.sum(valid2) > 0:
-    sc2 = ax2.scatter(CentralMvir[valid2]/1e10, CGM_mass_fraction[valid2], 
-                      c=tcool_tff[valid2], cmap='RdYlBu_r',
-                      norm=LogNorm(vmin=tcool_tff_min, vmax=tcool_tff_max),
-                      s=50, alpha=0.6, edgecolors='k', linewidth=0.3)
-ax2.set_xscale('log')
-ax2.set_yscale('log')
-ax2.set_xlabel('Halo Mass [$10^{10}M_\\odot$]', fontsize=12, fontweight='bold')
-ax2.set_ylabel('CGM Mass Fraction [%]', fontsize=12, fontweight='bold')
-ax2.axhline(10, color='red', linestyle='--', linewidth=2, alpha=0.7, 
-            label='10% of halo mass')
-if np.sum(valid2) > 0:
-    ax2.set_xlim(np.min(CentralMvir[valid2]/1e10)*0.5, np.max(CentralMvir[valid2]/1e10)*2)
-    ax2.set_ylim(np.min(CGM_mass_fraction[valid2])*0.5, np.max(CGM_mass_fraction[valid2])*2)
-ax2.legend(fontsize=10)
-ax2.grid(True, alpha=0.3)
-ax2.set_title('CGM Dominance in Low-Mass Halos',
-              fontsize=11, fontweight='bold', pad=10)
-
-# Subplot 3: Temperature-Density Phase Space
-ax3 = fig.add_subplot(gs[1, 0])
-sc3 = ax3.scatter(n_gas[valid], Tvir[valid], c=tcool_tff[valid],
-                  cmap='RdYlBu_r', norm=LogNorm(vmin=tcool_tff_min, vmax=tcool_tff_max),
-                  s=50, alpha=0.6, edgecolors='k', linewidth=0.3)
-ax3.set_xscale('log')
-ax3.set_yscale('log')
-ax3.set_xlabel('Gas Density [cm$^{-3}$]', fontsize=12, fontweight='bold')
-ax3.set_ylabel('Temperature [K]', fontsize=12, fontweight='bold')
-if np.sum(valid) > 0:
-    ax3.set_xlim(np.nanmin(n_gas[valid])*0.5, np.nanmax(n_gas[valid])*2)
-    ax3.set_ylim(np.nanmin(Tvir[valid])*0.5, np.nanmax(Tvir[valid])*2)
-ax3.grid(True, alpha=0.3)
-ax3.set_title('Temperature-Density Phase Space',
-              fontsize=11, fontweight='bold', pad=10)
-
-# Subplot 4: The Precipitation Sequence
-ax4 = fig.add_subplot(gs[1, 1])
-ax4.axis('off')
-
-textstr = """
-The Precipitation Sequence
-
-Dense, Metal-Rich CGM
-       ↓
-Rapid cooling forms cold clouds
-       ↓
-Clouds precipitate on t_ff
-    (Rain mode)
-       ↓
-Fuels star formation
-       ↓
-CGM depleted / SN feedback
-       ↓
-Diffuse, stable CGM
-"""
-
-ax4.text(0.5, 0.5, textstr, transform=ax4.transAxes,
-         fontsize=13, verticalalignment='center', horizontalalignment='center',
-         bbox=dict(boxstyle='round,pad=1', facecolor='lightblue', 
-                  edgecolor='darkblue', linewidth=3, alpha=0.8),
-         family='monospace', fontweight='bold')
-
-plt.suptitle('Physical Drivers of CGM Precipitation', 
-             fontsize=16, fontweight='bold', y=0.98)
-
-plt.savefig(OutputDir + 'cgm_precipitation_drivers.png', dpi=150, bbox_inches='tight')
-print(f'Saved: {OutputDir}cgm_precipitation_drivers.png')
-
-# ========================== FIGURE 2 ==========================
-
-print('\nCreating Figure 2: CGM Precipitation Regimes...')
-
-fig2 = plt.figure(figsize=(16, 12))
-gs2 = gridspec.GridSpec(3, 3, figure=fig2, hspace=0.35, wspace=0.35)
-
-def get_regime_color(ratio):
-    if ratio < 0.15:
-        return 'darkred'
-    elif ratio < 0.5:
-        return 'orangered'
-    elif ratio < 2.0:
-        return 'orange'
-    elif ratio < 10.0:
-        return 'steelblue'
-    else:
-        return 'gray'
-
-# FIXED: Make colors a numpy array so it can be indexed with boolean masks
-colors = np.array([get_regime_color(r) if not np.isnan(r) else 'gray' for r in tcool_tff])
-
-# Top: Distribution histogram
-ax_hist = fig2.add_subplot(gs2[0, :])
-valid_ratio = tcool_tff[~np.isnan(tcool_tff)]
-
-# Adaptive binning based on actual data range
-if len(valid_ratio) > 0:
-    ratio_min = max(np.min(valid_ratio), 1e-4)
-    ratio_max = min(np.max(valid_ratio), 1e3)
-    bins = np.logspace(np.log10(ratio_min), np.log10(ratio_max), 50)
-    ax_hist.hist(valid_ratio, bins=bins, 
-                 color='steelblue', alpha=0.7, edgecolor='black', linewidth=1.5)
-
-ax_hist.axvline(0.15, color='darkred', linestyle='--', linewidth=2, alpha=0.8)
-ax_hist.axvline(0.5, color='orangered', linestyle='--', linewidth=2, alpha=0.8)
-ax_hist.axvline(2.0, color='orange', linestyle='--', linewidth=2, alpha=0.8)
-ax_hist.axvline(10.0, color='steelblue', linestyle='--', linewidth=2, alpha=0.8)
-ax_hist.set_xscale('log')
-ax_hist.set_xlabel('$t_{\\rm cool}/t_{\\rm ff}$', fontsize=13, fontweight='bold')
-ax_hist.set_ylabel('Number of Galaxies', fontsize=13, fontweight='bold')
-if len(valid_ratio) > 0:
-    ax_hist.set_xlim(ratio_min*0.5, ratio_max*2)
-ax_hist.grid(True, alpha=0.3, axis='y')
 
 # Add regime labels
-ax_hist.text(0.07, 0.95, 'Ultra-Fast\nPrecipitation', transform=ax_hist.transAxes,
-             fontsize=9, bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.7),
-             verticalalignment='top')
-ax_hist.text(0.28, 0.95, 'Fast\nPrecipitation', transform=ax_hist.transAxes,
-             fontsize=9, bbox=dict(boxstyle='round', facecolor='lightcoral', alpha=0.7),
-             verticalalignment='top')
-ax_hist.text(0.50, 0.95, 'Marginal\nPrecipitation', transform=ax_hist.transAxes,
-             fontsize=9, bbox=dict(boxstyle='round', facecolor='lightyellow', alpha=0.7),
-             verticalalignment='top')
-ax_hist.text(0.72, 0.95, 'Weak\nPrecipitation', transform=ax_hist.transAxes,
-             fontsize=9, bbox=dict(boxstyle='round', facecolor='lightblue', alpha=0.7),
-             verticalalignment='top')
+ax1.text(0.05, 0.9, 'Ultra-Fast\nPrecipitation', transform=ax1.transAxes, fontsize=10, 
+         bbox=dict(boxstyle="round,pad=0.3", facecolor=colors['ultra_fast'], alpha=0.7))
+ax1.text(0.2, 0.9, 'Fast\nPrecipitation', transform=ax1.transAxes, fontsize=10,
+         bbox=dict(boxstyle="round,pad=0.3", facecolor=colors['fast'], alpha=0.7))
+ax1.text(0.4, 0.9, 'Marginal\nPrecipitation', transform=ax1.transAxes, fontsize=10,
+         bbox=dict(boxstyle="round,pad=0.3", facecolor=colors['marginal'], alpha=0.7))
+ax1.text(0.6, 0.9, 'Weak\nPrecipitation', transform=ax1.transAxes, fontsize=10,
+         bbox=dict(boxstyle="round,pad=0.3", facecolor=colors['weak'], alpha=0.7))
+ax1.text(0.8, 0.9, 'Stable', transform=ax1.transAxes, fontsize=10,
+         bbox=dict(boxstyle="round,pad=0.3", facecolor=colors['stable'], alpha=0.7))
 
-ax_hist.set_title('Distribution of Cooling-to-Freefall Time Ratio',
-                  fontsize=13, fontweight='bold', pad=10)
+# Panel 2: Density vs Precipitation Regime  
+ax2 = plt.subplot2grid((3, 3), (1, 0))
 
-# Middle and bottom rows
-valid_plot = valid & ~np.isnan(tcool_tff)
+# Dilute the data for scatter plots - randomly sample 7000 points from cgm_mask
+np.random.seed(2222)  # For reproducibility
+if np.sum(cgm_mask) > dilute:
+    dilute_indices = np.random.choice(np.where(cgm_mask)[0], dilute, replace=False)
+    dilute_mask = np.zeros_like(cgm_mask, dtype=bool)
+    dilute_mask[dilute_indices] = True
+else:
+    dilute_mask = cgm_mask
 
-# Plot setup function for consistent style
-def setup_regime_plot(ax, xlabel, ylabel, log_x=True, log_y=False):
-    if log_x:
-        ax.set_xscale('log')
-    if log_y:
-        ax.set_yscale('log')
-    ax.set_xlabel(xlabel, fontsize=11, fontweight='bold')
-    ax.set_ylabel(ylabel, fontsize=11, fontweight='bold')
-    if len(valid_ratio) > 0:
-        ax.set_xlim(ratio_min*0.5, ratio_max*2)
-    ax.axvline(0.15, color='darkred', linestyle=':', alpha=0.5)
-    ax.axvline(0.5, color='orangered', linestyle=':', alpha=0.5)
-    ax.axvline(2.0, color='orange', linestyle=':', alpha=0.5)
-    ax.axvline(10.0, color='steelblue', linestyle=':', alpha=0.5)
-    ax.grid(True, alpha=0.3)
+print(f'Using {np.sum(dilute_mask)} galaxies for scatter plots (diluted from {np.sum(cgm_mask)})')
 
-# Density
-ax1 = fig2.add_subplot(gs2[1, 0])
-if np.sum(valid_plot) > 0:
-    for c in np.unique(colors[valid_plot]):
-        mask = (colors[valid_plot] == c)
-        if np.any(mask):
-            ax1.scatter(tcool_tff[valid_plot][mask], n_gas[valid_plot][mask], 
-                       c=c, s=40, alpha=0.6, edgecolors='k', linewidth=0.3, label=None)
-setup_regime_plot(ax1, '$t_{\\rm cool}/t_{\\rm ff}$', 'Gas Density [cm$^{-3}$]', log_y=True)
-ax1.set_title('Density vs Precipitation Regime', fontsize=10, fontweight='bold')
-
-# Metallicity
-ax2 = fig2.add_subplot(gs2[1, 1])
-if np.sum(valid_plot) > 0:
-    for c in np.unique(colors[valid_plot]):
-        mask = (colors[valid_plot] == c)
-        if np.any(mask):
-            ax2.scatter(tcool_tff[valid_plot][mask], logZ[valid_plot][mask], 
-                       c=c, s=40, alpha=0.6, edgecolors='k', linewidth=0.3)
-setup_regime_plot(ax2, '$t_{\\rm cool}/t_{\\rm ff}$', 'log$_{10}$(Z/Z$_\\odot$)')
-ax2.set_title('Metallicity vs Precipitation Regime', fontsize=10, fontweight='bold')
-
-# Temperature
-ax3 = fig2.add_subplot(gs2[1, 2])
-if np.sum(valid_plot) > 0:
-    for c in np.unique(colors[valid_plot]):
-        mask = (colors[valid_plot] == c)
-        if np.any(mask):
-            ax3.scatter(tcool_tff[valid_plot][mask], Tvir[valid_plot][mask], 
-                       c=c, s=40, alpha=0.6, edgecolors='k', linewidth=0.3)
-setup_regime_plot(ax3, '$t_{\\rm cool}/t_{\\rm ff}$', '$T_{\\rm vir}$ [K]', log_y=True)
-ax3.set_title('Temperature vs Precipitation Regime', fontsize=10, fontweight='bold')
-
-# Depletion timescale
-valid_depl = valid_plot & (depletion_time < 1e4) & ~np.isinf(depletion_time)
-ax4 = fig2.add_subplot(gs2[2, 0])
-if np.sum(valid_depl) > 0:
-    for c in np.unique(colors[valid_depl]):
-        mask = (colors[valid_depl] == c)
-        if np.any(mask):
-            ax4.scatter(tcool_tff[valid_depl][mask], depletion_time[valid_depl][mask], 
-                       c=c, s=40, alpha=0.6, edgecolors='k', linewidth=0.3)
-setup_regime_plot(ax4, '$t_{\\rm cool}/t_{\\rm ff}$', 'CGM Depletion Time [Myr]', log_y=False)
-ax4.axhline(1000, color='gray', linestyle='--', alpha=0.5, label='1 Gyr')
-ax4.legend(fontsize=9)
-ax4.set_title('Depletion Timescale vs Precipitation Regime', fontsize=10, fontweight='bold')
-
-# Precipitation efficiency
-ax5 = fig2.add_subplot(gs2[2, 1])
-if np.sum(valid_plot) > 0:
-    for c in np.unique(colors[valid_plot]):
-        mask = (colors[valid_plot] == c)
-        if np.any(mask):
-            ax5.scatter(tcool_tff[valid_plot][mask], precip_efficiency[valid_plot][mask],
-                       c=c, s=40, alpha=0.6, edgecolors='k', linewidth=0.3)
-setup_regime_plot(ax5, '$t_{\\rm cool}/t_{\\rm ff}$', 'Precipitation Fraction', log_y=False)
-ax5.set_ylim(0, 1.05)
-ax5.set_title('Precipitation Efficiency', fontsize=10, fontweight='bold')
-
-# Instantaneous cooling rate
-valid_cool = valid_plot & (instant_cool_rate > 0)
-ax6 = fig2.add_subplot(gs2[2, 2])
-if np.sum(valid_cool) > 0:
-    for c in np.unique(colors[valid_cool]):
-        mask = (colors[valid_cool] == c)
-        if np.any(mask):
-            ax6.scatter(tcool_tff[valid_cool][mask], instant_cool_rate[valid_cool][mask],
-                       c=c, s=40, alpha=0.6, edgecolors='k', linewidth=0.3)
-setup_regime_plot(ax6, '$t_{\\rm cool}/t_{\\rm ff}$', 'CGM Cooled per Timestep [%]', log_y=False)
-ax6.set_title('Instantaneous Cooling Rate', fontsize=10, fontweight='bold')
-
-# Add legend
-from matplotlib.patches import Patch
-legend_elements = [
-    Patch(facecolor='darkred', edgecolor='black', label='Ultra-Fast (<0.15)'),
-    Patch(facecolor='orangered', edgecolor='black', label='Fast (0.15-0.5)'),
-    Patch(facecolor='orange', edgecolor='black', label='Marginal (0.5-2)'),
-    Patch(facecolor='steelblue', edgecolor='black', label='Weak (2-10)'),
-    Patch(facecolor='gray', edgecolor='black', label='Stable (>10)')
+scatter_masks = [
+    (ultra_fast_mask & dilute_mask, colors['ultra_fast'], 'Ultra-Fast'),
+    (fast_mask & dilute_mask, colors['fast'], 'Fast'),
+    (marginal_mask & dilute_mask, colors['marginal'], 'Marginal'),
+    (weak_mask & dilute_mask, colors['weak'], 'Weak'),
+    (stable_mask & dilute_mask, colors['stable'], 'Stable')
 ]
-fig2.legend(handles=legend_elements, loc='lower center', ncol=5, 
-           fontsize=11, title='Precipitation Regimes', title_fontsize=12,
-           frameon=True, fancybox=True, shadow=True, bbox_to_anchor=(0.5, -0.02))
 
-plt.suptitle('CGM Precipitation Cooling: Physical Regimes and Behaviors',
-             fontsize=16, fontweight='bold', y=0.99)
+for mask, color, label in scatter_masks:
+    if np.sum(mask) > 0:
+        ax2.scatter(tcool_over_tff[mask], density_physical[mask], 
+                   c=color, alpha=0.6, s=50, marker='o', edgecolor='black', label=label)
 
-plt.savefig(OutputDir + 'cgm_precipitation_regimes.png', dpi=150, bbox_inches='tight')
-print(f'Saved: {OutputDir}cgm_precipitation_regimes.png')
+# Add regime boundary lines
+ax2.axvline(0.15, color='grey', linestyle='--', alpha=0.7, linewidth=1)
+ax2.axvline(0.5, color='grey', linestyle='--', alpha=0.7, linewidth=1)
+ax2.axvline(2.0, color='grey', linestyle='--', alpha=0.7, linewidth=1)
+ax2.axvline(10.0, color='grey', linestyle='--', alpha=0.7, linewidth=1)
 
-plt.close('all')
+ax2.set_xscale('log')
+ax2.set_yscale('log')
+ax2.set_xlim(0.01, 100)
+ax2.set_ylim(1e-30, 1e-26)
+ax2.set_xlabel('$t_{cool}/t_{ff}$')
+ax2.set_ylabel('Density (g cm$^{-3}$)')
+ax2.set_title('Density')
+ax2.grid(True, alpha=0.3)
 
-print('\n' + '=' * 70)
-print('ANALYSIS COMPLETE!')
-print('=' * 70)
-print(f'\nFigures saved to: {OutputDir}')
-print('\nNext steps:')
-print('1. Check the figures to see your precipitation distribution')
-print('2. Compare to larger box results (500 Mpc) when available')
-print('3. Track evolution across redshift by analyzing multiple snapshots')
-print('4. The ultra-fast precipitation is EXPECTED for small boxes!')
+# Panel 3: Metallicity vs Precipitation Regime
+ax3 = plt.subplot2grid((3, 3), (1, 1))
+# Calculate metallicity (assuming solar metallicity = 0.02)
+solar_metallicity = 0.02
+metallicity = np.log10(MetalsCGMgas / CGMgas / solar_metallicity)
+metallicity[~np.isfinite(metallicity)] = -20  # Set invalid values to very low
+
+for mask, color, label in scatter_masks:
+    if np.sum(mask) > 0:
+        valid_met = mask & (MetalsCGMgas > 0) & (CGMgas > 0)
+        if np.sum(valid_met) > 0:
+            ax3.scatter(tcool_over_tff[valid_met], metallicity[valid_met], 
+                       c=color, alpha=0.6, s=50, marker='o', edgecolor='black')
+
+# Add regime boundary lines
+ax3.axvline(0.15, color='grey', linestyle='--', alpha=0.7, linewidth=1)
+ax3.axvline(0.5, color='grey', linestyle='--', alpha=0.7, linewidth=1)
+ax3.axvline(2.0, color='grey', linestyle='--', alpha=0.7, linewidth=1)
+ax3.axvline(10.0, color='grey', linestyle='--', alpha=0.7, linewidth=1)
+
+ax3.set_xscale('log')
+ax3.set_xlim(0.01, 100)
+ax3.set_ylim(-20, 0)
+ax3.set_xlabel('$t_{cool}/t_{ff}$')
+ax3.set_ylabel('log$_{10}$(Z/Z$_\\odot$)')
+ax3.set_title('Metallicity')
+ax3.grid(True, alpha=0.3)
+
+# Panel 4: Temperature vs Precipitation Regime
+ax4 = plt.subplot2grid((3, 3), (1, 2))
+for mask, color, label in scatter_masks:
+    if np.sum(mask) > 0:
+        ax4.scatter(tcool_over_tff[mask], Tvir[mask], 
+                   c=color, alpha=0.6, s=50, marker='o', edgecolor='black')
+
+# Add regime boundary lines
+ax4.axvline(0.15, color='grey', linestyle='--', alpha=0.7, linewidth=1)
+ax4.axvline(0.5, color='grey', linestyle='--', alpha=0.7, linewidth=1)
+ax4.axvline(2.0, color='grey', linestyle='--', alpha=0.7, linewidth=1)
+ax4.axvline(10.0, color='grey', linestyle='--', alpha=0.7, linewidth=1)
+
+ax4.set_xscale('log')
+ax4.set_yscale('log')
+ax4.set_xlim(0.01, 100)
+ax4.set_ylim(1e4, 1e7)
+ax4.set_xlabel('$t_{cool}/t_{ff}$')
+ax4.set_ylabel('T$_{vir}$ (K)')
+ax4.set_title('Temperature')
+ax4.grid(True, alpha=0.3)
+
+# Panel 5: Depletion Timescale vs Precipitation Regime
+ax5 = plt.subplot2grid((3, 3), (2, 0))
+valid_depletion = (tdeplete > 0) & (tdeplete < 1e6)  # Filter out extreme values
+
+for mask, color, label in scatter_masks:
+    plot_mask = mask & valid_depletion
+    if np.sum(plot_mask) > 0:
+        ax5.scatter(tcool_over_tff[plot_mask], tdeplete[plot_mask], 
+                   c=color, alpha=0.6, s=50, marker='o', edgecolor='black')
+
+ax5.axhline(1000, color='red', linestyle='--', alpha=0.7, label='1 Gyr')
+# Add regime boundary lines
+ax5.axvline(0.15, color='grey', linestyle='--', alpha=0.7, linewidth=1)
+ax5.axvline(0.5, color='grey', linestyle='--', alpha=0.7, linewidth=1)
+ax5.axvline(2.0, color='grey', linestyle='--', alpha=0.7, linewidth=1)
+ax5.axvline(10.0, color='grey', linestyle='--', alpha=0.7, linewidth=1)
+
+ax5.set_xscale('log')
+ax5.set_yscale('log')
+ax5.set_xlim(0.01, 100)
+ax5.set_ylim(10, 10000)
+ax5.set_xlabel('$t_{cool}/t_{ff}$')
+ax5.set_ylabel('CGM Depletion Time (Myr)')
+ax5.set_title('Depletion Timescale')
+ax5.grid(True, alpha=0.3)
+
+# Panel 6: Precipitation Efficiency
+ax6 = plt.subplot2grid((3, 3), (2, 1))
+for mask, color, label in scatter_masks:
+    if np.sum(mask) > 0:
+        ax6.scatter(tcool_over_tff[mask], precipitation_fraction[mask], 
+                   c=color, alpha=0.6, s=50, marker='o', edgecolor='black')
+
+# Add regime boundary lines
+ax6.axvline(0.15, color='grey', linestyle='--', alpha=0.7, linewidth=1)
+ax6.axvline(0.5, color='grey', linestyle='--', alpha=0.7, linewidth=1)
+ax6.axvline(2.0, color='grey', linestyle='--', alpha=0.7, linewidth=1)
+ax6.axvline(10.0, color='grey', linestyle='--', alpha=0.7, linewidth=1)
+
+ax6.set_xscale('log')
+ax6.set_xlim(0.01, 100)
+ax6.set_ylim(0, 1)
+ax6.set_xlabel('$t_{cool}/t_{ff}$')
+ax6.set_ylabel('Precipitation Fraction')
+ax6.set_title('Precipitation Efficiency')
+ax6.grid(True, alpha=0.3)
+
+# Panel 7: Use this space for the legend instead of empty placeholder
+ax7 = plt.subplot2grid((3, 3), (2, 2))
+ax7.axis('off')  # Turn off axis
+
+# Add legend in the third row, third column
+legend_handles = [
+    plt.Line2D([0], [0], marker='o', color='w', markerfacecolor=colors['ultra_fast'], 
+               markersize=10, markeredgecolor='black', label='Ultra-Fast (<0.15)'),
+    plt.Line2D([0], [0], marker='o', color='w', markerfacecolor=colors['fast'], 
+               markersize=10, markeredgecolor='black', label='Fast (0.15-0.5)'),
+    plt.Line2D([0], [0], marker='o', color='w', markerfacecolor=colors['marginal'], 
+               markersize=10, markeredgecolor='black', label='Marginal (0.5-2)'),
+    plt.Line2D([0], [0], marker='o', color='w', markerfacecolor=colors['weak'], 
+               markersize=10, markeredgecolor='black', label='Weak (2-10)'),
+    plt.Line2D([0], [0], marker='o', color='w', markerfacecolor=colors['stable'], 
+               markersize=10, markeredgecolor='black', label='Stable (>10)')
+]
+
+ax7.legend(handles=legend_handles, loc='center', fontsize=11, 
+          title='Precipitation Regimes', title_fontsize=12, frameon=True)
+
+plt.tight_layout()
+plt.savefig(OutputDir + 'cgm_precipitation_analysis' + OutputFormat, dpi=150, bbox_inches='tight')
+# plt.show()
+
+print(f'Plot saved to {OutputDir}cgm_precipitation_analysis{OutputFormat}')

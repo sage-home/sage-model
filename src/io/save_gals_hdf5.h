@@ -94,6 +94,10 @@ struct HDF5_GALAXY_OUTPUT
     int32_t *Regime;  /* 0 = CGM-regime 1 = ICM-regime */
     float *CGMgas;
     float *MetalsCGMgas;
+    float *tcool;
+    float *tff;
+    float *tcool_over_tff;
+    float *tdeplete;
 };
     
     // Proto-Types //
