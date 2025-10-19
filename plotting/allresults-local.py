@@ -1737,7 +1737,7 @@ if __name__ == '__main__':
     plt.scatter(np.log10(StellarMass), MassLoading, c='b', marker='o', s=1, alpha=0.7)
     plt.xlabel(r'$\log_{10} M_{\mathrm{stars}}\ (M_{\odot})$')
     plt.ylabel(r'$\mathrm{Mass\ Loading\ Factor}$')
-    plt.xlim(6.0, 12.2)
+    plt.xlim(8.0, 12.2)
     plt.ylim(0, None)
 
     plt.savefig(OutputDir + '24.mass_loading_factor_vs_stellar_mass' + OutputFormat)

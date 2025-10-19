@@ -217,47 +217,47 @@ double cooling_recipe_cgm(const int gal, const double dt, struct GALAXY *galaxie
     // DIAGNOSTIC OUTPUT (every 50,000 galaxies)
     // ========================================================================
     
-    // if(precipitation_debug_counter % 50000 == 0) {
-    //     printf("\n=== PRECIPITATION COOLING DEBUG [Galaxy #%ld] ===\n", precipitation_debug_counter);
+    if(precipitation_debug_counter % 50000 == 0) {
+        printf("\n=== PRECIPITATION COOLING DEBUG [Galaxy #%ld] ===\n", precipitation_debug_counter);
         
-    //     printf("BASIC PROPERTIES:\n");
-    //     printf("  CGMgas:      %.3e (10^10 Msun/h)\n", galaxies[gal].CGMgas);
-    //     printf("  Mvir:        %.3e (10^10 Msun/h)\n", galaxies[gal].Mvir);
-    //     printf("  Vvir:        %.2f km/s\n", galaxies[gal].Vvir);
-    //     printf("  Rvir:        %.3e Mpc/h\n", galaxies[gal].Rvir);
-    //     printf("  T_vir:       %.2e K\n", temp);
-    //     printf("  Metallicity: log10(Z/Zsun) = %.2f\n", logZ);
+        printf("BASIC PROPERTIES:\n");
+        printf("  CGMgas:      %.3e (10^10 Msun/h)\n", galaxies[gal].CGMgas);
+        printf("  Mvir:        %.3e (10^10 Msun/h)\n", galaxies[gal].Mvir);
+        printf("  Vvir:        %.2f km/s\n", galaxies[gal].Vvir);
+        printf("  Rvir:        %.3e Mpc/h\n", galaxies[gal].Rvir);
+        printf("  T_vir:       %.2e K\n", temp);
+        printf("  Metallicity: log10(Z/Zsun) = %.2f\n", logZ);
         
-    //     printf("\nCOOLING PHYSICS:\n");
-    //     printf("  Lambda:      %.3e erg cm^3 s^-1\n", lambda);
-    //     printf("  n_gas:       %.3e cm^-3\n", number_density);
-    //     printf("  t_cool:      %.2f Myr\n", tcool * run_params->UnitTime_in_s / (1e6 * SEC_PER_YEAR));
-    //     printf("  t_ff:        %.2f Myr\n", tff * run_params->UnitTime_in_s / (1e6 * SEC_PER_YEAR));
-    //     printf("  t_cool/t_ff: %.2f", tcool_over_tff);
+        printf("\nCOOLING PHYSICS:\n");
+        printf("  Lambda:      %.3e erg cm^3 s^-1\n", lambda);
+        printf("  n_gas:       %.3e cm^-3\n", number_density);
+        printf("  t_cool:      %.2f Myr\n", tcool * run_params->UnitTime_in_s / (1e6 * SEC_PER_YEAR));
+        printf("  t_ff:        %.2f Myr\n", tff * run_params->UnitTime_in_s / (1e6 * SEC_PER_YEAR));
+        printf("  t_cool/t_ff: %.2f", tcool_over_tff);
         
-    //     if(tcool_over_tff < precipitation_threshold) {
-    //         printf(" [THERMALLY UNSTABLE - FULL PRECIPITATION]\n");
-    //     } else if(tcool_over_tff < precipitation_threshold + transition_width) {
-    //         printf(" [TRANSITION REGIME - PARTIAL PRECIPITATION]\n");
-    //     } else {
-    //         printf(" [THERMALLY STABLE - NO PRECIPITATION]\n");
-    //     }
+        if(tcool_over_tff < precipitation_threshold) {
+            printf(" [THERMALLY UNSTABLE - FULL PRECIPITATION]\n");
+        } else if(tcool_over_tff < precipitation_threshold + transition_width) {
+            printf(" [TRANSITION REGIME - PARTIAL PRECIPITATION]\n");
+        } else {
+            printf(" [THERMALLY STABLE - NO PRECIPITATION]\n");
+        }
         
-    //     printf("\nPRECIPITATION RESULTS:\n");
-    //     printf("  Precip frac: %.4f\n", precipitation_fraction);
-    //     printf("  Cooling:     %.3e Msun (this timestep)\n", coolingGas);
-    //     printf("  Fraction:    %.4f (of total CGM)\n", 
-    //            galaxies[gal].CGMgas > 0 ? coolingGas/galaxies[gal].CGMgas : 0.0);
+        printf("\nPRECIPITATION RESULTS:\n");
+        printf("  Precip frac: %.4f\n", precipitation_fraction);
+        printf("  Cooling:     %.3e Msun (this timestep)\n", coolingGas);
+        printf("  Fraction:    %.4f (of total CGM)\n", 
+               galaxies[gal].CGMgas > 0 ? coolingGas/galaxies[gal].CGMgas : 0.0);
         
-    //     // Depletion timescale
-    //     if(coolingGas > 0.0) {
-    //         const double depletion_time = galaxies[gal].CGMgas * tff / (precipitation_fraction * galaxies[gal].CGMgas);
-    //         const double depletion_time_myr = depletion_time * run_params->UnitTime_in_s / (1e6 * SEC_PER_YEAR);
-    //         printf("  Depletion t: %.2f Myr\n", depletion_time_myr);
-    //     }
+        // Depletion timescale
+        if(coolingGas > 0.0) {
+            const double depletion_time = galaxies[gal].CGMgas * tff / (precipitation_fraction * galaxies[gal].CGMgas);
+            const double depletion_time_myr = depletion_time * run_params->UnitTime_in_s / (1e6 * SEC_PER_YEAR);
+            printf("  Depletion t: %.2f Myr\n", depletion_time_myr);
+        }
         
-    //     printf("============================================\n\n");
-    // }
+        printf("============================================\n\n");
+    }
 
     // Sanity check
     XASSERT(coolingGas >= 0.0, -1, "Error: Cooling gas mass = %g should be >= 0.0", coolingGas);
