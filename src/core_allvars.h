@@ -439,6 +439,7 @@ struct params
     int32_t    ReionizationOn;
     int32_t    DiskInstabilityOn;
     int32_t    CGMrecipeOn;
+    int32_t    FIREmodeOn;
     int32_t    CGMrecipeSAGEOn;
 
     double RecycleFraction;
@@ -456,6 +457,7 @@ struct params
     double Reionization_z0;
     double Reionization_zr;
     double ThresholdSatDisruption;
+    double RedshiftPowerLawExponent;
 
     double UnitLength_in_cm;
     double UnitVelocity_in_cm_per_s;

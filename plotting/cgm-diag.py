@@ -169,10 +169,15 @@ density_cgm_raw[mask_nonzero] = CGMgas[mask_nonzero] / volume_cgm_mpc[mask_nonze
 density_cgm_shell = np.zeros_like(CGMgas)
 density_cgm_shell[mask_nonzero] = CGMgas[mask_nonzero] / volume_cgm_shell[mask_nonzero]
 
-# Convert to physical units (g/cm^3) for ALL galaxies
+# Convert to physical units (g/cm^3) first, then to number density (cm^-3)
 conversion_factor = solar_mass_in_g / (cm_per_mpc / Hubble_h)**3
-density_physical = density_cgm_raw * conversion_factor
-density_physical_shell = density_cgm_shell * conversion_factor
+density_physical_mass = density_cgm_raw * conversion_factor
+density_physical_shell_mass = density_cgm_shell * conversion_factor
+
+# Convert mass density to number density (assuming hydrogen)
+proton_mass = 1.67e-24  # g
+density_physical = density_physical_mass / proton_mass  # particles/cm^3
+density_physical_shell = density_physical_shell_mass / proton_mass  # particles/cm^3
 
 finite_density_mask = mask_nonzero & (Regime == 0) & np.isfinite(density_cgm_raw)
 if np.sum(finite_density_mask) > 0:
@@ -181,16 +186,11 @@ if np.sum(finite_density_mask) > 0:
     print(f'Number of galaxies with finite CGM density: {np.sum(finite_density_mask)}')
     
     print(f'Conversion factor: {conversion_factor:.2e}')
-    print(f'Median CGM density (full halo): {np.median(density_physical[finite_density_mask]):.2e} g/cm^3')
-    print(f'Median CGM density (shell): {np.median(density_physical_shell[finite_density_mask]):.2e} g/cm^3')
+    print(f'Median CGM mass density (full halo): {np.median(density_physical_mass[finite_density_mask]):.2e} g/cm^3')
+    print(f'Median CGM mass density (shell): {np.median(density_physical_shell_mass[finite_density_mask]):.2e} g/cm^3')
     
-    # Let's also check what this would be in terms of number density (assuming hydrogen)
-    # 1 g/cm^3 of hydrogen = 6.02e23 particles/cm^3 (Avogadro's number)
-    proton_mass = 1.67e-24  # g
-    n_density = np.median(density_physical[finite_density_mask]) / proton_mass
-    n_density_shell = np.median(density_physical_shell[finite_density_mask]) / proton_mass
-    print(f'Median number density (full halo): {n_density:.2e} particles/cm^3')
-    print(f'Median number density (shell): {n_density_shell:.2e} particles/cm^3')
+    print(f'Median CGM number density (full halo): {np.median(density_physical[finite_density_mask]):.2e} particles/cm^3')
+    print(f'Median CGM number density (shell): {np.median(density_physical_shell[finite_density_mask]):.2e} particles/cm^3')
 else:
     print('No finite, non-zero CGM density values in CGM-regime galaxies')
 
@@ -324,10 +324,10 @@ ax2.axvline(10.0, color='grey', linestyle='--', alpha=0.7, linewidth=1)
 ax2.set_xscale('log')
 ax2.set_yscale('log')
 ax2.set_xlim(0.01, 100)
-ax2.set_ylim(1e-30, 1e-26)
+ax2.set_ylim(1e-8, 1e-2)
 ax2.set_xlabel('$t_{cool}/t_{ff}$')
-ax2.set_ylabel('Density (g cm$^{-3}$)')
-ax2.set_title('Density')
+ax2.set_ylabel('Number Density (cm$^{-3}$)')
+ax2.set_title('Number Density')
 ax2.grid(True, alpha=0.3)
 
 # Panel 3: Metallicity vs Precipitation Regime

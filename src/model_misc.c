@@ -207,7 +207,7 @@ void determine_and_store_regime(const int ngal, struct GALAXY *galaxies,
         
 //         // Smooth transition using tanh
 //         // width controls how sharp the transition is (smaller = sharper)
-//         const double transition_width = 0.5;  // in dex, or use run_params->RegimeTransitionWidth
+//         const double transition_width = 2.0;  // in dex, or use run_params->RegimeTransitionWidth
         
 //         // Calculate how far we are from threshold in log space
 //         const double log_ratio = log10(Tvir / Tvir_threshold);
@@ -236,11 +236,11 @@ float calculate_muratov_mass_loading(const int gal, struct GALAXY *galaxies, con
     // Constants from Muratov et al. (2015) paper
     const double V_CRIT = 60.0;  // Critical velocity where the power law breaks
     const double NORM = 2.9;     // Normalization factor
-    const double Z_EXP = 1.3;    // Redshift power-law exponent
+    const double Z_EXP = run_params->RedshiftPowerLawExponent;    // Redshift power-law exponent
     const double LOW_V_EXP = -3.2;  // Low velocity power-law exponent
     const double HIGH_V_EXP = -1.0; // High velocity power-law exponent
 
-    // Calculate redshift term: (1+z)^1.3
+    // Calculate redshift term: (1+z)^Z_EXP
     double z_term = pow(1.0 + z, Z_EXP);
     
     // Calculate velocity term with SHARP BREAK at exactly 60 km/s

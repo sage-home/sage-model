@@ -241,6 +241,14 @@ int read_parameter_file(const char *fname, struct params *run_params)
     ParamAddr[NParam] = &(run_params->CGMrecipeSAGEOn);
     ParamID[NParam++] = INT;
 
+    strncpy(ParamTag[NParam], "FIREmodeOn", MAXTAGLEN);
+    ParamAddr[NParam] = &(run_params->FIREmodeOn);
+    ParamID[NParam++] = INT;
+
+    strncpy(ParamTag[NParam], "RedshiftPowerLawExponent", MAXTAGLEN);
+    ParamAddr[NParam] = &(run_params->RedshiftPowerLawExponent);
+    ParamID[NParam++] = DOUBLE;
+
     used_tag = mymalloc(sizeof(int) * NParam);
     for(int i=0; i<NParam; i++) {
         used_tag[i]=1;

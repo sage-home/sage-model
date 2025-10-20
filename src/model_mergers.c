@@ -261,11 +261,13 @@ void collisional_starburst_recipe(const double mass_ratio, const int merger_cent
         stars = 0.0;
     }
 
-    // this bursting results in SN feedback on the cold/hot gas
+    // this bursting results in SN feedback on the cold/hot gas - use FIRE model if enabled
     if(run_params->SupernovaRecipeOn == 1) {
-        // reheated_mass = run_params->FeedbackReheatingEpsilon * stars;
-        reheated_mass = calculate_muratov_mass_loading(merger_centralgal, galaxies, run_params->ZZ[galaxies[merger_centralgal].SnapNum], run_params) * stars;
-        // eta = calculate_muratov_mass_loading(merger_centralgal, galaxies, run_params->ZZ[galaxies[merger_centralgal].SnapNum]);
+        if(run_params->FIREmodeOn == 1) {
+            reheated_mass = calculate_muratov_mass_loading(merger_centralgal, galaxies, run_params->ZZ[galaxies[merger_centralgal].SnapNum], run_params) * stars;
+        } else {
+            reheated_mass = run_params->FeedbackReheatingEpsilon * stars;
+        }
     } else {
         reheated_mass = 0.0;
     }
@@ -284,12 +286,15 @@ void collisional_starburst_recipe(const double mass_ratio, const int merger_cent
     // determine ejection
     if(run_params->SupernovaRecipeOn == 1) {
         if(galaxies[centralgal].Vvir > 0.0) {
-            // ejected_mass =
-            //     (run_params->FeedbackEjectionEfficiency * (run_params->EtaSNcode * run_params->EnergySNcode) / (galaxies[centralgal].Vvir * galaxies[centralgal].Vvir) -
-            //      run_params->FeedbackReheatingEpsilon) * stars;
-            ejected_mass =
-                (run_params->FeedbackEjectionEfficiency * (run_params->EtaSNcode * run_params->EnergySNcode) / (galaxies[centralgal].Vvir * galaxies[centralgal].Vvir) -
-                 calculate_muratov_mass_loading(centralgal, galaxies, run_params->ZZ[galaxies[centralgal].SnapNum], run_params)) * stars;
+            if(run_params->FIREmodeOn == 1) {
+                ejected_mass =
+                    (run_params->FeedbackEjectionEfficiency * (run_params->EtaSNcode * run_params->EnergySNcode) / (galaxies[centralgal].Vvir * galaxies[centralgal].Vvir) -
+                     calculate_muratov_mass_loading(centralgal, galaxies, run_params->ZZ[galaxies[centralgal].SnapNum], run_params)) * stars;
+            } else {
+                ejected_mass =
+                    (run_params->FeedbackEjectionEfficiency * (run_params->EtaSNcode * run_params->EnergySNcode) / (galaxies[centralgal].Vvir * galaxies[centralgal].Vvir) -
+                     run_params->FeedbackReheatingEpsilon) * stars;
+            }
         } else {
             ejected_mass = 0.0;
         }
