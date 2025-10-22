@@ -160,6 +160,7 @@ struct GALAXY
     float TimeOfLastMinorMerger;
     float OutflowRate;
     float TotalSatelliteBaryons;
+    float RcoolToRvir;
 
     /* infall properties */
     float infallMvir;
@@ -458,6 +459,7 @@ struct params
     double Reionization_zr;
     double ThresholdSatDisruption;
     double RedshiftPowerLawExponent;
+    double PrecipitationThreshold;
 
     double UnitLength_in_cm;
     double UnitVelocity_in_cm_per_s;

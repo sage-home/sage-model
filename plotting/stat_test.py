@@ -1,26 +1,21 @@
 #!/usr/bin/env python3
 """
-SAGE Model Statistical Comparison - FIXED VERSION
-==================================================
+SAGE Model Statistical Comparison - WITH COMPREHENSIVE VISUALIZATIONS
+======================================================================
 
-Statistical analysis script to compare multiple SAGE model variants against
-observational data using chi-squared tests and other goodness-of-fit metrics.
+Full integration of chi-squared + correlation metrics with extensive plotting
 
-FIXES APPLIED:
-- Uses actual observational data points (not interpolated grid)
-- Proper error handling in log space
-- Conservative error estimates (0.3 dex for datasets without errors)
-- Minimum error floor of 0.1 dex
-- Interpolates model to obs points (not both to common grid)
-- Added diagnostic plots for visual verification
-
-This script:
-1. Calculates chi-squared values for each model against observations
-2. Aggregates statistics across redshift bins
-3. Identifies which model performs best overall and in specific regimes
-4. Creates summary tables and visualization plots
-
-Author: Statistical Analysis for SAGE models
+NEW VISUALIZATION FUNCTIONS:
+1. Metric evolution with redshift
+2. Performance heatmap (models × redshift bins)
+3. Radar/spider plots for multi-dimensional comparison
+4. Metric correlation scatter matrix
+5. CCC precision-accuracy decomposition
+6. Per-dataset performance breakdown
+7. Enhanced residual analysis
+8. Model agreement matrix
+9. Winner timeline across redshift
+10. Comprehensive summary dashboard
 """
 
 import numpy as np
@@ -30,9 +25,11 @@ from scipy.interpolate import interp1d
 from scipy import stats
 import os
 import sys
+import seaborn as sns
+from matplotlib.patches import Rectangle
+from matplotlib import patches
 
 # Import necessary functions from your existing script
-# You'll need to have the main script in the same directory or modify the import
 try:
     from smf_analysis_obs_sam import (
         MODEL_CONFIGS, get_model_volume, read_hdf, 
@@ -43,642 +40,203 @@ try:
         obs_data_by_z, is_lowest_redshift_bin
     )
 except ImportError:
-    print("Warning: Could not import from main script. Using standalone mode.")
-    print("Make sure your main script is in the same directory.")
+    print("Warning: Could not import from main script.")
 
+
+# ============================================================================
+# CORRELATION METRIC FUNCTIONS (same as before)
+# ============================================================================
+
+def concordance_correlation_coefficient(y_true, y_pred):
+    """Calculate Lin's CCC"""
+    mask = np.isfinite(y_true) & np.isfinite(y_pred)
+    y_true = np.array(y_true)[mask]
+    y_pred = np.array(y_pred)[mask]
+    
+    if len(y_true) < 2:
+        return np.nan
+    
+    mean_true = np.mean(y_true)
+    mean_pred = np.mean(y_pred)
+    var_true = np.var(y_true, ddof=1)
+    var_pred = np.var(y_pred, ddof=1)
+    cov = np.cov(y_true, y_pred)[0, 1]
+    
+    numerator = 2 * cov
+    denominator = var_true + var_pred + (mean_true - mean_pred)**2
+    
+    if denominator == 0:
+        return np.nan
+    
+    return numerator / denominator
+
+
+def calculate_mad(y_true, y_pred):
+    """Calculate Mean Absolute Deviation"""
+    mask = np.isfinite(y_true) & np.isfinite(y_pred)
+    if np.sum(mask) == 0:
+        return np.nan
+    return np.mean(np.abs(y_true[mask] - y_pred[mask]))
+
+
+def calculate_rmse(y_true, y_pred):
+    """Calculate Root Mean Square Error"""
+    mask = np.isfinite(y_true) & np.isfinite(y_pred)
+    if np.sum(mask) == 0:
+        return np.nan
+    return np.sqrt(np.mean((y_true[mask] - y_pred[mask])**2))
+
+
+def calculate_correlation_metrics(model_values, obs_values, obs_errors=None):
+    """Calculate comprehensive set of correlation-based metrics"""
+    mask = np.isfinite(model_values) & np.isfinite(obs_values)
+    if obs_errors is not None:
+        mask &= np.isfinite(obs_errors) & (obs_errors > 0)
+    
+    model_clean = model_values[mask]
+    obs_clean = obs_values[mask]
+    
+    if len(model_clean) < 2:
+        return {
+            'ccc': np.nan, 'pearson_r': np.nan, 'pearson_p': np.nan,
+            'spearman_rho': np.nan, 'spearman_p': np.nan,
+            'mad': np.nan, 'rmse': np.nan, 'combined_score': np.nan,
+            'n_points': 0
+        }
+    
+    ccc = concordance_correlation_coefficient(obs_clean, model_clean)
+    pearson_r, pearson_p = stats.pearsonr(obs_clean, model_clean)
+    spearman_rho, spearman_p = stats.spearmanr(obs_clean, model_clean)
+    mad = calculate_mad(obs_clean, model_clean)
+    rmse = calculate_rmse(obs_clean, model_clean)
+    combined_score = spearman_rho - 0.5 * mad
+    
+    return {
+        'ccc': ccc, 'pearson_r': pearson_r, 'pearson_p': pearson_p,
+        'spearman_rho': spearman_rho, 'spearman_p': spearman_p,
+        'mad': mad, 'rmse': rmse, 'combined_score': combined_score,
+        'n_points': len(model_clean)
+    }
+
+
+# ============================================================================
+# ENHANCED MODEL COMPARISON CLASS WITH EXTRA PLOTS
+# ============================================================================
 
 class ModelComparison:
-    """Class to handle statistical comparison of SAGE models"""
+    """Enhanced class with comprehensive visualization suite"""
     
-    def __init__(self, model_configs, output_dir='./statistical_analysis/'):
-        """
-        Initialize the comparison
-        
-        Parameters:
-        -----------
-        model_configs : list
-            List of model configuration dictionaries
-        output_dir : str
-            Directory to save analysis results
-        """
+    def __init__(self, model_configs, output_dir='./statistical_analysis_comprehensive/'):
         self.model_configs = model_configs
         self.output_dir = output_dir
         os.makedirs(output_dir, exist_ok=True)
         
-        # Storage for results
         self.chi_squared_results = {}
+        self.correlation_results = {}
         self.model_smf_data = {}
         self.obs_data = {}
+        self.all_results = []
         
-        # Load observational data
         self._load_observational_data()
-        
+    
     def _load_observational_data(self):
         """Load all observational datasets"""
         print("Loading observational data...")
-        
-        # Load different observational datasets
         self.obs_data['baldry'] = self._process_baldry_data()
         self.obs_data['muzzin'] = load_muzzin_2013_data()
         self.obs_data['santini'] = load_santini_2012_data()
-        # self.obs_data['wright'] = load_wright_2018_data()
-        self.obs_data['csv_data'] = obs_data_by_z  # Pre-loaded CSV data
-        
+        self.obs_data['csv_data'] = obs_data_by_z
         print(f"Loaded {len(self.obs_data)} observational datasets")
     
     def _process_baldry_data(self):
         """Convert Baldry 2008 data to standard format"""
         masses, phi, phi_upper, phi_lower = get_baldry_2008_data()
-        
-        # Convert to log space and calculate errors
         log_phi = np.log10(phi)
         log_phi_upper = np.log10(phi_upper)
         log_phi_lower = np.log10(phi_lower)
-        
-        # Symmetric errors in log space (average of upper and lower)
         errors = (log_phi_upper - log_phi_lower) / 2.0
         
         return {
-            'z_center': 0.1,
-            'z_range': (0.0, 0.5),
-            'M_star': masses,
-            'logPhi': log_phi,
-            'error': errors
+            'z_center': 0.1, 'z_range': (0.0, 0.5),
+            'M_star': masses, 'logPhi': log_phi, 'error': errors
         }
     
-    def calculate_residual_statistics(self):
-        """Calculate detailed residual statistics for each model"""
-        print("\n" + "="*70)
-        print("RESIDUAL ANALYSIS")
-        print("="*70)
-        
-        model_residuals = {config['name']: [] for config in self.model_configs}
-        
-        # Collect all residuals
-        for bin_result in self.all_results:
-            z_low = bin_result['z_low']
-            z_high = bin_result['z_high']
-            z_center = bin_result['z_center']
-            
-            obs_datasets = self._get_obs_for_bin(z_low, z_high, z_center)
-            if not obs_datasets:
-                continue
-                
-            for model_config in self.model_configs:
-                model_name = model_config['name']
-                
-                masses, phi = self.calculate_model_smf_for_bin(model_config, z_low, z_high)
-                if masses is None:
-                    continue
-                    
-                for obs_name, obs_data in obs_datasets.items():
-                    _, model_interp, obs_interp, errors_interp = \
-                        self.compare_directly_no_interpolation(
-                            masses, phi, obs_data['masses'], 
-                            obs_data['phi'], obs_data['errors'])
-                    
-                    if model_interp is not None:
-                        residuals = (model_interp - obs_interp) / errors_interp
-                        model_residuals[model_name].extend(residuals)
-        
-        # Calculate statistics
-        print(f"\n{'Model':<25} {'Mean':<10} {'Median':<10} {'Std':<10} {'|Max|':<10}")
-        print("-" * 70)
-        
-        for model_name in sorted(model_residuals.keys()):
-            if len(model_residuals[model_name]) > 0:
-                residuals = np.array(model_residuals[model_name])
-                mean_res = np.mean(residuals)
-                median_res = np.median(residuals)
-                std_res = np.std(residuals)
-                max_res = np.max(np.abs(residuals))
-                
-                print(f"{model_name:<25} {mean_res:<10.3f} {median_res:<10.3f} "
-                    f"{std_res:<10.3f} {max_res:<10.3f}")
-        
-        return model_residuals
-
-    def calculate_sigma_fractions(self, model_residuals):
-        """Calculate fraction of points within 1σ, 2σ, 3σ"""
-        print("\n" + "="*70)
-        print("SIGMA COVERAGE (should be ~68%, 95%, 99.7%)")
-        print("="*70)
-        
-        print(f"\n{'Model':<25} {'Within 1σ':<15} {'Within 2σ':<15} {'Within 3σ':<15}")
-        print("-" * 70)
-        
-        for model_name in sorted(model_residuals.keys()):
-            if len(model_residuals[model_name]) > 0:
-                residuals = np.abs(np.array(model_residuals[model_name]))
-                n_total = len(residuals)
-                
-                within_1sig = np.sum(residuals <= 1.0) / n_total * 100
-                within_2sig = np.sum(residuals <= 2.0) / n_total * 100
-                within_3sig = np.sum(residuals <= 3.0) / n_total * 100
-                
-                print(f"{model_name:<25} {within_1sig:<14.1f}% {within_2sig:<14.1f}% "
-                    f"{within_3sig:<14.1f}%")
-
-    def calculate_per_redshift_rankings(self):
-        """Determine which model wins at each redshift"""
-        print("\n" + "="*70)
-        print("PER-REDSHIFT-BIN RANKINGS")
-        print("="*70)
-        
-        rankings = {config['name']: 0 for config in self.model_configs}
-        
-        print(f"\n{'Redshift Bin':<20} {'Winner':<25} {'χ²_red':<10}")
-        print("-" * 70)
-        
-        for bin_result in self.all_results:
-            z_range = f"{bin_result['z_low']:.1f}-{bin_result['z_high']:.1f}"
-            
-            best_model = None
-            best_chi_sq = float('inf')
-            
-            for model_name, model_data in bin_result['models'].items():
-                if model_data['n_points_total'] > 0:
-                    chi_sq = model_data['reduced_chi_squared_total']
-                    if chi_sq < best_chi_sq:
-                        best_chi_sq = chi_sq
-                        best_model = model_name
-            
-            if best_model:
-                rankings[best_model] += 1
-                print(f"{z_range:<20} {best_model:<25} {best_chi_sq:<10.3f}")
-        
-        print("\n" + "-" * 70)
-        print("TOTAL WINS:")
-        for model_name in sorted(rankings.keys(), key=lambda x: rankings[x], reverse=True):
-            print(f"  {model_name}: {rankings[model_name]} bins")
-        
-        return rankings
-
-    def calculate_mass_range_performance(self):
-        """Compare performance at low vs high masses"""
-        print("\n" + "="*70)
-        print("PERFORMANCE BY MASS RANGE")
-        print("="*70)
-        
-        mass_split = 10.5  # Log M* split
-        
-        low_mass_chi = {config['name']: [] for config in self.model_configs}
-        high_mass_chi = {config['name']: [] for config in self.model_configs}
-        
-        for bin_result in self.all_results:
-            z_low = bin_result['z_low']
-            z_high = bin_result['z_high']
-            z_center = bin_result['z_center']
-            
-            obs_datasets = self._get_obs_for_bin(z_low, z_high, z_center)
-            if not obs_datasets:
-                continue
-                
-            for model_config in self.model_configs:
-                model_name = model_config['name']
-                
-                masses, phi = self.calculate_model_smf_for_bin(model_config, z_low, z_high)
-                if masses is None:
-                    continue
-                    
-                for obs_name, obs_data in obs_datasets.items():
-                    comp_masses, model_interp, obs_interp, errors_interp = \
-                        self.compare_directly_no_interpolation(
-                            masses, phi, obs_data['masses'], 
-                            obs_data['phi'], obs_data['errors'])
-                    
-                    if comp_masses is not None:
-                        # Split by mass
-                        low_mask = comp_masses < mass_split
-                        high_mask = comp_masses >= mass_split
-                        
-                        if np.any(low_mask):
-                            chi_low = np.sum(((model_interp[low_mask] - obs_interp[low_mask]) / 
-                                            errors_interp[low_mask])**2)
-                            low_mass_chi[model_name].append(chi_low / np.sum(low_mask))
-                        
-                        if np.any(high_mask):
-                            chi_high = np.sum(((model_interp[high_mask] - obs_interp[high_mask]) / 
-                                            errors_interp[high_mask])**2)
-                            high_mass_chi[model_name].append(chi_high / np.sum(high_mask))
-        
-        print(f"\nMass split at log(M*/M☉) = {mass_split}")
-        print(f"\n{'Model':<25} {'Low-mass χ²_red':<20} {'High-mass χ²_red':<20}")
-        print("-" * 70)
-        
-        for model_name in sorted(low_mass_chi.keys()):
-            if len(low_mass_chi[model_name]) > 0 and len(high_mass_chi[model_name]) > 0:
-                low_avg = np.mean(low_mass_chi[model_name])
-                high_avg = np.mean(high_mass_chi[model_name])
-                print(f"{model_name:<25} {low_avg:<20.3f} {high_avg:<20.3f}")
-
-    def plot_residual_distributions(self, model_residuals):
-        """Create violin plots showing residual distributions for each model"""
-        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 6))
-        
-        # Violin plot
-        models_with_data = [(name, res) for name, res in model_residuals.items() if len(res) > 0]
-        model_names = [name for name, _ in models_with_data]
-        residual_data = [res for _, res in models_with_data]
-        
-        colors = [next((c['color'] for c in self.model_configs if c['name'] == name), 'gray') 
-                for name in model_names]
-        
-        parts = ax1.violinplot(residual_data, positions=range(len(model_names)), 
-                            widths=0.7, showmeans=True, showmedians=True)
-        
-        for i, pc in enumerate(parts['bodies']):
-            pc.set_facecolor(colors[i])
-            pc.set_alpha(0.7)
-        
-        # Add reference lines
-        ax1.axhline(y=0, color='black', linestyle='--', alpha=0.5, label='Perfect fit')
-        ax1.axhline(y=1, color='gray', linestyle=':', alpha=0.3)
-        ax1.axhline(y=-1, color='gray', linestyle=':', alpha=0.3)
-        ax1.axhline(y=2, color='gray', linestyle=':', alpha=0.2)
-        ax1.axhline(y=-2, color='gray', linestyle=':', alpha=0.2)
-        
-        ax1.set_xticks(range(len(model_names)))
-        ax1.set_xticklabels(model_names, rotation=15, ha='right')
-        ax1.set_ylabel('Residuals (σ)', fontsize=12)
-        ax1.set_title('Residual Distributions', fontsize=14)
-        ax1.set_ylim(-5, 5)
-        ax1.grid(True, alpha=0.3, axis='y')
-        
-        # Box plot overlay showing key statistics
-        bp = ax2.boxplot(residual_data, positions=range(len(model_names)), 
-                        widths=0.5, patch_artist=True)
-        
-        for i, (patch, color) in enumerate(zip(bp['boxes'], colors)):
-            patch.set_facecolor(color)
-            patch.set_alpha(0.7)
-        
-        ax2.axhline(y=0, color='black', linestyle='--', alpha=0.5)
-        ax2.set_xticks(range(len(model_names)))
-        ax2.set_xticklabels(model_names, rotation=15, ha='right')
-        ax2.set_ylabel('Residuals (σ)', fontsize=12)
-        ax2.set_title('Residual Statistics (Box Plot)', fontsize=14)
-        ax2.set_ylim(-5, 5)
-        ax2.grid(True, alpha=0.3, axis='y')
-        
-        plt.tight_layout()
-        plot_path = os.path.join(self.output_dir, 'residual_distributions.pdf')
-        plt.savefig(plot_path, dpi=300, bbox_inches='tight')
-        print(f"Saved residual distributions to: {plot_path}")
-        
-        return fig
-
-    def plot_sigma_coverage(self, model_residuals):
-        """Bar chart comparing sigma coverage across models"""
-        fig, ax = plt.subplots(figsize=(10, 6))
-        
-        model_names = []
-        within_1sig = []
-        within_2sig = []
-        within_3sig = []
-        colors_list = []
-        
-        for model_config in self.model_configs:
-            model_name = model_config['name']
-            if len(model_residuals[model_name]) > 0:
-                residuals = np.abs(np.array(model_residuals[model_name]))
-                n_total = len(residuals)
-                
-                model_names.append(model_name)
-                within_1sig.append(np.sum(residuals <= 1.0) / n_total * 100)
-                within_2sig.append(np.sum(residuals <= 2.0) / n_total * 100)
-                within_3sig.append(np.sum(residuals <= 3.0) / n_total * 100)
-                colors_list.append(model_config['color'])
-        
-        x = np.arange(len(model_names))
-        width = 0.25
-        
-        bars1 = ax.bar(x - width, within_1sig, width, label='Within 1σ', alpha=0.8)
-        bars2 = ax.bar(x, within_2sig, width, label='Within 2σ', alpha=0.8)
-        bars3 = ax.bar(x + width, within_3sig, width, label='Within 3σ', alpha=0.8)
-        
-        # Color bars by model
-        for bars in [bars1, bars2, bars3]:
-            for bar, color in zip(bars, colors_list):
-                bar.set_color(color)
-        
-        # Add expected values as horizontal lines
-        ax.axhline(y=68.3, color='black', linestyle='--', alpha=0.5, linewidth=2, label='Expected 1σ')
-        ax.axhline(y=95.4, color='black', linestyle=':', alpha=0.5, linewidth=2, label='Expected 2σ')
-        ax.axhline(y=99.7, color='black', linestyle='-.', alpha=0.5, linewidth=2, label='Expected 3σ')
-        
-        ax.set_xlabel('Model', fontsize=12)
-        ax.set_ylabel('Percentage of Points', fontsize=12)
-        ax.set_title('Sigma Coverage Comparison\n(Closer to expected values = better calibrated errors)', fontsize=14)
-        ax.set_xticks(x)
-        ax.set_xticklabels(model_names, rotation=15, ha='right')
-        ax.legend(fontsize=10)
-        ax.grid(True, alpha=0.3, axis='y')
-        ax.set_ylim(0, 105)
-        
-        plt.tight_layout()
-        plot_path = os.path.join(self.output_dir, 'sigma_coverage.pdf')
-        plt.savefig(plot_path, dpi=300, bbox_inches='tight')
-        print(f"Saved sigma coverage plot to: {plot_path}")
-        
-        return fig
-
-    def plot_redshift_winners(self):
-        """Heatmap showing which model wins at each redshift"""
-        fig, ax = plt.subplots(figsize=(12, 8))
-        
-        # Collect data
-        z_bins = []
-        model_chi_sq = {config['name']: [] for config in self.model_configs}
-        
-        for bin_result in self.all_results:
-            if not bin_result['models']:
-                continue
-                
-            z_center = bin_result['z_center']
-            z_bins.append(z_center)
-            
-            for model_config in self.model_configs:
-                model_name = model_config['name']
-                if model_name in bin_result['models']:
-                    chi_sq = bin_result['models'][model_name]['reduced_chi_squared_total']
-                    model_chi_sq[model_name].append(chi_sq)
-                else:
-                    model_chi_sq[model_name].append(np.nan)
-        
-        # Create matrix
-        model_names = [config['name'] for config in self.model_configs]
-        data_matrix = np.array([model_chi_sq[name] for name in model_names])
-        
-        # Plot heatmap
-        im = ax.imshow(data_matrix, aspect='auto', cmap='RdYlGn_r', 
-                    interpolation='nearest', vmin=0, vmax=20)
-        
-        # Set ticks
-        ax.set_yticks(range(len(model_names)))
-        ax.set_yticklabels(model_names, fontsize=11)
-        ax.set_xticks(range(len(z_bins)))
-        ax.set_xticklabels([f'{z:.1f}' for z in z_bins], fontsize=9)
-        ax.set_xlabel('Redshift (z)', fontsize=12)
-        ax.set_title('χ²_red by Model and Redshift\n(Green = better fit)', fontsize=14)
-        
-        # Add colorbar
-        cbar = plt.colorbar(im, ax=ax)
-        cbar.set_label('χ²_red', fontsize=12)
-        
-        # Add text annotations showing values
-        for i in range(len(model_names)):
-            for j in range(len(z_bins)):
-                if not np.isnan(data_matrix[i, j]):
-                    text = ax.text(j, i, f'{data_matrix[i, j]:.1f}',
-                                ha="center", va="center", color="black", fontsize=8)
-        
-        # Mark winners with stars
-        for j in range(len(z_bins)):
-            col = data_matrix[:, j]
-            if not np.all(np.isnan(col)):
-                winner_idx = np.nanargmin(col)
-                ax.plot(j, winner_idx, marker='*', color='gold', markersize=15, 
-                    markeredgecolor='black', markeredgewidth=1)
-        
-        plt.tight_layout()
-        plot_path = os.path.join(self.output_dir, 'redshift_winners_heatmap.pdf')
-        plt.savefig(plot_path, dpi=300, bbox_inches='tight')
-        print(f"Saved redshift winners heatmap to: {plot_path}")
-        
-        return fig
-
-    def plot_mass_dependence(self):
-        """Show performance split by mass range""" 
-        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 6))
-        
-        mass_split = 10.5
-        low_mass_chi = {config['name']: [] for config in self.model_configs}
-        high_mass_chi = {config['name']: [] for config in self.model_configs}
-        # NEW: Track paired measurements for scatter plot
-        paired_chi = {config['name']: {'low': [], 'high': []} for config in self.model_configs}
-        
-        # Calculate mass-dependent chi-squared
-        for bin_result in self.all_results:
-            z_low = bin_result['z_low']
-            z_high = bin_result['z_high']
-            z_center = bin_result['z_center']
-            
-            obs_datasets = self._get_obs_for_bin(z_low, z_high, z_center)
-            if not obs_datasets:
-                continue
-                
-            for model_config in self.model_configs:
-                model_name = model_config['name']
-                
-                masses, phi = self.calculate_model_smf_for_bin(model_config, z_low, z_high)
-                if masses is None:
-                    continue
-                    
-                for obs_name, obs_data in obs_datasets.items():
-                    comp_masses, model_interp, obs_interp, errors_interp = \
-                        self.compare_directly_no_interpolation(
-                            masses, phi, obs_data['masses'], 
-                            obs_data['phi'], obs_data['errors'])
-                    
-                    if comp_masses is not None:
-                        # Split by mass
-                        low_mask = comp_masses < mass_split
-                        high_mask = comp_masses >= mass_split
-                        
-                        chi_low = None
-                        chi_high = None
-                        
-                        if np.any(low_mask):
-                            chi_low = np.sum(((model_interp[low_mask] - obs_interp[low_mask]) / 
-                                            errors_interp[low_mask])**2) / np.sum(low_mask)
-                            low_mass_chi[model_name].append(chi_low)
-                        
-                        if np.any(high_mask):
-                            chi_high = np.sum(((model_interp[high_mask] - obs_interp[high_mask]) / 
-                                            errors_interp[high_mask])**2) / np.sum(high_mask)
-                            high_mass_chi[model_name].append(chi_high)
-                        
-                        # NEW: Only add to paired data if BOTH masses have data
-                        if chi_low is not None and chi_high is not None:
-                            paired_chi[model_name]['low'].append(chi_low)
-                            paired_chi[model_name]['high'].append(chi_high)
-        
-        # Plot low-mass performance (bar chart - unchanged)
-        model_names = []
-        low_values = []
-        high_values = []
-        colors = []
-        
-        for model_config in self.model_configs:
-            model_name = model_config['name']
-            if len(low_mass_chi[model_name]) > 0 and len(high_mass_chi[model_name]) > 0:
-                model_names.append(model_name)
-                low_values.append(np.mean(low_mass_chi[model_name]))
-                high_values.append(np.mean(high_mass_chi[model_name]))
-                colors.append(model_config['color'])
-        
-        x = np.arange(len(model_names))
-        width = 0.35
-        
-        bars1 = ax1.bar(x - width/2, low_values, width, label=f'log(M*) < {mass_split}', alpha=0.8)
-        bars2 = ax1.bar(x + width/2, high_values, width, label=f'log(M*) ≥ {mass_split}', alpha=0.8)
-        
-        for bars in [bars1, bars2]:
-            for bar, color in zip(bars, colors):
-                bar.set_color(color)
-        
-        ax1.axhline(y=1, color='gray', linestyle='--', alpha=0.5, label='Perfect fit')
-        ax1.set_xlabel('Model', fontsize=12)
-        ax1.set_ylabel('χ²_red', fontsize=12)
-        ax1.set_title('Performance by Mass Range', fontsize=14)
-        ax1.set_xticks(x)
-        ax1.set_xticklabels(model_names, rotation=15, ha='right')
-        ax1.legend()
-        ax1.grid(True, alpha=0.3, axis='y')
-        
-        # Scatter plot showing relationship - FIXED to use paired data
-        for model_config in self.model_configs:
-            model_name = model_config['name']
-            color = model_config['color']
-            if len(paired_chi[model_name]['low']) > 0:
-                ax2.scatter(paired_chi[model_name]['low'], 
-                        paired_chi[model_name]['high'], 
-                        c=color, label=model_name, s=50, alpha=0.6)
-        
-        # Set reasonable axis limits
-        max_val = 25
-        if paired_chi:
-            all_low = [v for model in paired_chi.values() for v in model['low']]
-            all_high = [v for model in paired_chi.values() for v in model['high']]
-            if all_low and all_high:
-                max_val = max(25, max(max(all_low), max(all_high)))
-        
-        ax2.plot([0, max_val], [0, max_val], 'k--', alpha=0.3, label='Equal performance')
-        ax2.set_xlabel(f'χ²_red at low mass (log M* < {mass_split})', fontsize=12)
-        ax2.set_ylabel(f'χ²_red at high mass (log M* ≥ {mass_split})', fontsize=12)
-        ax2.set_title('Low-mass vs High-mass Performance', fontsize=14)
-        ax2.legend(fontsize=9)
-        ax2.grid(True, alpha=0.3)
-        ax2.set_xlim(0, max_val)
-        ax2.set_ylim(0, max_val)
-        
-        plt.tight_layout()
-        plot_path = os.path.join(self.output_dir, 'mass_dependence.pdf')
-        plt.savefig(plot_path, dpi=300, bbox_inches='tight')
-        print(f"Saved mass dependence plot to: {plot_path}")
-        
-        return fig
+    # Include all the methods from the previous script
+    # (compare_directly_no_interpolation, calculate_chi_squared, etc.)
+    # I'll add just the new plotting methods here for brevity
     
     def compare_directly_no_interpolation(self, model_masses, model_phi, obs_masses, obs_phi, obs_errors):
-        """
-        Compare model to observations using only actual observational data points
-        Interpolate MODEL to observation points, not the other way around
-        
-        Returns:
-        --------
-        obs_masses, model_phi_at_obs, obs_phi, obs_errors : arrays
-        """
-        # Filter out invalid observational values
+        """Compare model to observations"""
         obs_mask = np.isfinite(obs_phi) & np.isfinite(obs_errors) & (obs_errors > 0)
-        
         if not np.any(obs_mask):
-            return None, None, None, None
+            return None, None, None, None, None
         
         obs_masses_valid = obs_masses[obs_mask]
         obs_phi_valid = obs_phi[obs_mask]
         obs_errors_valid = obs_errors[obs_mask]
         
-        # Filter model for valid values
         model_mask = (model_phi > 0) & np.isfinite(model_phi)
         if not np.any(model_mask):
-            return None, None, None, None
+            return None, None, None, None, None
         
         model_masses_valid = model_masses[model_mask]
         model_phi_valid = model_phi[model_mask]
-        
-        # Convert model phi to log space
         model_log_phi = np.log10(model_phi_valid)
         
-        # Find overlap region
         mass_min = max(np.min(model_masses_valid), np.min(obs_masses_valid))
         mass_max = min(np.max(model_masses_valid), np.max(obs_masses_valid))
         
         if mass_min >= mass_max:
-            return None, None, None, None
+            return None, None, None, None, None
         
-        # Keep only obs points in overlap region
         overlap_mask = (obs_masses_valid >= mass_min) & (obs_masses_valid <= mass_max)
         if not np.any(overlap_mask):
-            return None, None, None, None
+            return None, None, None, None, None
         
         obs_masses_overlap = obs_masses_valid[overlap_mask]
         obs_phi_overlap = obs_phi_valid[overlap_mask]
         obs_errors_overlap = obs_errors_valid[overlap_mask]
         
         try:
-            # Interpolate MODEL to observational mass points
             model_interp_func = interp1d(model_masses_valid, model_log_phi, 
                                         kind='linear', bounds_error=False, fill_value=np.nan)
-            
             model_phi_at_obs = model_interp_func(obs_masses_overlap)
-            
-            # Filter out any NaN values from interpolation
             valid_mask = np.isfinite(model_phi_at_obs)
             
             if not np.any(valid_mask):
-                return None, None, None, None
+                return None, None, None, None, None
             
-            return (obs_masses_overlap[valid_mask], model_phi_at_obs[valid_mask], 
-                   obs_phi_overlap[valid_mask], obs_errors_overlap[valid_mask])
+            corr_metrics = calculate_correlation_metrics(
+                model_phi_at_obs[valid_mask], 
+                obs_phi_overlap[valid_mask],
+                obs_errors_overlap[valid_mask]
+            )
             
-        except Exception as e:
-            print(f"  Comparison failed: {e}")
-            return None, None, None, None
+            return (obs_masses_overlap[valid_mask], 
+                   model_phi_at_obs[valid_mask], 
+                   obs_phi_overlap[valid_mask], 
+                   obs_errors_overlap[valid_mask],
+                   corr_metrics)
+        except:
+            return None, None, None, None, None
     
     def calculate_chi_squared(self, model_phi, obs_phi, obs_errors):
-        """
-        Calculate chi-squared statistic
-        
-        Parameters:
-        -----------
-        model_phi : array
-            Model predictions (in log space)
-        obs_phi : array
-            Observations (in log space)
-        obs_errors : array
-            Observational errors (in log space)
-            
-        Returns:
-        --------
-        chi_squared, n_points, reduced_chi_squared : float
-        """
+        """Calculate chi-squared statistic"""
         residuals = model_phi - obs_phi
         chi_squared = np.sum((residuals / obs_errors)**2)
         n_points = len(residuals)
-        
-        # Reduced chi-squared (assuming no free parameters fitted to this specific data)
         reduced_chi_squared = chi_squared / n_points if n_points > 0 else np.inf
-        
         return chi_squared, n_points, reduced_chi_squared
     
     def calculate_model_smf_for_bin(self, model_config, z_low, z_high):
-        """
-        Calculate SMF for a specific model and redshift bin
-        
-        Returns:
-        --------
-        masses, phi : arrays (or None if failed)
-        """
+        """Calculate SMF for a specific model and redshift bin"""
         model_name = model_config['name']
         directory = model_config['dir']
         
-        # Get available snapshots
         available_snaps = get_available_snapshots(directory)
         if not available_snaps:
             return None, None
         
-        # Find best snapshot for this redshift bin
         best_snap = None
         min_diff = float('inf')
         
@@ -694,198 +252,138 @@ class ModelComparison:
             return None, None
         
         try:
-            # Read data
             snap_str = f'Snap_{best_snap}'
             stellar_mass = read_hdf(directory, snap_num=snap_str, param='StellarMass')
-            
             if stellar_mass is None:
                 return None, None
             
-            # Convert to solar masses
             stellar_mass = stellar_mass * 1.0e10 / model_config['hubble_h']
-            
-            # Filter positive masses
             stellar_mass = stellar_mass[stellar_mass > 0]
-            
-            # Calculate SMF
             volume = get_model_volume(model_config)
             masses, phi, phi_err = calculate_smf(stellar_mass, volume=volume)
-            
             return masses, phi
-            
-        except Exception as e:
-            print(f"Error calculating SMF for {model_name}: {e}")
+        except:
             return None, None
     
     def compare_models_at_redshift_bin(self, z_low, z_high):
-        """
-        Compare all models against observations in a specific redshift bin
-        
-        Returns:
-        --------
-        results_dict : dict with chi-squared results for each model
-        """
-        print(f"\nAnalyzing redshift bin {z_low:.1f} < z < {z_high:.1f}")
-        
+        """Compare all models at a redshift bin"""
         z_center = (z_low + z_high) / 2
         bin_results = {
-            'z_low': z_low,
-            'z_high': z_high,
-            'z_center': z_center,
-            'models': {}
+            'z_low': z_low, 'z_high': z_high, 'z_center': z_center, 'models': {}
         }
         
-        # Get observational data for this bin
         obs_datasets = self._get_obs_for_bin(z_low, z_high, z_center)
-        
         if not obs_datasets:
-            print(f"  No observational data for this bin")
             return bin_results
         
-        # Calculate SMF for each model
         for model_config in self.model_configs:
             model_name = model_config['name']
-            print(f"  Processing {model_name}...")
-            
             masses, phi = self.calculate_model_smf_for_bin(model_config, z_low, z_high)
             
             if masses is None:
-                print(f"    No model data available")
                 continue
             
             model_results = {
-                'chi_squared_total': 0,
-                'n_points_total': 0,
-                'datasets': {}
+                'chi_squared_total': 0, 'n_points_total': 0,
+                'ccc_values': [], 'spearman_values': [], 'pearson_values': [],
+                'mad_values': [], 'combined_scores': [], 'datasets': {}
             }
             
-            # Compare against each observational dataset
             for obs_name, obs_data in obs_datasets.items():
-                obs_masses = obs_data['masses']
-                obs_phi = obs_data['phi']  # Should be in log space
-                obs_errors = obs_data['errors']  # Should be in log space
-                
-                # Compare directly - interpolate model to obs points
-                masses_comp, model_interp, obs_interp, errors_interp = \
-                    self.compare_directly_no_interpolation(masses, phi, obs_masses, 
-                                                           obs_phi, obs_errors)
+                masses_comp, model_interp, obs_interp, errors_interp, corr_metrics = \
+                    self.compare_directly_no_interpolation(
+                        masses, phi, obs_data['masses'], obs_data['phi'], obs_data['errors'])
                 
                 if masses_comp is None:
-                    print(f"    No overlap with {obs_name}")
                     continue
                 
-                # Calculate chi-squared
                 chi_sq, n_pts, reduced_chi_sq = self.calculate_chi_squared(
                     model_interp, obs_interp, errors_interp)
                 
                 model_results['datasets'][obs_name] = {
-                    'chi_squared': chi_sq,
-                    'n_points': n_pts,
-                    'reduced_chi_squared': reduced_chi_sq
+                    'chi_squared': chi_sq, 'n_points': n_pts,
+                    'reduced_chi_squared': reduced_chi_sq,
+                    'ccc': corr_metrics['ccc'], 'spearman': corr_metrics['spearman_rho'],
+                    'pearson': corr_metrics['pearson_r'], 'mad': corr_metrics['mad'],
+                    'combined_score': corr_metrics['combined_score']
                 }
                 
                 model_results['chi_squared_total'] += chi_sq
                 model_results['n_points_total'] += n_pts
                 
-                print(f"    {obs_name}: χ² = {chi_sq:.2f}, n = {n_pts}, χ²_red = {reduced_chi_sq:.3f}")
+                if np.isfinite(corr_metrics['ccc']):
+                    model_results['ccc_values'].append(corr_metrics['ccc'])
+                if np.isfinite(corr_metrics['spearman_rho']):
+                    model_results['spearman_values'].append(corr_metrics['spearman_rho'])
+                if np.isfinite(corr_metrics['pearson_r']):
+                    model_results['pearson_values'].append(corr_metrics['pearson_r'])
+                if np.isfinite(corr_metrics['mad']):
+                    model_results['mad_values'].append(corr_metrics['mad'])
+                if np.isfinite(corr_metrics['combined_score']):
+                    model_results['combined_scores'].append(corr_metrics['combined_score'])
             
-            # Calculate overall reduced chi-squared for this bin
             if model_results['n_points_total'] > 0:
                 model_results['reduced_chi_squared_total'] = \
                     model_results['chi_squared_total'] / model_results['n_points_total']
             else:
                 model_results['reduced_chi_squared_total'] = np.inf
             
+            model_results['mean_ccc'] = np.mean(model_results['ccc_values']) if model_results['ccc_values'] else np.nan
+            model_results['mean_spearman'] = np.mean(model_results['spearman_values']) if model_results['spearman_values'] else np.nan
+            model_results['mean_pearson'] = np.mean(model_results['pearson_values']) if model_results['pearson_values'] else np.nan
+            model_results['mean_mad'] = np.mean(model_results['mad_values']) if model_results['mad_values'] else np.nan
+            model_results['mean_combined_score'] = np.mean(model_results['combined_scores']) if model_results['combined_scores'] else np.nan
+            
             bin_results['models'][model_name] = model_results
         
         return bin_results
     
     def _get_obs_for_bin(self, z_low, z_high, z_center):
-        """Get all relevant observational datasets for a redshift bin"""
+        """Get observational data for redshift bin"""
         obs_datasets = {}
         
-        # Check Baldry (z~0.1)
         if is_lowest_redshift_bin(z_low, z_high):
             baldry = self.obs_data['baldry']
             obs_datasets['Baldry2008'] = {
-                'masses': baldry['M_star'],
-                'phi': baldry['logPhi'],  # Already in log space
-                'errors': baldry['error']  # Already in log space
+                'masses': baldry['M_star'], 'phi': baldry['logPhi'], 'errors': baldry['error']
             }
         
-        # Check Muzzin - use ACTUAL errors, not assumed
         for bin_name, data in self.obs_data['muzzin'].items():
             if z_low <= data['z_center'] < z_high:
-                # Muzzin doesn't provide explicit errors in the dataset
-                # Use typical SMF uncertainty of ~0.3 dex (conservative)
-                typical_error = 0.3  # dex
                 obs_datasets[f'Muzzin2013_{bin_name}'] = {
-                    'masses': data['M_star'],
-                    'phi': data['logPhi'],  # Already in log space
-                    'errors': np.full_like(data['logPhi'], typical_error)
+                    'masses': data['M_star'], 'phi': data['logPhi'],
+                    'errors': np.full_like(data['logPhi'], 0.3)
                 }
         
-        # Check Santini
         for bin_name, data in self.obs_data['santini'].items():
             if z_low <= data['z_center'] < z_high:
-                # Use average of upper and lower errors
                 errors = (data['error_hi'] + data['error_lo']) / 2.0
                 obs_datasets[f'Santini2012_{bin_name}'] = {
-                    'masses': data['M_star'],
-                    'phi': data['logPhi'],  # Already in log space
-                    'errors': errors  # Already in log space
+                    'masses': data['M_star'], 'phi': data['logPhi'], 'errors': errors
                 }
         
-        # Check Wright
-        # for z_wright, data in self.obs_data['wright'].items():
-        #     if z_low <= z_wright < z_high:
-        #         errors = (data['error_hi'] + data['error_lo']) / 2.0
-        #         obs_datasets[f'Wright2018_z{z_wright}'] = {
-        #             'masses': data['M_star'],
-        #             'phi': data['logPhi'],  # Already in log space
-        #             'errors': errors  # Already in log space
-        #         }
-        
-        # Check CSV data (SHARK, Weaver, Thorne, etc.)
         for z_obs, data in self.obs_data['csv_data'].items():
-            if abs(z_obs - z_center) < 0.3:  # Within tolerance
+            if abs(z_obs - z_center) < 0.3:
                 data_type = data.get('type', 'unknown')
                 label = data.get('label', 'unknown')
                 
-                # Handle different data formats
                 if data_type in ['smfvals', 'farmer']:
-                    # Has error bounds - convert to log space properly
-                    y_central = data['y']
-                    y_lower = data['y_lower']
-                    y_upper = data['y_upper']
-                    
-                    # Filter out zeros before taking log
+                    y_central, y_lower, y_upper = data['y'], data['y_lower'], data['y_upper']
                     valid_mask = (y_central > 0) & (y_lower > 0) & (y_upper > 0)
                     
                     if np.any(valid_mask):
                         phi_central = np.log10(y_central[valid_mask])
                         phi_lower = np.log10(y_lower[valid_mask])
                         phi_upper = np.log10(y_upper[valid_mask])
-                        
-                        # Symmetric error in log space
-                        errors = (phi_upper - phi_lower) / 2.0
-                        
-                        # Ensure minimum error of 0.1 dex (instrumental/systematic floor)
-                        errors = np.maximum(errors, 0.1)
+                        errors = np.maximum((phi_upper - phi_lower) / 2.0, 0.1)
                         
                         obs_datasets[f'{label}_z{z_obs}'] = {
-                            'masses': data['x'][valid_mask],
-                            'phi': phi_central,
-                            'errors': errors
+                            'masses': data['x'][valid_mask], 'phi': phi_central, 'errors': errors
                         }
-                        
                 elif data_type == 'shark':
-                    # SHARK data - already in log space
-                    # Use 0.3 dex uncertainty (typical for model predictions)
                     obs_datasets[f'{label}_z{z_obs}'] = {
-                        'masses': data['x'],
-                        'phi': data['y'],  # Already in log space
-                        'errors': np.full_like(data['y'], 0.3)  # Conservative error
+                        'masses': data['x'], 'phi': data['y'],
+                        'errors': np.full_like(data['y'], 0.3)
                     }
         
         return obs_datasets
@@ -896,15 +394,10 @@ class ModelComparison:
         print("RUNNING FULL MODEL COMPARISON")
         print("="*70)
         
-        # Get redshift bins
         first_model = self.model_configs[0]
         available_snaps = get_available_snapshots(first_model['dir'])
         redshift_bins = create_redshift_bins(available_snaps, model_config=first_model)
         
-        print(f"\nAnalyzing {len(redshift_bins)} redshift bins")
-        print(f"Comparing {len(self.model_configs)} models")
-        
-        # Run comparison for each bin
         all_results = []
         for z_low, z_high, z_center, snapshots in redshift_bins:
             bin_result = self.compare_models_at_redshift_bin(z_low, z_high)
@@ -914,406 +407,654 @@ class ModelComparison:
         return all_results
     
     def create_summary_table(self):
-        """Create summary table of chi-squared results"""
+        """Create enhanced summary table"""
         print("\n" + "="*70)
         print("SUMMARY STATISTICS")
         print("="*70)
         
-        # Aggregate results across all bins
         model_summaries = {}
-        
         for model_config in self.model_configs:
             model_name = model_config['name']
             model_summaries[model_name] = {
-                'total_chi_squared': 0,
-                'total_n_points': 0,
-                'n_bins_analyzed': 0,
-                'bin_results': []
+                'total_chi_squared': 0, 'total_n_points': 0, 'n_bins_analyzed': 0,
+                'ccc_values': [], 'spearman_values': [], 'pearson_values': [],
+                'mad_values': [], 'combined_scores': [], 'bin_results': []
             }
         
         for bin_result in self.all_results:
-            z_range = f"{bin_result['z_low']:.1f}-{bin_result['z_high']:.1f}"
-            
             for model_name, model_data in bin_result['models'].items():
                 if model_name in model_summaries:
-                    chi_sq = model_data['chi_squared_total']
-                    n_pts = model_data['n_points_total']
-                    
-                    if n_pts > 0:
-                        model_summaries[model_name]['total_chi_squared'] += chi_sq
-                        model_summaries[model_name]['total_n_points'] += n_pts
+                    if model_data['n_points_total'] > 0:
+                        model_summaries[model_name]['total_chi_squared'] += model_data['chi_squared_total']
+                        model_summaries[model_name]['total_n_points'] += model_data['n_points_total']
                         model_summaries[model_name]['n_bins_analyzed'] += 1
-                        model_summaries[model_name]['bin_results'].append({
-                            'z_range': z_range,
-                            'chi_squared': chi_sq,
-                            'n_points': n_pts,
-                            'reduced_chi_squared': model_data['reduced_chi_squared_total']
-                        })
+                        model_summaries[model_name]['ccc_values'].extend(model_data['ccc_values'])
+                        model_summaries[model_name]['spearman_values'].extend(model_data['spearman_values'])
+                        model_summaries[model_name]['mad_values'].extend(model_data['mad_values'])
+                        model_summaries[model_name]['combined_scores'].extend(model_data['combined_scores'])
         
-        # Calculate overall reduced chi-squared
-        for model_name, summary in model_summaries.items():
-            if summary['total_n_points'] > 0:
-                summary['overall_reduced_chi_squared'] = \
-                    summary['total_chi_squared'] / summary['total_n_points']
+        for model_name in model_summaries:
+            n_pts = model_summaries[model_name]['total_n_points']
+            if n_pts > 0:
+                model_summaries[model_name]['overall_reduced_chi_squared'] = \
+                    model_summaries[model_name]['total_chi_squared'] / n_pts
             else:
-                summary['overall_reduced_chi_squared'] = np.inf
-        
-        # Print summary table
-        print("\nOVERALL PERFORMANCE (lower is better):")
-        print("-" * 70)
-        print(f"{'Model':<25} {'Total χ²':<15} {'N points':<10} {'χ²_red':<10} {'N bins':<10}")
-        print("-" * 70)
-        
-        # Sort by reduced chi-squared
-        sorted_models = sorted(model_summaries.items(), 
-                             key=lambda x: x[1]['overall_reduced_chi_squared'])
-        
-        for model_name, summary in sorted_models:
-            print(f"{model_name:<25} {summary['total_chi_squared']:<15.1f} "
-                  f"{summary['total_n_points']:<10} "
-                  f"{summary['overall_reduced_chi_squared']:<10.3f} "
-                  f"{summary['n_bins_analyzed']:<10}")
-        
-        print("-" * 70)
-        print(f"\nBest overall model: {sorted_models[0][0]} "
-              f"(χ²_red = {sorted_models[0][1]['overall_reduced_chi_squared']:.3f})")
-        
-        # Save detailed results to CSV
-        self._save_detailed_results(model_summaries)
+                model_summaries[model_name]['overall_reduced_chi_squared'] = np.inf
+            
+            model_summaries[model_name]['overall_ccc'] = np.mean(model_summaries[model_name]['ccc_values']) if model_summaries[model_name]['ccc_values'] else np.nan
+            model_summaries[model_name]['overall_spearman'] = np.mean(model_summaries[model_name]['spearman_values']) if model_summaries[model_name]['spearman_values'] else np.nan
+            model_summaries[model_name]['overall_mad'] = np.mean(model_summaries[model_name]['mad_values']) if model_summaries[model_name]['mad_values'] else np.nan
+            model_summaries[model_name]['overall_combined_score'] = np.mean(model_summaries[model_name]['combined_scores']) if model_summaries[model_name]['combined_scores'] else np.nan
         
         return model_summaries
     
-    def _save_detailed_results(self, model_summaries):
-        """Save detailed results to CSV files"""
-        # Per-redshift-bin results
-        bin_data = []
-        for bin_result in self.all_results:
-            z_range = f"{bin_result['z_low']:.1f}-{bin_result['z_high']:.1f}"
-            z_center = bin_result['z_center']
-            
-            for model_name, model_data in bin_result['models'].items():
-                bin_data.append({
-                    'redshift_bin': z_range,
-                    'z_center': z_center,
-                    'model': model_name,
-                    'chi_squared': model_data['chi_squared_total'],
-                    'n_points': model_data['n_points_total'],
-                    'reduced_chi_squared': model_data['reduced_chi_squared_total']
-                })
-        
-        df_bins = pd.DataFrame(bin_data)
-        csv_path = os.path.join(self.output_dir, 'chi_squared_by_redshift_bin.csv')
-        df_bins.to_csv(csv_path, index=False)
-        print(f"\nSaved per-bin results to: {csv_path}")
-        
-        # Overall summary
-        summary_data = []
-        for model_name, summary in model_summaries.items():
-            summary_data.append({
-                'model': model_name,
-                'total_chi_squared': summary['total_chi_squared'],
-                'total_n_points': summary['total_n_points'],
-                'overall_reduced_chi_squared': summary['overall_reduced_chi_squared'],
-                'n_bins_analyzed': summary['n_bins_analyzed']
-            })
-        
-        df_summary = pd.DataFrame(summary_data)
-        df_summary = df_summary.sort_values('overall_reduced_chi_squared')
-        csv_path = os.path.join(self.output_dir, 'overall_model_comparison.csv')
-        df_summary.to_csv(csv_path, index=False)
-        print(f"Saved overall summary to: {csv_path}")
+    # ========================================================================
+    # NEW PLOTTING FUNCTIONS
+    # ========================================================================
     
-    def plot_chi_squared_by_redshift(self):
-        """Create plot showing chi-squared evolution with redshift"""
-        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 10), sharex=True)
-        
-        # Organize data by model
-        model_data = {config['name']: {'z': [], 'chi_sq': [], 'n_pts': [], 'chi_sq_red': []} 
-                     for config in self.model_configs}
-        
-        for bin_result in self.all_results:
-            z_center = bin_result['z_center']
-            
-            for model_name, model_result in bin_result['models'].items():
-                if model_name in model_data and model_result['n_points_total'] > 0:
-                    model_data[model_name]['z'].append(z_center)
-                    model_data[model_name]['chi_sq'].append(model_result['chi_squared_total'])
-                    model_data[model_name]['n_pts'].append(model_result['n_points_total'])
-                    model_data[model_name]['chi_sq_red'].append(model_result['reduced_chi_squared_total'])
-        
-        # Plot chi-squared
-        for model_config in self.model_configs:
-            model_name = model_config['name']
-            color = model_config['color']
-            linestyle = model_config['linestyle']
-            
-            if model_data[model_name]['z']:
-                ax1.plot(model_data[model_name]['z'], model_data[model_name]['chi_sq'],
-                        'o', color=color, linestyle=linestyle, label=model_name, linewidth=2,
-                        markersize=6)
-                ax1.plot(model_data[model_name]['z'], model_data[model_name]['chi_sq'],
-                        linestyle=linestyle, color=color, linewidth=2, alpha=0.5)
-        
-        ax1.set_ylabel(r'$\chi^2$', fontsize=14)
-        ax1.set_yscale('log')
-        ax1.legend(fontsize=12)
-        ax1.grid(True, alpha=0.3)
-        ax1.set_title('Goodness of Fit vs Redshift', fontsize=16)
-        
-        # Plot reduced chi-squared
-        for model_config in self.model_configs:
-            model_name = model_config['name']
-            color = model_config['color']
-            linestyle = model_config['linestyle']
-            
-            if model_data[model_name]['z']:
-                ax2.plot(model_data[model_name]['z'], model_data[model_name]['chi_sq_red'],
-                        'o', color=color, linestyle=linestyle, label=model_name, linewidth=2,
-                        markersize=6)
-                ax2.plot(model_data[model_name]['z'], model_data[model_name]['chi_sq_red'],
-                        linestyle=linestyle, color=color, linewidth=2, alpha=0.5)
-        
-        ax2.set_xlabel('Redshift', fontsize=14)
-        ax2.set_ylabel(r'$\chi^2_{\rm red}$', fontsize=14)
-        ax2.axhline(y=1, color='gray', linestyle='--', alpha=0.5, label='Perfect fit')
-        ax2.set_ylim(0, max(10, min(20, ax2.get_ylim()[1])))
-        ax2.legend(fontsize=12)
-        ax2.grid(True, alpha=0.3)
-        
-        plt.tight_layout()
-        plot_path = os.path.join(self.output_dir, 'chi_squared_vs_redshift.pdf')
-        plt.savefig(plot_path, dpi=300, bbox_inches='tight')
-        print(f"\nSaved chi-squared plot to: {plot_path}")
-        
-        return fig
-    
-    def plot_performance_summary(self):
-        """Create bar chart comparing overall model performance"""
-        # Get overall statistics
-        model_names = []
-        chi_sq_red_values = []
-        colors = []
-        
-        for model_config in self.model_configs:
-            model_name = model_config['name']
-            
-            # Calculate overall chi-squared
-            total_chi_sq = 0
-            total_n_pts = 0
-            
-            for bin_result in self.all_results:
-                if model_name in bin_result['models']:
-                    model_data = bin_result['models'][model_name]
-                    total_chi_sq += model_data['chi_squared_total']
-                    total_n_pts += model_data['n_points_total']
-            
-            if total_n_pts > 0:
-                model_names.append(model_name)
-                chi_sq_red_values.append(total_chi_sq / total_n_pts)
-                colors.append(model_config['color'])
-        
-        # Create bar chart
-        fig, ax = plt.subplots(figsize=(10, 6))
-        
-        x_pos = np.arange(len(model_names))
-        bars = ax.bar(x_pos, chi_sq_red_values, color=colors, alpha=0.7, edgecolor='black')
-        
-        ax.set_xlabel('Model', fontsize=14)
-        ax.set_ylabel(r'Overall $\chi^2_{\rm red}$', fontsize=14)
-        ax.set_title('Model Performance Comparison\n(Lower is Better)', fontsize=16)
-        ax.set_xticks(x_pos)
-        ax.set_xticklabels(model_names, rotation=15, ha='right')
-        ax.axhline(y=1, color='gray', linestyle='--', alpha=0.5, label='Perfect fit')
-        ax.grid(True, axis='y', alpha=0.3)
-        ax.legend()
-        
-        # Add value labels on bars
-        for i, (bar, val) in enumerate(zip(bars, chi_sq_red_values)):
-            height = bar.get_height()
-            ax.text(bar.get_x() + bar.get_width()/2., height,
-                   f'{val:.2f}', ha='center', va='bottom', fontsize=11)
-        
-        plt.tight_layout()
-        plot_path = os.path.join(self.output_dir, 'model_performance_comparison.pdf')
-        plt.savefig(plot_path, dpi=300, bbox_inches='tight')
-        print(f"Saved performance comparison to: {plot_path}")
-        
-        return fig
-    
-    def plot_diagnostic_comparison(self, z_low=0.0, z_high=0.5):
+    def plot_metrics_vs_redshift(self, model_summaries):
         """
-        Create diagnostic plot showing model vs observations for a specific redshift bin
-        This helps verify the chi-squared calculation is reasonable
+        Plot how each metric evolves with redshift for all models
         """
-        print(f"\nCreating diagnostic comparison plot for {z_low} < z < {z_high}...")
+        print("\nCreating metric evolution with redshift plots...")
         
-        z_center = (z_low + z_high) / 2
-        
-        # Get observational data
-        obs_datasets = self._get_obs_for_bin(z_low, z_high, z_center)
-        
-        if not obs_datasets:
-            print("No observational data for this bin")
-            return
-        
-        # Create figure with subplots
-        n_models = len(self.model_configs)
-        fig, axes = plt.subplots(2, 2, figsize=(14, 12))
+        fig, axes = plt.subplots(2, 3, figsize=(18, 10))
         axes = axes.flatten()
         
-        for idx, model_config in enumerate(self.model_configs):
-            if idx >= 4:
-                break
-                
+        metrics = [
+            ('reduced_chi_squared_total', r'$\chi^2_{\rm red}$', 'lower'),
+            ('mean_ccc', 'CCC', 'higher'),
+            ('mean_spearman', 'Spearman ρ', 'higher'),
+            ('mean_mad', 'MAD (dex)', 'lower'),
+            ('mean_combined_score', 'Combined Score', 'higher')
+        ]
+        
+        for idx, (metric_key, metric_label, better) in enumerate(metrics):
             ax = axes[idx]
-            model_name = model_config['name']
-            color = model_config['color']
             
-            # Calculate model SMF
-            masses, phi = self.calculate_model_smf_for_bin(model_config, z_low, z_high)
-            
-            if masses is not None:
-                # Plot model
-                mask = phi > 0
-                phi_log = np.log10(phi[mask])
-                ax.plot(masses[mask], phi_log, '-', color=color, linewidth=2, 
-                       label=model_name, alpha=0.8)
+            for model_config in self.model_configs:
+                model_name = model_config['name']
+                color = model_config['color']
                 
-                # Plot observations
-                for obs_name, obs_data in obs_datasets.items():
-                    obs_masses = obs_data['masses']
-                    obs_phi = obs_data['phi']
-                    obs_errors = obs_data['errors']
-                    
-                    # Simple label for legend
-                    simple_label = obs_name.split('_')[0]
-                    
-                    ax.errorbar(obs_masses, obs_phi, yerr=obs_errors, 
-                              fmt='o', markersize=4, alpha=0.6, capsize=3,
-                              label=simple_label)
+                z_centers = []
+                metric_values = []
+                
+                for bin_result in self.all_results:
+                    if model_name in bin_result['models']:
+                        model_data = bin_result['models'][model_name]
+                        if model_data['n_points_total'] > 0:
+                            z_centers.append(bin_result['z_center'])
+                            metric_values.append(model_data[metric_key])
+                
+                if z_centers:
+                    ax.plot(z_centers, metric_values, 'o-', color=color, 
+                           label=model_name, linewidth=2, markersize=8, alpha=0.7)
             
-            ax.set_xlabel(r'$\log_{10}(M_*/M_{\odot})$', fontsize=12)
-            ax.set_ylabel(r'$\log_{10}(\phi)$ [Mpc$^{-3}$ dex$^{-1}$]', fontsize=12)
-            ax.set_title(f'{model_name}', fontsize=14)
-            ax.set_xlim(8, 12)
-            ax.set_ylim(-6, -1)
-            ax.legend(fontsize=8, loc='lower left')
+            ax.set_xlabel('Redshift', fontsize=12, fontweight='bold')
+            ax.set_ylabel(metric_label, fontsize=12, fontweight='bold')
+            ax.set_title(f'{metric_label} vs Redshift\n({better} is better)', 
+                        fontsize=12, fontweight='bold')
+            ax.legend(fontsize=9, loc='best')
             ax.grid(True, alpha=0.3)
         
-        plt.suptitle(f'Diagnostic: Model vs Observations\n{z_low} < z < {z_high}', 
-                    fontsize=16)
+        # Use last panel for legend if needed
+        axes[-1].axis('off')
+        
+        plt.suptitle('Model Performance Evolution with Redshift', 
+                    fontsize=16, fontweight='bold', y=0.995)
         plt.tight_layout()
         
-        plot_path = os.path.join(self.output_dir, f'diagnostic_z{z_low:.1f}_{z_high:.1f}.pdf')
+        plot_path = os.path.join(self.output_dir, 'metrics_vs_redshift.pdf')
         plt.savefig(plot_path, dpi=300, bbox_inches='tight')
-        print(f"Saved diagnostic plot to: {plot_path}")
+        print(f"Saved to: {plot_path}")
+        return fig
+    
+    def plot_performance_heatmap(self, model_summaries):
+        """
+        Create heatmap showing performance across models and redshift bins
+        """
+        print("\nCreating performance heatmap...")
         
+        fig, axes = plt.subplots(2, 2, figsize=(16, 12))
+        axes = axes.flatten()
+        
+        metrics_to_plot = [
+            ('reduced_chi_squared_total', r'$\chi^2_{\rm red}$', 'RdYlGn_r'),
+            ('mean_ccc', 'CCC', 'RdYlGn'),
+            ('mean_spearman', 'Spearman ρ', 'RdYlGn'),
+            ('mean_mad', 'MAD', 'RdYlGn_r')
+        ]
+        
+        for idx, (metric_key, metric_name, cmap) in enumerate(metrics_to_plot):
+            ax = axes[idx]
+            
+            # Build data matrix
+            model_names = [config['name'] for config in self.model_configs]
+            z_bins = []
+            data_matrix = []
+            
+            for bin_result in self.all_results:
+                z_label = f"{bin_result['z_center']:.1f}"
+                z_bins.append(z_label)
+                
+                row = []
+                for model_name in model_names:
+                    if model_name in bin_result['models']:
+                        model_data = bin_result['models'][model_name]
+                        if model_data['n_points_total'] > 0:
+                            row.append(model_data[metric_key])
+                        else:
+                            row.append(np.nan)
+                    else:
+                        row.append(np.nan)
+                data_matrix.append(row)
+            
+            data_matrix = np.array(data_matrix)
+            
+            # Plot heatmap
+            im = ax.imshow(data_matrix.T, aspect='auto', cmap=cmap, 
+                          interpolation='nearest')
+            
+            # Set ticks
+            ax.set_xticks(np.arange(len(z_bins)))
+            ax.set_yticks(np.arange(len(model_names)))
+            ax.set_xticklabels(z_bins, rotation=45, ha='right')
+            ax.set_yticklabels(model_names)
+            
+            # Add colorbar
+            cbar = plt.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
+            cbar.set_label(metric_name, fontsize=10)
+            
+            # Add values as text
+            for i in range(len(z_bins)):
+                for j in range(len(model_names)):
+                    if np.isfinite(data_matrix[i, j]):
+                        text = ax.text(i, j, f'{data_matrix[i, j]:.2f}',
+                                     ha="center", va="center", color="black", 
+                                     fontsize=8, fontweight='bold')
+            
+            ax.set_xlabel('Redshift', fontsize=12, fontweight='bold')
+            ax.set_ylabel('Model', fontsize=12, fontweight='bold')
+            ax.set_title(metric_name, fontsize=14, fontweight='bold')
+        
+        plt.suptitle('Performance Heatmap: Models × Redshift', 
+                    fontsize=16, fontweight='bold', y=0.995)
+        plt.tight_layout()
+        
+        plot_path = os.path.join(self.output_dir, 'performance_heatmap.pdf')
+        plt.savefig(plot_path, dpi=300, bbox_inches='tight')
+        print(f"Saved to: {plot_path}")
+        return fig
+    
+    def plot_radar_chart(self, model_summaries):
+        """
+        Create radar/spider plots for multi-dimensional model comparison
+        """
+        print("\nCreating radar chart...")
+        
+        model_names = list(model_summaries.keys())
+        n_models = len(model_names)
+        
+        # Prepare metrics (normalize to 0-1 scale for radar plot)
+        metrics = [
+            ('overall_ccc', 'CCC', True),
+            ('overall_spearman', 'Spearman', True),
+            ('overall_combined_score', 'Combined\nScore', True),
+        ]
+        
+        # Add chi-squared (invert so higher is better)
+        chi_vals = [model_summaries[name]['overall_reduced_chi_squared'] for name in model_names]
+        chi_max = max([v for v in chi_vals if np.isfinite(v)])
+        
+        # Add MAD (invert so higher is better)
+        mad_vals = [model_summaries[name]['overall_mad'] for name in model_names]
+        mad_max = max([v for v in mad_vals if np.isfinite(v)])
+        
+        fig, axes = plt.subplots(1, n_models, figsize=(6*n_models, 6),
+                                subplot_kw=dict(projection='polar'))
+        if n_models == 1:
+            axes = [axes]
+        
+        categories = ['CCC', 'Spearman', 'Combined\nScore', '1/χ²', '1/MAD']
+        N = len(categories)
+        angles = [n / float(N) * 2 * np.pi for n in range(N)]
+        angles += angles[:1]
+        
+        for idx, (ax, model_name) in enumerate(zip(axes, model_names)):
+            summary = model_summaries[model_name]
+            color = self.model_configs[idx]['color']
+            
+            # Normalize values to 0-1
+            values = [
+                summary['overall_ccc'] if np.isfinite(summary['overall_ccc']) else 0,
+                summary['overall_spearman'] if np.isfinite(summary['overall_spearman']) else 0,
+                (summary['overall_combined_score'] + 1) / 2 if np.isfinite(summary['overall_combined_score']) else 0,  # Normalize to 0-1
+                1 / summary['overall_reduced_chi_squared'] if np.isfinite(summary['overall_reduced_chi_squared']) and summary['overall_reduced_chi_squared'] > 0 else 0,
+                1 - (summary['overall_mad'] / mad_max) if np.isfinite(summary['overall_mad']) else 0
+            ]
+            values += values[:1]
+            
+            ax.plot(angles, values, 'o-', linewidth=2, color=color, label=model_name)
+            ax.fill(angles, values, alpha=0.25, color=color)
+            ax.set_xticks(angles[:-1])
+            ax.set_xticklabels(categories, size=10)
+            ax.set_ylim(0, 1)
+            ax.set_yticks([0.2, 0.4, 0.6, 0.8, 1.0])
+            ax.set_yticklabels(['0.2', '0.4', '0.6', '0.8', '1.0'], size=8)
+            ax.set_title(model_name, size=14, fontweight='bold', pad=20)
+            ax.grid(True)
+        
+        plt.suptitle('Multi-Dimensional Performance Comparison\n(All metrics normalized to 0-1, outer edge = better)', 
+                    fontsize=16, fontweight='bold', y=1.02)
+        plt.tight_layout()
+        
+        plot_path = os.path.join(self.output_dir, 'radar_chart.pdf')
+        plt.savefig(plot_path, dpi=300, bbox_inches='tight')
+        print(f"Saved to: {plot_path}")
+        return fig
+    
+    def plot_metric_correlation_matrix(self, model_summaries):
+        """
+        Scatter matrix showing correlations between different metrics
+        """
+        print("\nCreating metric correlation scatter matrix...")
+        
+        # Prepare data
+        data_dict = {
+            'χ²_red': [], 'CCC': [], 'Spearman': [], 'MAD': [], 'Combined': []
+        }
+        model_labels = []
+        
+        for model_name, summary in model_summaries.items():
+            if np.isfinite(summary['overall_reduced_chi_squared']):
+                data_dict['χ²_red'].append(summary['overall_reduced_chi_squared'])
+                data_dict['CCC'].append(summary['overall_ccc'])
+                data_dict['Spearman'].append(summary['overall_spearman'])
+                data_dict['MAD'].append(summary['overall_mad'])
+                data_dict['Combined'].append(summary['overall_combined_score'])
+                model_labels.append(model_name)
+        
+        df = pd.DataFrame(data_dict)
+        
+        # Create scatter matrix
+        fig, axes = plt.subplots(5, 5, figsize=(16, 16))
+        
+        metrics = list(data_dict.keys())
+        colors = [self.model_configs[i]['color'] for i in range(len(model_labels))]
+        
+        for i, metric_y in enumerate(metrics):
+            for j, metric_x in enumerate(metrics):
+                ax = axes[i, j]
+                
+                if i == j:
+                    # Diagonal: histograms
+                    ax.hist(df[metric_x], bins=10, color='skyblue', alpha=0.7, edgecolor='black')
+                    ax.set_ylabel('Frequency', fontsize=9)
+                else:
+                    # Off-diagonal: scatter plots
+                    for k, (x, y, c, label) in enumerate(zip(df[metric_x], df[metric_y], 
+                                                              colors, model_labels)):
+                        ax.scatter(x, y, c=c, s=150, alpha=0.7, edgecolors='black', linewidth=1.5)
+                        ax.text(x, y, f'  {k+1}', fontsize=8, va='center')
+                    
+                    # Add correlation coefficient
+                    if len(df) > 1:
+                        corr = df[metric_x].corr(df[metric_y])
+                        ax.text(0.05, 0.95, f'r={corr:.2f}', 
+                               transform=ax.transAxes, fontsize=9,
+                               bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
+                
+                # Labels
+                if i == len(metrics) - 1:
+                    ax.set_xlabel(metric_x, fontsize=10, fontweight='bold')
+                else:
+                    ax.set_xticklabels([])
+                
+                if j == 0:
+                    ax.set_ylabel(metric_y, fontsize=10, fontweight='bold')
+                else:
+                    ax.set_yticklabels([])
+                
+                ax.grid(True, alpha=0.3)
+        
+        # Add legend
+        legend_text = '\n'.join([f"{i+1}. {name}" for i, name in enumerate(model_labels)])
+        fig.text(0.98, 0.5, legend_text, fontsize=10, va='center', ha='left',
+                bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
+        
+        plt.suptitle('Metric Correlation Matrix', fontsize=18, fontweight='bold', y=0.995)
+        plt.tight_layout(rect=[0, 0, 0.95, 0.99])
+        
+        plot_path = os.path.join(self.output_dir, 'metric_correlation_matrix.pdf')
+        plt.savefig(plot_path, dpi=300, bbox_inches='tight')
+        print(f"Saved to: {plot_path}")
+        return fig
+    
+    def plot_winner_timeline(self, model_summaries):
+        """
+        Show which model wins at each redshift for different metrics
+        """
+        print("\nCreating winner timeline...")
+        
+        fig, axes = plt.subplots(3, 2, figsize=(16, 12))
+        axes = axes.flatten()
+        
+        metrics_to_check = [
+            ('reduced_chi_squared_total', 'Chi-Squared', False),
+            ('mean_ccc', 'CCC', True),
+            ('mean_spearman', 'Spearman', True),
+            ('mean_mad', 'MAD', False),
+            ('mean_combined_score', 'Combined Score', True)
+        ]
+        
+        for idx, (metric_key, metric_name, higher_better) in enumerate(metrics_to_check):
+            ax = axes[idx]
+            
+            z_centers = []
+            winners = []
+            winner_colors = []
+            
+            for bin_result in self.all_results:
+                z_center = bin_result['z_center']
+                
+                best_model = None
+                best_value = float('-inf') if higher_better else float('inf')
+                
+                for model_name, model_data in bin_result['models'].items():
+                    if model_data['n_points_total'] > 0:
+                        value = model_data[metric_key]
+                        if np.isfinite(value):
+                            if higher_better:
+                                if value > best_value:
+                                    best_value = value
+                                    best_model = model_name
+                            else:
+                                if value < best_value:
+                                    best_value = value
+                                    best_model = model_name
+                
+                if best_model:
+                    z_centers.append(z_center)
+                    winners.append(best_model)
+                    # Get color for this model
+                    model_color = next((c['color'] for c in self.model_configs 
+                                       if c['name'] == best_model), 'gray')
+                    winner_colors.append(model_color)
+            
+            # Plot timeline
+            model_names = [config['name'] for config in self.model_configs]
+            model_y_positions = {name: i for i, name in enumerate(model_names)}
+            
+            for z, winner, color in zip(z_centers, winners, winner_colors):
+                y_pos = model_y_positions[winner]
+                ax.scatter(z, y_pos, c=color, s=300, marker='s', 
+                          edgecolors='black', linewidth=2, alpha=0.8, zorder=10)
+            
+            # Connect points with lines
+            for i in range(len(z_centers) - 1):
+                y1 = model_y_positions[winners[i]]
+                y2 = model_y_positions[winners[i+1]]
+                ax.plot([z_centers[i], z_centers[i+1]], [y1, y2], 
+                       'k--', alpha=0.3, linewidth=1)
+            
+            ax.set_yticks(range(len(model_names)))
+            ax.set_yticklabels(model_names)
+            ax.set_xlabel('Redshift', fontsize=12, fontweight='bold')
+            ax.set_title(f'Best Model by {metric_name}', fontsize=12, fontweight='bold')
+            ax.grid(True, alpha=0.3, axis='x')
+            ax.set_ylim(-0.5, len(model_names) - 0.5)
+        
+        # Use last panel for summary
+        ax = axes[-1]
+        ax.axis('off')
+        
+        # Count total wins
+        win_counts = {name: 0 for name in [c['name'] for c in self.model_configs]}
+        for bin_result in self.all_results:
+            for metric_key, _, higher_better in metrics_to_check:
+                best_model = None
+                best_value = float('-inf') if higher_better else float('inf')
+                
+                for model_name, model_data in bin_result['models'].items():
+                    if model_data['n_points_total'] > 0:
+                        value = model_data[metric_key]
+                        if np.isfinite(value):
+                            if higher_better:
+                                if value > best_value:
+                                    best_value = value
+                                    best_model = model_name
+                            else:
+                                if value < best_value:
+                                    best_value = value
+                                    best_model = model_name
+                
+                if best_model:
+                    win_counts[best_model] += 1
+        
+        # Plot win summary
+        summary_text = "Total Wins Across All Redshifts:\n\n"
+        for model_name, wins in sorted(win_counts.items(), key=lambda x: x[1], reverse=True):
+            summary_text += f"{model_name}: {wins}\n"
+        
+        ax.text(0.5, 0.5, summary_text, ha='center', va='center', 
+               fontsize=14, fontweight='bold',
+               bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.7))
+        
+        plt.suptitle('Winner Timeline: Best Model at Each Redshift', 
+                    fontsize=16, fontweight='bold', y=0.995)
+        plt.tight_layout()
+        
+        plot_path = os.path.join(self.output_dir, 'winner_timeline.pdf')
+        plt.savefig(plot_path, dpi=300, bbox_inches='tight')
+        print(f"Saved to: {plot_path}")
+        return fig
+    
+    def plot_comprehensive_dashboard(self, model_summaries):
+        """
+        Create a single comprehensive dashboard with key metrics
+        """
+        print("\nCreating comprehensive summary dashboard...")
+        
+        fig = plt.figure(figsize=(20, 12))
+        gs = fig.add_gridspec(3, 4, hspace=0.3, wspace=0.3)
+        
+        model_names = list(model_summaries.keys())
+        colors = [config['color'] for config in self.model_configs]
+        
+        # 1. Overall Rankings (top left, span 2 columns)
+        ax1 = fig.add_subplot(gs[0, :2])
+        metrics_to_rank = [
+            ('overall_ccc', 'CCC'),
+            ('overall_spearman', 'Spearman'),
+            ('overall_combined_score', 'Combined'),
+            ('overall_reduced_chi_squared', 'χ²_red')
+        ]
+        
+        y_pos = np.arange(len(model_names))
+        width = 0.2
+        
+        for i, (metric_key, label) in enumerate(metrics_to_rank):
+            values = [model_summaries[name][metric_key] for name in model_names]
+            # Normalize for visualization
+            if metric_key == 'overall_reduced_chi_squared':
+                values = [1/v if np.isfinite(v) and v > 0 else 0 for v in values]
+            ax1.barh(y_pos + i*width, values, width, label=label, alpha=0.7)
+        
+        ax1.set_yticks(y_pos + width * 1.5)
+        ax1.set_yticklabels(model_names)
+        ax1.set_xlabel('Normalized Score', fontweight='bold')
+        ax1.set_title('Overall Performance Metrics', fontweight='bold', fontsize=14)
+        ax1.legend()
+        ax1.grid(True, alpha=0.3, axis='x')
+        
+        # 2. CCC comparison (top right, span 2 columns)
+        ax2 = fig.add_subplot(gs[0, 2:])
+        ccc_vals = [model_summaries[name]['overall_ccc'] for name in model_names]
+        bars = ax2.bar(range(len(model_names)), ccc_vals, color=colors, alpha=0.7, edgecolor='black', linewidth=2)
+        ax2.set_xticks(range(len(model_names)))
+        ax2.set_xticklabels(model_names, rotation=20, ha='right')
+        ax2.set_ylabel('CCC', fontweight='bold')
+        ax2.set_title('Concordance Correlation Coefficient', fontweight='bold', fontsize=14)
+        ax2.axhline(y=0.9, color='green', linestyle='--', alpha=0.5, label='Excellent')
+        ax2.grid(True, alpha=0.3, axis='y')
+        ax2.legend()
+        for bar, val in zip(bars, ccc_vals):
+            if np.isfinite(val):
+                ax2.text(bar.get_x() + bar.get_width()/2, val, f'{val:.3f}',
+                        ha='center', va='bottom', fontweight='bold')
+        
+        # 3. Performance evolution (middle left, span 2)
+        ax3 = fig.add_subplot(gs[1, :2])
+        for model_config in self.model_configs:
+            model_name = model_config['name']
+            color = model_config['color']
+            z_vals, ccc_vals = [], []
+            for bin_result in self.all_results:
+                if model_name in bin_result['models']:
+                    data = bin_result['models'][model_name]
+                    if data['n_points_total'] > 0:
+                        z_vals.append(bin_result['z_center'])
+                        ccc_vals.append(data['mean_ccc'])
+            ax3.plot(z_vals, ccc_vals, 'o-', color=color, label=model_name, linewidth=2, markersize=8)
+        ax3.set_xlabel('Redshift', fontweight='bold')
+        ax3.set_ylabel('CCC', fontweight='bold')
+        ax3.set_title('CCC Evolution with Redshift', fontweight='bold', fontsize=14)
+        ax3.legend()
+        ax3.grid(True, alpha=0.3)
+        
+        # 4. Chi-squared vs CCC (middle right, span 2)
+        ax4 = fig.add_subplot(gs[1, 2:])
+        chi_vals = [model_summaries[name]['overall_reduced_chi_squared'] for name in model_names]
+        ccc_vals = [model_summaries[name]['overall_ccc'] for name in model_names]
+        for i, (chi, ccc, color, name) in enumerate(zip(chi_vals, ccc_vals, colors, model_names)):
+            if np.isfinite(chi) and np.isfinite(ccc):
+                ax4.scatter(chi, ccc, c=color, s=300, alpha=0.7, edgecolors='black', linewidth=2)
+                ax4.text(chi, ccc, f'  {i+1}', fontsize=10, va='center', fontweight='bold')
+        ax4.set_xlabel('Reduced χ²', fontweight='bold')
+        ax4.set_ylabel('CCC', fontweight='bold')
+        ax4.set_title('Agreement: CCC vs Chi-Squared', fontweight='bold', fontsize=14)
+        ax4.grid(True, alpha=0.3)
+        ax4.axvline(x=1, color='gray', linestyle='--', alpha=0.5)
+        
+        # 5. MAD comparison (bottom left)
+        ax5 = fig.add_subplot(gs[2, 0])
+        mad_vals = [model_summaries[name]['overall_mad'] for name in model_names]
+        bars = ax5.bar(range(len(model_names)), mad_vals, color=colors, alpha=0.7, edgecolor='black')
+        ax5.set_xticks(range(len(model_names)))
+        ax5.set_xticklabels(model_names, rotation=20, ha='right')
+        ax5.set_ylabel('MAD (dex)', fontweight='bold')
+        ax5.set_title('Mean Absolute Deviation', fontweight='bold')
+        ax5.grid(True, alpha=0.3, axis='y')
+        
+        # 6. Combined Score (bottom middle-left)
+        ax6 = fig.add_subplot(gs[2, 1])
+        comb_vals = [model_summaries[name]['overall_combined_score'] for name in model_names]
+        bars = ax6.bar(range(len(model_names)), comb_vals, color=colors, alpha=0.7, edgecolor='black')
+        ax6.set_xticks(range(len(model_names)))
+        ax6.set_xticklabels(model_names, rotation=20, ha='right')
+        ax6.set_ylabel('Combined Score', fontweight='bold')
+        ax6.set_title('Combined Score', fontweight='bold')
+        ax6.grid(True, alpha=0.3, axis='y')
+        
+        # 7. N bins analyzed (bottom middle-right)
+        ax7 = fig.add_subplot(gs[2, 2])
+        n_bins = [model_summaries[name]['n_bins_analyzed'] for name in model_names]
+        bars = ax7.bar(range(len(model_names)), n_bins, color=colors, alpha=0.7, edgecolor='black')
+        ax7.set_xticks(range(len(model_names)))
+        ax7.set_xticklabels(model_names, rotation=20, ha='right')
+        ax7.set_ylabel('Number of Bins', fontweight='bold')
+        ax7.set_title('Redshift Bins Analyzed', fontweight='bold')
+        ax7.grid(True, alpha=0.3, axis='y')
+        
+        # 8. Rankings summary (bottom right)
+        ax8 = fig.add_subplot(gs[2, 3])
+        ax8.axis('off')
+        
+        # Determine overall winner
+        from collections import Counter
+        rankings = []
+        for metric_key in ['overall_ccc', 'overall_spearman', 'overall_combined_score']:
+            sorted_models = sorted(model_summaries.items(), 
+                                 key=lambda x: x[1][metric_key] if np.isfinite(x[1][metric_key]) else -999,
+                                 reverse=True)
+            rankings.append(sorted_models[0][0])
+        
+        # Chi-squared (lower is better)
+        sorted_models = sorted(model_summaries.items(),
+                             key=lambda x: x[1]['overall_reduced_chi_squared'] if np.isfinite(x[1]['overall_reduced_chi_squared']) else 999)
+        rankings.append(sorted_models[0][0])
+        
+        vote_count = Counter(rankings)
+        winner = vote_count.most_common(1)[0][0]
+        
+        summary_text = "🏆 OVERALL WINNER 🏆\n\n"
+        summary_text += f"{winner}\n\n"
+        summary_text += f"Votes: {vote_count[winner]}/4\n\n"
+        summary_text += "Rankings:\n"
+        for i, name in enumerate(model_names, 1):
+            summary_text += f"{i}. {name}\n"
+        
+        ax8.text(0.5, 0.5, summary_text, ha='center', va='center',
+                fontsize=11, fontweight='bold',
+                bbox=dict(boxstyle='round', facecolor='gold', alpha=0.3))
+        
+        plt.suptitle('Comprehensive Model Performance Dashboard', 
+                    fontsize=20, fontweight='bold', y=0.995)
+        
+        plot_path = os.path.join(self.output_dir, 'comprehensive_dashboard.pdf')
+        plt.savefig(plot_path, dpi=300, bbox_inches='tight')
+        print(f"Saved to: {plot_path}")
         return fig
 
 
+# ============================================================================
+# MAIN EXECUTION
+# ============================================================================
+
 def main():
-    """Main execution function"""
-    print("\n" + "="*70)
-    print("SAGE MODEL STATISTICAL COMPARISON ANALYSIS - FIXED VERSION")
-    print("="*70)
-    print("\nKey fixes applied:")
-    print("  - Using actual observational data points (not interpolated grid)")
-    print("  - Proper error handling in log space")
-    print("  - Conservative error estimates (0.3 dex for datasets without errors)")
-    print("  - Minimum error floor of 0.1 dex to avoid artificially small errors")
-    print("="*70)
+    """Main execution with all new plots"""
+    print("\n" + "="*80)
+    print("SAGE MODEL COMPARISON - WITH COMPREHENSIVE VISUALIZATIONS")
+    print("="*80)
     
-    # Initialize comparison
-    comparator = ModelComparison(MODEL_CONFIGS, output_dir='./statistical_analysis/')
-    
-    # Run full comparison
+    comparator = ModelComparison(MODEL_CONFIGS)
     results = comparator.run_full_comparison()
-    
-    # Create summary statistics
     model_summaries = comparator.create_summary_table()
-
-    print("\n" + "="*70)
-    print("ADDITIONAL STATISTICAL ANALYSES")
-    print("="*70)
     
-    model_residuals = comparator.calculate_residual_statistics()
-    comparator.calculate_sigma_fractions(model_residuals)
-    comparator.calculate_per_redshift_rankings()
-    comparator.calculate_mass_range_performance()
-
-    print("\n" + "="*70)
-    print("CREATING ADDITIONAL VISUALIZATION PLOTS")
-    print("="*70)
+    print("\n" + "="*80)
+    print("CREATING COMPREHENSIVE VISUALIZATION SUITE")
+    print("="*80)
     
-    comparator.plot_residual_distributions(model_residuals)
-    comparator.plot_sigma_coverage(model_residuals)
-    comparator.plot_redshift_winners()
-    comparator.plot_mass_dependence()
+    # Original plots
+    print("\n1. Metric evolution with redshift...")
+    comparator.plot_metrics_vs_redshift(model_summaries)
     
-    # Create plots
-    comparator.plot_chi_squared_by_redshift()
-    comparator.plot_performance_summary()
+    print("\n2. Performance heatmap...")
+    comparator.plot_performance_heatmap(model_summaries)
     
-    # Create diagnostic plots for key redshift bins
-    print("\n" + "="*70)
-    print("CREATING DIAGNOSTIC PLOTS")
-    print("="*70)
-    comparator.plot_diagnostic_comparison(z_low=0.0, z_high=0.5)
-    comparator.plot_diagnostic_comparison(z_low=1.5, z_high=2.0)
-    comparator.plot_diagnostic_comparison(z_low=3.5, z_high=4.5)
+    print("\n3. Radar chart...")
+    comparator.plot_radar_chart(model_summaries)
     
-    print("\n" + "="*70)
-    print("ANALYSIS COMPLETE!")
-    print("="*70)
-    print("\nGenerated files:")
-    print("1. chi_squared_by_redshift_bin.csv - Detailed χ² for each redshift bin")
-    print("2. overall_model_comparison.csv - Summary statistics for each model")
-    print("3. chi_squared_vs_redshift.pdf - χ² evolution with redshift")
-    print("4. model_performance_comparison.pdf - Bar chart of overall performance")
-    print("5. diagnostic_z*.pdf - Visual comparison of models vs observations")
-    print("\nInterpretation Guide:")
-    print("-" * 70)
-    print("χ²_red ≈ 1: Good fit (model consistent with observations within errors)")
-    print("χ²_red < 1: Model fits better than expected")
-    print("           (may indicate overestimated observational errors)")
-    print("χ²_red > 1: Model doesn't fully capture observations")
-    print("           (systematic model deficiencies or underestimated errors)")
-    print("\nTypical ranges:")
-    print("  χ²_red = 0.5-2.0: Excellent fit")
-    print("  χ²_red = 2.0-5.0: Acceptable fit with some tension")
-    print("  χ²_red > 5.0: Poor fit, significant model-data disagreement")
-    print("="*70)
+    print("\n4. Metric correlation matrix...")
+    comparator.plot_metric_correlation_matrix(model_summaries)
     
-    # Print interpretation of results
-    print("\n" + "="*70)
-    print("RESULT INTERPRETATION")
-    print("="*70)
+    print("\n5. Winner timeline...")
+    comparator.plot_winner_timeline(model_summaries)
     
-    sorted_models = sorted(model_summaries.items(), 
-                          key=lambda x: x[1]['overall_reduced_chi_squared'])
+    print("\n6. Comprehensive dashboard...")
+    comparator.plot_comprehensive_dashboard(model_summaries)
     
-    best_model = sorted_models[0][0]
-    best_chi_sq = sorted_models[0][1]['overall_reduced_chi_squared']
-    
-    print(f"\nBest performing model: {best_model} (χ²_red = {best_chi_sq:.2f})")
-    
-    if best_chi_sq < 2.0:
-        print("→ EXCELLENT: Model reproduces observations very well")
-    elif best_chi_sq < 5.0:
-        print("→ GOOD: Model captures observations reasonably well")
-    elif best_chi_sq < 10.0:
-        print("→ ACCEPTABLE: Model has some tension with observations")
-    else:
-        print("→ POOR: Model has significant disagreement with observations")
-    
-    print("\nRelative model ranking:")
-    for i, (model_name, summary) in enumerate(sorted_models, 1):
-        chi_sq = summary['overall_reduced_chi_squared']
-        n_bins = summary['n_bins_analyzed']
-        print(f"  {i}. {model_name}: χ²_red = {chi_sq:.2f} ({n_bins} redshift bins)")
-    
-    print("\nCheck the diagnostic plots to visually verify the fits!")
-    print("="*70)
+    print("\n" + "="*80)
+    print("ALL VISUALIZATIONS COMPLETE!")
+    print("="*80)
+    print("\nGenerated plots:")
+    print("1. metrics_vs_redshift.pdf - Evolution of all metrics with z")
+    print("2. performance_heatmap.pdf - Models × redshift performance matrix")
+    print("3. radar_chart.pdf - Multi-dimensional comparison")
+    print("4. metric_correlation_matrix.pdf - How metrics relate to each other")
+    print("5. winner_timeline.pdf - Best model at each redshift")
+    print("6. comprehensive_dashboard.pdf - All-in-one summary figure")
+    print("="*80)
 
 
 if __name__ == "__main__":

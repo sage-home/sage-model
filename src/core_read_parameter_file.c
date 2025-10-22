@@ -249,6 +249,10 @@ int read_parameter_file(const char *fname, struct params *run_params)
     ParamAddr[NParam] = &(run_params->RedshiftPowerLawExponent);
     ParamID[NParam++] = DOUBLE;
 
+    strncpy(ParamTag[NParam], "PrecipitationThreshold", MAXTAGLEN);
+    ParamAddr[NParam] = &(run_params->PrecipitationThreshold);
+    ParamID[NParam++] = DOUBLE;
+    
     used_tag = mymalloc(sizeof(int) * NParam);
     for(int i=0; i<NParam; i++) {
         used_tag[i]=1;

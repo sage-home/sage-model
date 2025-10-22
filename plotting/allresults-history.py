@@ -1330,6 +1330,65 @@ if __name__ == '__main__':
 
     # --------------------------------------------------------
 
+    print('Plotting regime transition function behavior')
+
+    plt.figure(figsize=(10, 8))
+
+    # Define the regime transition function
+    def regime_transition(Mvir_physical, transition_width=0.2):
+        """
+        Calculate the regime transition value for a given virial mass.
+        Returns value between 0 (CGM regime) and 1 (hot-ICM regime).
+        """
+        Mshock = 6.0e11  # Msun
+        mass_ratio = Mvir_physical / Mshock
+        regime_criterion = mass_ratio ** (4.0/3.0)
+        regime_smooth = 0.5 * (1.0 + np.tanh((regime_criterion - 1.0) / transition_width))
+        return regime_smooth
+
+    # Create a range of virial masses
+    Mvir_range = np.logspace(10, 14, 200)  # 10^10 to 10^14 Msun
+
+    # Plot for different transition widths to show the effect
+    transition_widths = [0.1, 0.2, 0.5]
+    colors_tw = ['darkblue', 'blue', 'lightblue']
+    
+    for tw, color in zip(transition_widths, colors_tw):
+        regime_values = regime_transition(Mvir_range, transition_width=tw)
+        plt.plot(np.log10(Mvir_range), regime_values, '-', color=color, 
+                linewidth=2, label=f'Transition width = {tw}')
+
+    # Mark the Mshock threshold
+    plt.axvline(x=np.log10(6.0e11), color='red', linestyle='--', 
+                linewidth=1.5, alpha=0.7, label=r'$M_{\rm shock} = 6 \times 10^{11} M_\odot$')
+    
+    # Add horizontal lines at regime boundaries
+    plt.axhline(y=0, color='gray', linestyle=':', alpha=0.5)
+    plt.axhline(y=1, color='gray', linestyle=':', alpha=0.5)
+    plt.axhline(y=0.5, color='gray', linestyle=':', alpha=0.5, label='Transition midpoint')
+
+    plt.xlabel(r'$\log_{10} M_{\rm vir}$ [$M_\odot$]', fontsize=14)
+    plt.ylabel('Regime Value', fontsize=14)
+    plt.title('CGM/Hot-ICM Regime Transition Function', fontsize=14)
+    plt.xlim(10.5, 13.5)
+    plt.ylim(-0.05, 1.05)
+    plt.legend(loc='best', frameon=False, fontsize=11)
+    plt.grid(True, alpha=0.3)
+    
+    # Add text annotations
+    plt.text(11.0, 0.1, 'CGM Regime', fontsize=12, color='darkgreen', 
+            ha='center', bbox=dict(boxstyle='round', facecolor='lightgreen', alpha=0.3))
+    plt.text(13.0, 0.9, 'Hot-ICM Regime', fontsize=12, color='darkred',
+            ha='center', bbox=dict(boxstyle='round', facecolor='lightcoral', alpha=0.3))
+
+    plt.tight_layout()
+    outputFile = OutputDir + 'N.RegimeTransitionFunction' + OutputFormat
+    plt.savefig(outputFile, dpi=300, bbox_inches='tight')
+    print('Saved file to', outputFile, '\n')
+    plt.close()
+
+    # --------------------------------------------------------
+
     print('Plotting gas reservoir flow rates evolution (Model Comparison)')
 
     plt.figure(figsize=(12, 8))

@@ -81,6 +81,8 @@ void init_galaxy(const int p, const int halonr, int *galaxycounter, const struct
     galaxies[p].TimeOfLastMinorMerger = -1.0;
     galaxies[p].OutflowRate = 0.0;
 	galaxies[p].TotalSatelliteBaryons = 0.0;
+    galaxies[p].RcoolToRvir = 0.0;
+    galaxies[p].MassLoading = 0.0;
 
 	// infall properties
     galaxies[p].infallMvir = -1.0;
@@ -168,60 +170,64 @@ double get_virial_radius(const int halonr, const struct halo_data *halos, const 
 }
 
 
-void determine_and_store_regime(const int ngal, struct GALAXY *galaxies, 
-                                const struct params *run_params)
-{
-    
-    // CGM recipe is on - classify based on virial temperature
-    for(int p = 0; p < ngal; p++) {
-        if(galaxies[p].mergeType > 0) continue;
-        
-        // Calculate virial temperature: Tvir = (mu * mp / 2k) * Vvir^2
-        // Simplifies to: Tvir ≈ 35.9 * Vvir^2 (Vvir in km/s, Tvir in K)
-        const double z = run_params->ZZ[galaxies[p].SnapNum];
-        const double Tvir = 35.9 * galaxies[p].Vvir * galaxies[p].Vvir;
-        
-        // Threshold with redshift evolution
-        const double Tvir_threshold_z0 = 8.0e5;  // 800,000 K at z=0
-        const double z_scaling = pow(1.0 + z, 0.35);
-        const double Tvir_threshold = Tvir_threshold_z0 * z_scaling;
-        
-        // Regime 0: CGM regime (low-mass halos, Tvir < threshold)
-        // Regime 1: Hot-ICM regime (high-mass halos, Tvir >= threshold)
-        galaxies[p].Regime = (Tvir < Tvir_threshold) ? 0 : 1;
-    }
-}
-
 // void determine_and_store_regime(const int ngal, struct GALAXY *galaxies, 
 //                                 const struct params *run_params)
 // {
+    
+//     // CGM recipe is on - classify based on virial temperature
 //     for(int p = 0; p < ngal; p++) {
 //         if(galaxies[p].mergeType > 0) continue;
         
+//         // Calculate virial temperature: Tvir = (mu * mp / 2k) * Vvir^2
+//         // Simplifies to: Tvir ≈ 35.9 * Vvir^2 (Vvir in km/s, Tvir in K)
 //         const double z = run_params->ZZ[galaxies[p].SnapNum];
 //         const double Tvir = 35.9 * galaxies[p].Vvir * galaxies[p].Vvir;
         
-//         const double Tvir_threshold_z0 = 8.0e5;
+//         // Threshold with redshift evolution
+//         const double Tvir_threshold_z0 = 8.0e5;  // 800,000 K at z=0
 //         const double z_scaling = pow(1.0 + z, 0.35);
 //         const double Tvir_threshold = Tvir_threshold_z0 * z_scaling;
         
-//         // Smooth transition using tanh
-//         // width controls how sharp the transition is (smaller = sharper)
-//         const double transition_width = 2.0;  // in dex, or use run_params->RegimeTransitionWidth
-        
-//         // Calculate how far we are from threshold in log space
-//         const double log_ratio = log10(Tvir / Tvir_threshold);
-        
-//         // Smooth weight: 0 = pure CGM, 1 = pure Hot-ICM
-//         const double smooth_weight = 0.5 * (1.0 + tanh(log_ratio / transition_width));
-        
-//         // Store as continuous weight instead of discrete regime
-//         // galaxies[p].RegimeWeight = smooth_weight;
-        
-//         // Optional: still store discrete regime for diagnostics
-//         galaxies[p].Regime = (smooth_weight < 0.5) ? 0 : 1;
+//         // Regime 0: CGM regime (low-mass halos, Tvir < threshold)
+//         // Regime 1: Hot-ICM regime (high-mass halos, Tvir >= threshold)
+//         galaxies[p].Regime = (Tvir < Tvir_threshold) ? 0 : 1;
 //     }
 // }
+
+void determine_and_store_regime(const int ngal, struct GALAXY *galaxies, 
+                                const struct params *run_params)
+{
+    for(int p = 0; p < ngal; p++) {
+        if(galaxies[p].mergeType > 0) continue;
+        
+        // Convert Mvir to physical units (Msun)
+        // Mvir is stored in units of 10^10 Msun/h
+        const double Mvir_physical = galaxies[p].Mvir * 1.0e10 / run_params->Hubble_h;
+        
+        // Shock mass threshold
+        const double Mshock = 6.0e11;  // Msun
+        
+        // Calculate (Mvir/Mshock)^(4/3)
+        const double mass_ratio = Mvir_physical / Mshock;
+        const double regime_criterion = pow(mass_ratio, 4.0/3.0);
+        
+        // Smooth transition using tanh around regime_criterion = 1.0
+        // transition_width controls how sharp the transition is
+        // Smaller = sharper, larger = smoother (0.2 is a good compromise)
+        const double transition_width = 0.2;
+        const double regime_smooth = 0.5 * (1.0 + tanh((regime_criterion - 1.0) / transition_width));
+        
+        // Store as float between 0 and 1 (0 = pure CGM, 1 = pure hot-ICM)
+        // For backwards compatibility with integer checks, round to 0 or 1
+        // But you can also use the smooth value directly in physics calculations
+        // galaxies[p].Regime = (regime_smooth > 0.5) ? 1 : 0;
+
+        galaxies[p].Regime = (regime_criterion >= 1.0) ? 1 : 0;
+        
+        // Optional: store the smooth value for use in cooling calculations
+        // This would require adding a new field like galaxies[p].RegimeSmooth = regime_smooth;
+    }
+}
 
 float calculate_muratov_mass_loading(const int gal, struct GALAXY *galaxies, const double z, const struct params *run_params)
 {

@@ -325,12 +325,16 @@ int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals
     const double halo_age = run_params->Age[halo_snapnum];
     const double infallingGas = infall_recipe(centralgal, ngal, Zcurr, galaxies, run_params);
 
-    if (run_params->CGMrecipeOn == 1) {
-        determine_and_store_regime(ngal, galaxies, run_params);
-    }
+    // if (run_params->CGMrecipeOn == 1) {
+    //     determine_and_store_regime(ngal, galaxies, run_params);
+    // }
 
     // We integrate things forward by using a number of intervals equal to STEPS
     for(int step = 0; step < STEPS; step++) {
+
+        if (run_params->CGMrecipeOn == 1) {
+            determine_and_store_regime(ngal, galaxies, run_params);
+        }
 
         // Loop over all galaxies in the halo
         for(int p = 0; p < ngal; p++) {

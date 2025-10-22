@@ -332,10 +332,9 @@ ax2.grid(True, alpha=0.3)
 
 # Panel 3: Metallicity vs Precipitation Regime
 ax3 = plt.subplot2grid((3, 3), (1, 1))
-# Calculate metallicity (assuming solar metallicity = 0.02)
-solar_metallicity = 0.02
-metallicity = np.log10(MetalsCGMgas / CGMgas / solar_metallicity)
-metallicity[~np.isfinite(metallicity)] = -20  # Set invalid values to very low
+# Calculate metallicity in 12 + log10(O/H) scale (assuming solar metallicity = 0.02)
+metallicity = np.log10((MetalsCGMgas / CGMgas) / 0.02) + 9.0
+metallicity[~np.isfinite(metallicity)] = 0.0  # Set invalid values to very low
 
 for mask, color, label in scatter_masks:
     if np.sum(mask) > 0:
@@ -352,9 +351,9 @@ ax3.axvline(10.0, color='grey', linestyle='--', alpha=0.7, linewidth=1)
 
 ax3.set_xscale('log')
 ax3.set_xlim(0.01, 100)
-ax3.set_ylim(-20, 0)
+ax3.set_ylim(5, 9)
 ax3.set_xlabel('$t_{cool}/t_{ff}$')
-ax3.set_ylabel('log$_{10}$(Z/Z$_\\odot$)')
+ax3.set_ylabel('12 + log$_{10}$(O/H)')
 ax3.set_title('Metallicity')
 ax3.grid(True, alpha=0.3)
 
@@ -382,12 +381,19 @@ ax4.grid(True, alpha=0.3)
 
 # Panel 5: Depletion Timescale vs Precipitation Regime
 ax5 = plt.subplot2grid((3, 3), (2, 0))
-valid_depletion = (tdeplete > 0) & (tdeplete < 1e6)  # Filter out extreme values
+
+print(f'\nDepletion time diagnostics:')
+print(f'Total galaxies: {len(tdeplete)}')
+print(f'Galaxies with tdeplete > 0: {np.sum(tdeplete > 0)}')
+print(f'CGM-regime galaxies with tdeplete > 0: {np.sum((Regime==0) & (tdeplete > 0))}')
+print(f'Diluted galaxies: {np.sum(dilute_mask)}')
 
 for mask, color, label in scatter_masks:
-    plot_mask = mask & valid_depletion
-    if np.sum(plot_mask) > 0:
-        ax5.scatter(tcool_over_tff[plot_mask], tdeplete[plot_mask], 
+    # Only filter out zero/negative values - keep all positive values including large ones
+    valid_in_regime = mask & (tdeplete > 0)
+    print(f'{label} regime: {np.sum(valid_in_regime)} galaxies in plot')
+    if np.sum(valid_in_regime) > 0:
+        ax5.scatter(tcool_over_tff[valid_in_regime], tdeplete[valid_in_regime], 
                    c=color, alpha=0.6, s=50, marker='o', edgecolor='black')
 
 ax5.axhline(1000, color='red', linestyle='--', alpha=0.7, label='1 Gyr')
@@ -400,7 +406,7 @@ ax5.axvline(10.0, color='grey', linestyle='--', alpha=0.7, linewidth=1)
 ax5.set_xscale('log')
 ax5.set_yscale('log')
 ax5.set_xlim(0.01, 100)
-ax5.set_ylim(10, 10000)
+ax5.set_ylim(1, 1e8)  # Extend upper limit to show very long depletion times
 ax5.set_xlabel('$t_{cool}/t_{ff}$')
 ax5.set_ylabel('CGM Depletion Time (Myr)')
 ax5.set_title('Depletion Timescale')

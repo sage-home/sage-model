@@ -79,11 +79,11 @@ if __name__ == '__main__':
     print('Negative Ejected gas mass:', len(np.where(EjectedMass<0.0)[0]), '\n')
     print('Negative Ejected gas mass sample:', EjectedMass[np.where(EjectedMass<0.0)[0]][:10], '\n')
 
-    print('Total CGM gas mass in box:', np.sum(CGMgas))
-    print('Minimum CGM gas mass:', np.min(CGMgas[np.where(CGMgas>0.0)]))
-    print('Maximum CGM gas mass:', np.max(CGMgas))
-    print('Negative CGM gas mass:', len(np.where(CGMgas<0.0)[0]), '\n')
-    print('Negative CGM gas mass sample:', CGMgas[np.where(CGMgas<0.0)[0]][:10], '\n')
+    # print('Total CGM gas mass in box:', np.sum(CGMgas))
+    # print('Minimum CGM gas mass:', np.min(CGMgas[np.where(CGMgas>0.0)]))
+    # print('Maximum CGM gas mass:', np.max(CGMgas))
+    # print('Negative CGM gas mass:', len(np.where(CGMgas<0.0)[0]), '\n')
+    # print('Negative CGM gas mass sample:', CGMgas[np.where(CGMgas<0.0)[0]][:10], '\n')
 
 
     IntraClusterStars = read_hdf(snap_num = Snapshot, param = 'IntraClusterStars') * 1.0e10 / Hubble_h
@@ -800,6 +800,18 @@ if __name__ == '__main__':
 
     print('Plotting the average baryon fraction vs halo mass (can take time)')
 
+    # Find halos at log Mvir = 13.5-14.0
+    mask = (np.log10(Mvir) > 13.5) & (np.log10(Mvir) < 14.0)
+
+    total_baryons = (StellarMass[mask] + ColdGas[mask] + HotGas[mask] + CGMgas[mask] + IntraClusterStars[mask] + BlackHoleMass[mask] + EjectedMass[mask]) / (0.17 * Mvir[mask])
+    print(f"Baryon closure at high mass: {np.mean(total_baryons):.3f}")
+    print(f"Should be ~1.0. If < 0.95, baryons are leaking somewhere.")
+
+    # Check component fractions
+    print(f"Hot gas fraction: {np.mean(HotGas[mask] / (0.17 * Mvir[mask])):.3f}")
+    print(f"Stellar fraction: {np.mean(StellarMass[mask] / (0.17 * Mvir[mask])):.3f}")
+    print(f"CGM fraction: {np.mean(CGMgas[mask] / (0.17 * Mvir[mask])):.3f}  # Should be ~0")
+
     plt.figure()
     ax = plt.subplot(111)
 
@@ -944,6 +956,10 @@ if __name__ == '__main__':
     MeanICS = np.array(MeanICS)
     MeanICSU = np.array(MeanICSU)
     MeanICSL = np.maximum(np.array(MeanICSL), 1e-6)
+
+    MeanBH = np.array(MeanBH)
+    MeanBHU = np.array(MeanBHU)
+    MeanBHL = np.maximum(np.array(MeanBHL), 1e-6)
 
     MeanEjected = np.array(MeanEjected)
     MeanEjectedU = np.array(MeanEjectedU)

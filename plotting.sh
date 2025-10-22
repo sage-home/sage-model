@@ -7,6 +7,7 @@ echo "Starting plotting scripts..."
 scripts=(
     "plotting/allresults-local.py"
     "plotting/allresults-history.py"
+    "plotting/halo-evolve.py"
     "plotting/paper_plots.py"
     "plotting/paper_plots2.py"
     "plotting/paper_plots3.py"
@@ -14,7 +15,7 @@ scripts=(
     "plotting/smf_analysis_obs_sam.py"
     "plotting/cgm-diag.py"
     # "plotting/sf_pop_trace.py"
-    "plotting/stat_test.py"
+    # "plotting/stat_test.py"
 )
 
 # Run each script

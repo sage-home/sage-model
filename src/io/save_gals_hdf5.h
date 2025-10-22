@@ -98,6 +98,7 @@ struct HDF5_GALAXY_OUTPUT
     float *tff;
     float *tcool_over_tff;
     float *tdeplete;
+    float *RcoolToRvir;
 };
     
     // Proto-Types //
