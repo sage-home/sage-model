@@ -166,6 +166,7 @@ struct GALAXY
     float infallMvir;
     float infallVvir;
     float infallVmax;
+    float TimeOfInfall;
 
     float MassLoading;
 

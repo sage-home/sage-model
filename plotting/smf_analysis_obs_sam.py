@@ -89,9 +89,12 @@ OBSERVATIONAL_FILES = [
     {'file': './data/SHARK_smf_z0.csv', 'z': 0.0, 'color': 'orange', 'label': 'SHARK', 'linestyle': ':', 'linewidth': 1, 'type': 'shark'},
     {'file': './data/SHARK_smf_z05.csv', 'z': 0.5, 'color': 'orange', 'label': 'SHARK', 'linestyle': ':', 'linewidth': 1, 'type': 'shark'},
     {'file': './data/SHARK_smf_z1.csv', 'z': 1.0, 'color': 'orange', 'label': 'SHARK', 'linestyle': ':', 'linewidth': 1, 'type': 'shark'},
-    {'file': './data/SHARK_smf_z2.csv', 'z': 2.0, 'color': 'orange', 'label': 'SHARK', 'linestyle': ':', 'linewidth': 1, 'type': 'shark'},
-    {'file': './data/SHARK_smf_z3.csv', 'z': 3.0, 'color': 'orange', 'label': 'SHARK', 'linestyle': ':', 'linewidth': 1, 'type': 'shark'},
-    {'file': './data/SHARK_smf_z4.csv', 'z': 4.0, 'color': 'orange', 'label': 'SHARK', 'linestyle': ':', 'linewidth': 1, 'type': 'shark'},
+    {'file': './data/SHARK_smf_z2.csv', 'z': 2.01, 'color': 'orange', 'label': 'SHARK', 'linestyle': ':', 'linewidth': 1, 'type': 'shark'},
+    {'file': './data/SHARK_smf_z3.csv', 'z': 3.01, 'color': 'orange', 'label': 'SHARK', 'linestyle': ':', 'linewidth': 1, 'type': 'shark'},
+    {'file': './data/SHARK_smf_z4.csv', 'z': 4.01, 'color': 'orange', 'label': 'SHARK', 'linestyle': ':', 'linewidth': 1, 'type': 'shark'},
+    {'file': './data/SHARK_smf_z5.csv', 'z': 5.01, 'color': 'orange', 'label': 'SHARK', 'linestyle': ':', 'linewidth': 1, 'type': 'shark'},
+    {'file': './data/SHARK_smf_z6.csv', 'z': 6.01, 'color': 'orange', 'label': 'SHARK', 'linestyle': ':', 'linewidth': 1, 'type': 'shark'},
+    {'file': './data/SHARK_smf_z7.csv', 'z': 7.01, 'color': 'orange', 'label': 'SHARK', 'linestyle': ':', 'linewidth': 1, 'type': 'shark'},
     # Add your new SMFvals files here (plotted as symbols only)
     {'file': './data/Thorne21/SMFvals_z2.csv', 'z': 2.0, 'color': 'grey', 'label': 'Thorne+21', 'marker': 's', 'markersize': 4, 'type': 'smfvals'},
     {'file': './data/Thorne21/SMFvals_z2.4.csv', 'z': 2.4, 'color': 'grey', 'label': 'Thorne+21', 'marker': 's', 'markersize': 4, 'type': 'smfvals'},
@@ -859,7 +862,7 @@ def find_closest_redshift_in_range(target_z, z_low, z_high, tolerance=0.3):
     target_z : float
         Target redshift from CSV data
     z_low, z_high : float
-        Redshift bin boundaries
+        Redshift bin boundaries (bins are [z_low, z_high) - excludes upper boundary)
     tolerance : float
         How far outside the range we allow
         
@@ -867,8 +870,8 @@ def find_closest_redshift_in_range(target_z, z_low, z_high, tolerance=0.3):
     --------
     bool : True if redshift should be included in this bin
     """
-    # Check if exactly in range
-    if z_low <= target_z <= z_high:
+    # Check if exactly in range (consistent with bin definition: [z_low, z_high))
+    if z_low <= target_z < z_high:
         return True
     
     # Check if close to range boundaries
@@ -1232,7 +1235,7 @@ def add_observational_data_with_baldry(ax, z_low, z_high, obs_data, muzzin_data,
 
     # Add CSV observational data (SHARK files) - BEST MATCH ONLY
     print(f"  Checking SHARK data for bin {z_low:.1f} < z < {z_high:.1f}")
-    print(f"  Available SHARK redshifts: {list(obs_data_by_z.keys())}")
+    print(f"  Available redshifts in obs_data_by_z: {sorted(obs_data_by_z.keys())}")
     
     # Find the best matching SHARK redshift for this bin
     z_center = (z_low + z_high) / 2
@@ -1241,9 +1244,12 @@ def add_observational_data_with_baldry(ax, z_low, z_high, obs_data, muzzin_data,
     
     # Look for SHARK data only
     shark_data = {z: data for z, data in obs_data_by_z.items() if data.get('type') == 'shark'}
+    print(f"  Available SHARK redshifts: {sorted(shark_data.keys())}")
     
     for obs_z in shark_data.keys():
-        if find_closest_redshift_in_range(obs_z, z_low, z_high):
+        matches = find_closest_redshift_in_range(obs_z, z_low, z_high)
+        print(f"    Testing SHARK z={obs_z}: matches={matches}")
+        if matches:
             # Calculate distance to bin center
             distance = abs(obs_z - z_center)
             if distance < best_distance:

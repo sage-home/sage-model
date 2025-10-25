@@ -79,11 +79,11 @@ if __name__ == '__main__':
     print('Negative Ejected gas mass:', len(np.where(EjectedMass<0.0)[0]), '\n')
     print('Negative Ejected gas mass sample:', EjectedMass[np.where(EjectedMass<0.0)[0]][:10], '\n')
 
-    # print('Total CGM gas mass in box:', np.sum(CGMgas))
-    # print('Minimum CGM gas mass:', np.min(CGMgas[np.where(CGMgas>0.0)]))
-    # print('Maximum CGM gas mass:', np.max(CGMgas))
-    # print('Negative CGM gas mass:', len(np.where(CGMgas<0.0)[0]), '\n')
-    # print('Negative CGM gas mass sample:', CGMgas[np.where(CGMgas<0.0)[0]][:10], '\n')
+    print('Total CGM gas mass in box:', np.sum(CGMgas))
+    print('Minimum CGM gas mass:', np.min(CGMgas[np.where(CGMgas>0.0)]))
+    print('Maximum CGM gas mass:', np.max(CGMgas))
+    print('Negative CGM gas mass:', len(np.where(CGMgas<0.0)[0]), '\n')
+    print('Negative CGM gas mass sample:', CGMgas[np.where(CGMgas<0.0)[0]][:10], '\n')
 
 
     IntraClusterStars = read_hdf(snap_num = Snapshot, param = 'IntraClusterStars') * 1.0e10 / Hubble_h

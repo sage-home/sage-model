@@ -236,6 +236,8 @@ int join_galaxies_of_progenitors(const int halonr, const int ngalstart, int *gal
                             galaxies[ngal].infallMvir = previousMvir;
                             galaxies[ngal].infallVvir = previousVvir;
                             galaxies[ngal].infallVmax = previousVmax;
+                            galaxies[ngal].TimeOfInfall = halos[halonr].SnapNum;  // Track snapshot of infall
+
                         }
 
                         if(galaxies[ngal].Type == 0 || galaxies[ngal].MergTime > 999.0f) {

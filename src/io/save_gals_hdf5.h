@@ -89,6 +89,7 @@ struct HDF5_GALAXY_OUTPUT
     float *infallMvir;
     float *infallVvir;
     float *infallVmax;
+    float *TimeOfInfall;
 
     /* CGM properties */
     int32_t *Regime;  /* 0 = CGM-regime 1 = ICM-regime */

@@ -18,7 +18,7 @@
 #define NUM_OUTPUT_FIELDS 2
 #pragma message "Using SAGE in MCMC mode (will only write " STR(NUM_OUTPUT_FIELDS) " fields into the hdf5 file)"
 #else
-#define NUM_OUTPUT_FIELDS 64
+#define NUM_OUTPUT_FIELDS 65
 #endif
 
 #define NUM_GALS_PER_BUFFER 8192
@@ -374,6 +374,7 @@ int32_t initialize_hdf5_galaxy_files(const int filenr, struct save_info *save_in
         MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, tcool_over_tff);
         MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, tdeplete);
         MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, RcoolToRvir);
+        MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, TimeOfInfall);
     }
 
     return EXIT_SUCCESS;
@@ -652,6 +653,7 @@ int32_t finalize_hdf5_galaxy_files(const struct forest_info *forest_info, struct
         FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, tcool_over_tff);
         FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, tdeplete);
         FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, RcoolToRvir);
+        FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, TimeOfInfall);
     }
 
     myfree(save_info->buffer_output_gals);
@@ -775,7 +777,7 @@ int32_t generate_field_metadata(char (*field_names)[MAX_STRING_LEN], char (*fiel
                                                          "SfrBulgeZ", "DiskRadius", "Cooling", "Heating", "QuasarModeBHaccretionMass",
                                                          "TimeOfLastMajorMerger", "TimeOfLastMinorMerger", "OutflowRate", "infallMvir",
                                                          "infallVvir", "infallVmax", "Regime", "CGMgas", "MetalsCGMgas", "MassLoading", "H2gas",
-                                                         "tcool", "tff", "tcool_over_tff", "tdeplete", "RcoolToRvir"};
+                                                         "tcool", "tff", "tcool_over_tff", "tdeplete", "RcoolToRvir", "TimeOfInfall"};
 
     // Must accurately describe what exactly each field is and any special considerations.
     char tmp_descriptions[NUM_OUTPUT_FIELDS][MAX_STRING_LEN] = {"Snapshot the galaxy is located at.",
@@ -821,7 +823,8 @@ int32_t generate_field_metadata(char (*field_names)[MAX_STRING_LEN], char (*fiel
                                                                 "Free-fall time of the CGM gas in the halo.",
                                                                 "Ratio of cooling time to free-fall time of the CGM gas in the halo.",
                                                                 "Depletion time of the CGM gas reservoir.",
-                                                                "Ratio of the cooling radius to the virial radius of the halo."};
+                                                                "Ratio of the cooling radius to the virial radius of the halo.",
+                                                                "Time when the galaxy last became a satellite galaxy."};
 
     char tmp_units[NUM_OUTPUT_FIELDS][MAX_STRING_LEN] = {"Unitless", "Unitless", "Unitless", "Unitless", "Unitless",
                                                          "Unitless", "Unitless", "Unitless", "Unitless",
@@ -833,7 +836,7 @@ int32_t generate_field_metadata(char (*field_names)[MAX_STRING_LEN], char (*fiel
                                                          "1.0e10 Msun/h", "1.0e10 Msun/h", "1.0e10 Msun/h", "Msun/yr", "Msun/yr", "Msun/yr",
                                                          "Msun/yr", "Mpc/h", "erg/s", "erg/s", "1.0e10 Msun/h",
                                                          "Myr", "Myr", "Msun/yr", "1.0e10 Msun/yr", "km/s", "km/s", "Unitless", "1.0e10 Msun/h", "1.0e10 Msun/h", "Unitless", "1.0e10 Msun/h",
-                                                         "Myr", "Myr", "Unitless", "Myr", "Unitless"};
+                                                         "Myr", "Myr", "Unitless", "Myr", "Unitless", "Myr"};
 
     // These are the HDF5 datatypes for each field.
     hsize_t tmp_dtype[NUM_OUTPUT_FIELDS] = {H5T_NATIVE_INT, H5T_NATIVE_INT, H5T_NATIVE_LLONG, H5T_NATIVE_LLONG, H5T_NATIVE_INT,
@@ -846,7 +849,7 @@ int32_t generate_field_metadata(char (*field_names)[MAX_STRING_LEN], char (*fiel
                                             H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT,
                                             H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT,
                                             H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_INT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT,
-                                            H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT};
+                                            H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT};
 #endif
     for(int32_t i = 0; i < NUM_OUTPUT_FIELDS; i++) {
         memcpy(field_names[i], tmp_names[i], MAX_STRING_LEN);
@@ -988,10 +991,12 @@ int32_t prepare_galaxy_for_hdf5_output(const struct GALAXY *g, struct save_info 
         save_info->buffer_output_gals[output_snap_idx].infallMvir[gals_in_buffer] = g->infallMvir;
         save_info->buffer_output_gals[output_snap_idx].infallVvir[gals_in_buffer] = g->infallVvir;
         save_info->buffer_output_gals[output_snap_idx].infallVmax[gals_in_buffer] = g->infallVmax;
+        save_info->buffer_output_gals[output_snap_idx].TimeOfInfall[gals_in_buffer] = g->TimeOfInfall;
     } else {
         save_info->buffer_output_gals[output_snap_idx].infallMvir[gals_in_buffer] = 0.0;
         save_info->buffer_output_gals[output_snap_idx].infallVvir[gals_in_buffer] = 0.0;
         save_info->buffer_output_gals[output_snap_idx].infallVmax[gals_in_buffer] = 0.0;
+        save_info->buffer_output_gals[output_snap_idx].TimeOfInfall[gals_in_buffer] = 0.0;
     }
 
     return EXIT_SUCCESS;
@@ -1189,6 +1194,7 @@ int32_t trigger_buffer_write(const int32_t snap_idx, const int32_t num_to_write,
     EXTEND_AND_WRITE_GALAXY_DATASET(tcool_over_tff);
     EXTEND_AND_WRITE_GALAXY_DATASET(tdeplete);
     EXTEND_AND_WRITE_GALAXY_DATASET(RcoolToRvir);
+    EXTEND_AND_WRITE_GALAXY_DATASET(TimeOfInfall);
 #endif
     // We've performed a write, so future galaxies will overwrite the old data.
     save_info->num_gals_in_buffer[snap_idx] = 0;
