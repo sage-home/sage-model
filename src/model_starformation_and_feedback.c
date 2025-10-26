@@ -10,7 +10,7 @@
 #include "model_misc.h"
 #include "model_disk_instability.h"
 
-static long galaxy_debug_counter = 0;
+// static long galaxy_debug_counter = 0;
 
 void starformation_and_feedback(const int p, const int centralgal, const double time, const double dt, const int halonr, const int step,
                                 struct GALAXY *galaxies, const struct params *run_params)
@@ -69,35 +69,6 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
             //     galaxies[p].ColdGas, galaxies[p].StellarMass);
             // printf("DEBUG BR06: H2_gas=%.4e, HI_gas=%.4e\n", galaxies[p].H2gas, galaxies[p].ColdGas - galaxies[p].H2gas);
             // }
-
-            
-        // galaxies[p].H2gas = total_molecular_gas;
-        
-        // ================================================================
-        // CRITICAL FIX: Minimum molecular fraction floor
-        // ================================================================
-        // Even metal-poor, low-pressure gas can form SOME H2 in dense cores
-        // and self-shielded regions (Krumholz 2012, Glover & Clark 2012)
-        
-        // const double f_mol_min = 0.02;  // 2% minimum (tunable)
-        
-        // // Apply minimum only if galaxy has significant cold gas
-        // if(galaxies[p].ColdGas > 0.001 && galaxies[p].H2gas < f_mol_min * galaxies[p].ColdGas) {
-            
-        //     // Option A: Simple floor (recommended for testing)
-        //     // galaxies[p].H2gas = f_mol_min * galaxies[p].ColdGas;
-            
-        //     // Option B: Mass-dependent floor (more sophisticated)
-        //     // double floor_scaling = fmin(1.0, galaxies[p].Mvir / 1.0); // Stronger floor at low mass
-        //     // double adaptive_floor = f_mol_min * floor_scaling;
-        //     // galaxies[p].H2gas = adaptive_floor * galaxies[p].ColdGas;
-            
-        //     // Option C: Metallicity-dependent floor
-        //     double Z = get_metallicity(galaxies[p].ColdGas, galaxies[p].MetalsColdGas);
-        //     double Z_sun = 0.02;
-        //     double Z_factor = fmin(1.0, (Z / Z_sun) + 0.1);  // Z=0 → 10% floor, Z=Z_sun → 100% floor
-        //     galaxies[p].H2gas = f_mol_min * Z_factor * galaxies[p].ColdGas;
-        // }
 
         const double cold_crit = 0.19 * galaxies[p].Vvir * reff;
         if(galaxies[p].ColdGas > cold_crit) {

@@ -40,7 +40,7 @@ double infall_recipe(const int centralgal, const int ngal, const double Zcurr, s
             // satellite ICS goes to central ICS
             galaxies[i].ICS = galaxies[i].MetalsICS = 0.0;
             
-            // satellite CGM goes to central - ZERO IT OUT
+            // satellite CGM goes to central CGM
             galaxies[i].CGMgas = galaxies[i].MetalsCGMgas = 0.0;
         }
     }

@@ -58,10 +58,9 @@ CGMrecipeSAGEOn       0   %0: switch off
 %----- SAGE model parameters --------------
 %------------------------------------------
 
-SfrEfficiency           0.05  %efficiency of SF (SFprescription=0)
+SfrEfficiency           0.04  %efficiency of SF (SFprescription=0)
 
-RedshiftPowerLawExponent    1.6   %alpha for (1+z)^alpha in mass loading calculation (FIREmodeOn=1)
-PrecipitationThreshold      10.0  % tcool/tff threshold, default=10.0 ( McCourt et al. 2012) (CGMrecipeOn=1)
+RedshiftPowerLawExponent    1.5   %alpha for (1+z)^alpha in mass loading calculation (FIREmodeOn=1)
 
 FeedbackReheatingEpsilon    1.0   %mass of cold gas reheated due to SF (see Martin 1999) (SupernovaRecipeOn=1)
 FeedbackEjectionEfficiency  1.0   %mixing efficiency of SN energy with hot gas to unbind and eject some (SupernovaRecipeOn=1)

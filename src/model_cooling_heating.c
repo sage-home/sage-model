@@ -186,16 +186,6 @@ double cooling_recipe_cgm(const int gal, const double dt, struct GALAXY *galaxie
     const double tcool_cgs = (1.5 * BOLTZMANN * temp) / (number_density * lambda); // s
     const double tcool = tcool_cgs / run_params->UnitTime_in_s; // code units
 
-    double x = PROTONMASS * BOLTZMANN * temp / lambda;        // now this has units sec g/cm^3
-    x /= (run_params->UnitDensity_in_cgs * run_params->UnitTime_in_s);         // now in internal units
-    const double rho_rcool = x / tcool * 0.885;  // 0.885 = 3/2 * mu, mu=0.59 for a fully ionized gas
-
-    // an isothermal density profile for the hot gas is assumed here
-    const double rho0 = galaxies[gal].CGMgas / (4 * M_PI * galaxies[gal].Rvir);
-    const double rcool = sqrt(rho0 / rho_rcool);
-
-    galaxies[gal].RcoolToRvir = rcool / galaxies[gal].Rvir;
-
     // ========================================================================
     // STEP 2: CALCULATE FREE-FALL TIME
     // ========================================================================
@@ -219,7 +209,7 @@ double cooling_recipe_cgm(const int gal, const double dt, struct GALAXY *galaxie
     // STEP 3: PRECIPITATION CRITERION
     // ========================================================================
 
-    const double precipitation_threshold = run_params->PrecipitationThreshold;  // default=10, McCourt et al. 2012
+    const double precipitation_threshold = 10;  // default=10, McCourt et al. 2012
     const double transition_width = 2.0;  // Smooth transition over factor ~2
     
     double precipitation_fraction = 0.0;
@@ -235,6 +225,13 @@ double cooling_recipe_cgm(const int gal, const double dt, struct GALAXY *galaxie
             // Transition regime - smooth with hyperbolic tangent
             const double x = (tcool_over_tff - precipitation_threshold) / transition_width;
             precipitation_fraction = 0.5 * (1.0 - tanh(x));
+            const double rho_rcool = x / tcool * 0.885;  // 0.885 = 3/2 * mu, mu=0.59 for a fully ionized gas
+
+            // an isothermal density profile for the hot gas is assumed here
+            const double rho0 = galaxies[gal].CGMgas / (4 * M_PI * galaxies[gal].Rvir);
+            const double rcool = sqrt(rho0 / rho_rcool);
+
+            galaxies[gal].RcoolToRvir = rcool / galaxies[gal].Rvir;
     }
     // else: tcool_over_tff >= 15, precipitation_fraction = 0.0 (thermally stable)
 

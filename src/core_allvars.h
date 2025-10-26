@@ -460,7 +460,6 @@ struct params
     double Reionization_zr;
     double ThresholdSatDisruption;
     double RedshiftPowerLawExponent;
-    double PrecipitationThreshold;
 
     double UnitLength_in_cm;
     double UnitVelocity_in_cm_per_s;

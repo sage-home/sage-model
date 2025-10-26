@@ -215,8 +215,8 @@ void determine_and_store_regime(const int ngal, struct GALAXY *galaxies,
         // Smooth transition using tanh around regime_criterion = 1.0
         // transition_width controls how sharp the transition is
         // Smaller = sharper, larger = smoother (0.2 is a good compromise)
-        const double transition_width = 0.2;
-        const double regime_smooth = 0.5 * (1.0 + tanh((regime_criterion - 1.0) / transition_width));
+        // const double transition_width = 0.2;
+        // const double regime_smooth = 0.5 * (1.0 + tanh((regime_criterion - 1.0) / transition_width));
         
         // Store as float between 0 and 1 (0 = pure CGM, 1 = pure hot-ICM)
         // For backwards compatibility with integer checks, round to 0 or 1
