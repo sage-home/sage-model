@@ -3627,81 +3627,81 @@ if __name__ == "__main__":
         print("\nCreating simple SMF comparison plot...")
         create_simple_smf_plot()
         
-        print("\nCreating LOW-Z SMF grid (z=0-3.5)...")
-        # Create the main SMF grid plot for low redshifts
-        fig1, axes1 = plot_smf_redshift_grid(
-            galaxy_types='all',
-            mass_range=(8, 12),
-            z_range=(0, 3.5),
-            save_path=OutputDir + 'sage_smf_redshift_grid_low_z_all' + OutputFormat,
-            figure_title="(z = 0-3.5)"
-        )
+        # print("\nCreating LOW-Z SMF grid (z=0-3.5)...")
+        # # Create the main SMF grid plot for low redshifts
+        # fig1, axes1 = plot_smf_redshift_grid(
+        #     galaxy_types='all',
+        #     mass_range=(8, 12),
+        #     z_range=(0, 3.5),
+        #     save_path=OutputDir + 'sage_smf_redshift_grid_low_z_all' + OutputFormat,
+        #     figure_title="(z = 0-3.5)"
+        # )
         
-        print("\nCreating HIGH-Z SMF grid (z=3.5-10)...")
-        # Create the main SMF grid plot for high redshifts
-        fig2, axes2 = plot_smf_redshift_grid(
-            galaxy_types='all',
-            mass_range=(8, 12),
-            z_range=(3.5, 10),
-            save_path=OutputDir + 'sage_smf_redshift_grid_high_z_all' + OutputFormat,
-            figure_title="(z = 3.5-10)"
-        )
+        # print("\nCreating HIGH-Z SMF grid (z=3.5-10)...")
+        # # Create the main SMF grid plot for high redshifts
+        # fig2, axes2 = plot_smf_redshift_grid(
+        #     galaxy_types='all',
+        #     mass_range=(8, 12),
+        #     z_range=(3.5, 10),
+        #     save_path=OutputDir + 'sage_smf_redshift_grid_high_z_all' + OutputFormat,
+        #     figure_title="(z = 3.5-10)"
+        # )
         
-        # Create separate plots for central galaxies
-        print("\nCreating central galaxies LOW-Z SMF grid...")
-        fig3, axes3 = plot_smf_redshift_grid(
-            galaxy_types='central',
-            mass_range=(8, 12),
-            z_range=(0, 3.5),
-            save_path=OutputDir + 'sage_smf_redshift_grid_low_z_central' + OutputFormat,
-            figure_title="Central Galaxies (z = 0-3.5)"
-        )
+        # # Create separate plots for central galaxies
+        # print("\nCreating central galaxies LOW-Z SMF grid...")
+        # fig3, axes3 = plot_smf_redshift_grid(
+        #     galaxy_types='central',
+        #     mass_range=(8, 12),
+        #     z_range=(0, 3.5),
+        #     save_path=OutputDir + 'sage_smf_redshift_grid_low_z_central' + OutputFormat,
+        #     figure_title="Central Galaxies (z = 0-3.5)"
+        # )
         
-        print("\nCreating central galaxies HIGH-Z SMF grid...")
-        fig4, axes4 = plot_smf_redshift_grid(
-            galaxy_types='central',
-            mass_range=(8, 12),
-            z_range=(3.5, 10),
-            save_path=OutputDir + 'sage_smf_redshift_grid_high_z_central' + OutputFormat,
-            figure_title="Central Galaxies (z = 3.5-10)"
-        )
+        # print("\nCreating central galaxies HIGH-Z SMF grid...")
+        # fig4, axes4 = plot_smf_redshift_grid(
+        #     galaxy_types='central',
+        #     mass_range=(8, 12),
+        #     z_range=(3.5, 10),
+        #     save_path=OutputDir + 'sage_smf_redshift_grid_high_z_central' + OutputFormat,
+        #     figure_title="Central Galaxies (z = 3.5-10)"
+        # )
         
-        # Create separate plots for satellite galaxies
-        print("\nCreating satellite galaxies LOW-Z SMF grid...")
-        fig5, axes5 = plot_smf_redshift_grid(
-            galaxy_types='satellite',
-            mass_range=(8, 12),
-            z_range=(0, 3.5),
-            save_path=OutputDir + 'sage_smf_redshift_grid_low_z_satellite' + OutputFormat,
-            figure_title="Satellite Galaxies (z = 0-3.5)"
-        )
+        # # Create separate plots for satellite galaxies
+        # print("\nCreating satellite galaxies LOW-Z SMF grid...")
+        # fig5, axes5 = plot_smf_redshift_grid(
+        #     galaxy_types='satellite',
+        #     mass_range=(8, 12),
+        #     z_range=(0, 3.5),
+        #     save_path=OutputDir + 'sage_smf_redshift_grid_low_z_satellite' + OutputFormat,
+        #     figure_title="Satellite Galaxies (z = 0-3.5)"
+        # )
         
-        print("\nCreating satellite galaxies HIGH-Z SMF grid...")
-        fig6, axes6 = plot_smf_redshift_grid(
-            galaxy_types='satellite',
-            mass_range=(8, 12),
-            z_range=(3.5, 10),
-            save_path=OutputDir + 'sage_smf_redshift_grid_high_z_satellite' + OutputFormat,
-            figure_title="Satellite Galaxies (z = 3.5-10)"
-        )
+        # print("\nCreating satellite galaxies HIGH-Z SMF grid...")
+        # fig6, axes6 = plot_smf_redshift_grid(
+        #     galaxy_types='satellite',
+        #     mass_range=(8, 12),
+        #     z_range=(3.5, 10),
+        #     save_path=OutputDir + 'sage_smf_redshift_grid_high_z_satellite' + OutputFormat,
+        #     figure_title="Satellite Galaxies (z = 3.5-10)"
+        # )
 
-        # All galaxies
-        plot_smf_selected_bins(
-            galaxy_types='all',
-            save_path=OutputDir + 'sage_smf_selected_bins_all.pdf'
-        )
+        # # All galaxies
+        # plot_smf_selected_bins(
+        #     galaxy_types='all',
+        #     save_path=OutputDir + 'sage_smf_selected_bins_all.pdf'
+        # )
 
-        # Central galaxies only
-        plot_smf_selected_bins(
-            galaxy_types='central', 
-            save_path=OutputDir + 'sage_smf_selected_bins_central.pdf'
-        )
+        # # Central galaxies only
+        # plot_smf_selected_bins(
+        #     galaxy_types='central', 
+        #     save_path=OutputDir + 'sage_smf_selected_bins_central.pdf'
+        # )
 
-        # Satellite galaxies only
-        plot_smf_selected_bins(
-            galaxy_types='satellite',
-            save_path=OutputDir + 'sage_smf_selected_bins_satellite.pdf'
-        )
+        # # Satellite galaxies only
+        # plot_smf_selected_bins(
+        #     galaxy_types='satellite',
+        #     save_path=OutputDir + 'sage_smf_selected_bins_satellite.pdf'
+        # )
 
         # All galaxies (already included in main script)
         plot_smf_all_redshift_bins(galaxy_types='all', 

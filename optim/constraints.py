@@ -1250,15 +1250,47 @@ class SMF_z0(SMF):
 
     z = [0]
 
-    def get_obs_x_y_err(self):
-        # Load data from Driver et al. (2022)
-        logm, logphi, dlogphi = self.load_observation('./data/GAMA_SMF_highres.csv', cols=[0,1,2])
-        cosmology_correction_median = np.log10( r.comoving_distance(0.079, 100*self.h0, 0, self.Omega0, 1.0-self.Omega0) / r.comoving_distance(0.079, 70.0, 0, 0.3, 0.7) )
-        cosmology_correction_maximum = np.log10( r.comoving_distance(0.1, 100*self.h0, 0, self.Omega0, 1.0-self.Omega0) / r.comoving_distance(0.1, 70.0, 0, 0.3, 0.7) )
-        x_obs = logm + 2.0 * cosmology_correction_median 
-        y_obs = logphi - 3.0 * cosmology_correction_maximum + 0.0807 # last factor accounts for average under-density of GAMA and to correct for this to be at z=0
+    # def get_obs_x_y_err(self):
+    #     # Load data from Driver et al. (2022)
+    #     logm, logphi, dlogphi = self.load_observation('./data/GAMA_SMF_highres.csv', cols=[0,1,2])
+    #     cosmology_correction_median = np.log10( r.comoving_distance(0.079, 100*self.h0, 0, self.Omega0, 1.0-self.Omega0) / r.comoving_distance(0.079, 70.0, 0, 0.3, 0.7) )
+    #     cosmology_correction_maximum = np.log10( r.comoving_distance(0.1, 100*self.h0, 0, self.Omega0, 1.0-self.Omega0) / r.comoving_distance(0.1, 70.0, 0, 0.3, 0.7) )
+    #     x_obs = logm + 2.0 * cosmology_correction_median 
+    #     y_obs = logphi - 3.0 * cosmology_correction_maximum + 0.0807 # last factor accounts for average under-density of GAMA and to correct for this to be at z=0
 
-        return x_obs, y_obs, dlogphi, dlogphi
+    #     return x_obs, y_obs, dlogphi, dlogphi
+
+    def get_obs_x_y_err(self):
+        # Load data from Muzzin et al. (2013) for 0.2<z<0.5
+        # Format: zlow zup Mstar E_Mstar logPhi EU_Phi EL_Phi (for ALL galaxies)
+        data = self.load_observation('./data/SMF_Muzzin2013.dat', cols=[2,4,5,6])
+        
+        # Filter for the z=0.2-0.5 redshift bin
+        # Since the file has multiple redshift bins, you need to read the full data first
+        full_data = np.loadtxt('./data/SMF_Muzzin2013.dat', comments='#')
+        
+        # Filter for 0.2<z<0.5 (first ~36 rows based on the file)
+        mask = (full_data[:, 0] == 0.2) & (full_data[:, 1] == 0.5)
+        z_bin_data = full_data[mask]
+        
+        # Extract stellar mass and phi for ALL galaxies
+        logm = z_bin_data[:, 2]  # Mstar column
+        logphi = z_bin_data[:, 4]  # logPhi for ALL galaxies
+        err_up = z_bin_data[:, 5]  # EU_Phi
+        err_low = z_bin_data[:, 6]  # EL_Phi
+        
+        # Apply cosmology corrections (Muzzin uses H0=70, Omega_m=0.3, Omega_L=0.7)
+        z_median = 0.35  # midpoint of 0.2-0.5 range
+        cosmology_correction_mass = 2.0 * np.log10(self.h0 / 0.7)
+        cosmology_correction_phi = -3.0 * np.log10(
+            r.comoving_distance(z_median, 100*self.h0, 0, self.Omega0, 1.0-self.Omega0) / 
+            r.comoving_distance(z_median, 70.0, 0, 0.3, 0.7)
+        )
+        
+        x_obs = logm + cosmology_correction_mass
+        y_obs = logphi + cosmology_correction_phi
+    
+        return x_obs, y_obs, err_low, err_up
     
     def get_sage_x_y(self):
         # Load data from SAGE

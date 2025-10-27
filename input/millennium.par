@@ -65,7 +65,7 @@ RedshiftPowerLawExponent    1.5   %alpha for (1+z)^alpha in mass loading calcula
 FeedbackReheatingEpsilon    1.0   %mass of cold gas reheated due to SF (see Martin 1999) (SupernovaRecipeOn=1)
 FeedbackEjectionEfficiency  1.0   %mixing efficiency of SN energy with hot gas to unbind and eject some (SupernovaRecipeOn=1)
 
-ReIncorporationFactor   0.15    %fraction of ejected mass reincorporated per dynamical time to hot
+ReIncorporationFactor   0.05    %fraction of ejected mass reincorporated per dynamical time to hot
 
 RadioModeEfficiency     0.08  %AGN radio mode efficiency (AGNrecipeOn=2)
 QuasarModeEfficiency    0.005 %AGN quasar mode wind heating efficiency (AGNrecipeOn>0)
