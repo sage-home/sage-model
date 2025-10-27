@@ -211,17 +211,6 @@ void determine_and_store_regime(const int ngal, struct GALAXY *galaxies,
         // Calculate (Mvir/Mshock)^(4/3)
         const double mass_ratio = Mvir_physical / Mshock;
         const double regime_criterion = pow(mass_ratio, 4.0/3.0);
-        
-        // Smooth transition using tanh around regime_criterion = 1.0
-        // transition_width controls how sharp the transition is
-        // Smaller = sharper, larger = smoother (0.2 is a good compromise)
-        // const double transition_width = 0.2;
-        // const double regime_smooth = 0.5 * (1.0 + tanh((regime_criterion - 1.0) / transition_width));
-        
-        // Store as float between 0 and 1 (0 = pure CGM, 1 = pure hot-ICM)
-        // For backwards compatibility with integer checks, round to 0 or 1
-        // But you can also use the smooth value directly in physics calculations
-        // galaxies[p].Regime = (regime_smooth > 0.5) ? 1 : 0;
 
         galaxies[p].Regime = (regime_criterion >= 1.0) ? 1 : 0;
         
