@@ -254,7 +254,7 @@ def run_sage_hpc(particles, *args):
         
         for retry in range(max_retries):
             try:
-                total_score = sum(_evaluate(c, statTest, particle_dir, subvols) for c in opts.constraints)
+                total_score = sum(_evaluate(c, statTest, particle_dir, subvols) * c.rel_weight for c in opts.constraints)
                 fx[i] = total_score
                 success = True
                 break
@@ -324,7 +324,8 @@ def run_sage(particle, *args):
     cmdline = [opts.sage_binary, temp_filename]
     _exec_sage('Running SAGE instance', cmdline)
 
-    total = 10**sum(np.log10(np.sum(_evaluate(c, statTest, modeldir, subvols))*c.weight) for c in opts.constraints)
+    # Simple weighted sum of constraint scores (fixed from exponential transformation)
+    total = sum(_evaluate(c, statTest, modeldir, subvols) * c.rel_weight for c in opts.constraints)
     logger.info('Particle %r evaluated to %f', particle, total)
 
     shutil.rmtree(modeldir)

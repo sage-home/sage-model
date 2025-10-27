@@ -885,8 +885,10 @@ class BHMF_z0(BHMF):
         valid_mask = ~np.isnan(logm) & ~np.isnan(logphi)
         x_obs = logm[valid_mask]
         y_obs = logphi[valid_mask]
-        err = np.zeros(len(y_obs))
-
+        # err = np.ones(len(y_obs)) * 0.2  # ~0.2 dex uncertainty for SMF
+        # Add realistic observational errors (typical for BHMF)
+        err = np.ones(len(y_obs)) * 0.3  # ~0.3 dex uncertainty
+    
         return x_obs, y_obs, err, err
     
     def get_sage_x_y(self):
@@ -912,7 +914,7 @@ class BHMF_z10(BHMF):
         valid_mask = ~np.isnan(logm) & ~np.isnan(logphi)
         x_obs = logm[valid_mask]
         y_obs = logphi[valid_mask]
-        err = np.zeros(len(y_obs))
+        err = np.ones(len(y_obs)) * 0.3  # ~0.3 dex uncertainty for BHMF
 
         return x_obs, y_obs, err, err
     
@@ -939,7 +941,7 @@ class BHMF_z20(BHMF):
         valid_mask = ~np.isnan(logm) & ~np.isnan(logphi)
         x_obs = logm[valid_mask]
         y_obs = logphi[valid_mask]
-        err = np.zeros(len(y_obs))
+        err = np.ones(len(y_obs)) * 0.3  # ~0.3 dex uncertainty for BHMF
 
         return x_obs, y_obs, err, err
     
@@ -966,7 +968,7 @@ class BHMF_z30(BHMF):
         valid_mask = ~np.isnan(logm) & ~np.isnan(logphi)
         x_obs = logm[valid_mask]
         y_obs = logphi[valid_mask]
-        err = np.zeros(len(y_obs))
+        err = np.ones(len(y_obs)) * 0.3  # ~0.3 dex uncertainty for BHMF
 
         return x_obs, y_obs, err, err
     
@@ -993,7 +995,7 @@ class BHMF_z40(BHMF):
         valid_mask = ~np.isnan(logm) & ~np.isnan(logphi)
         x_obs = logm[valid_mask]
         y_obs = logphi[valid_mask]
-        err = np.zeros(len(y_obs))
+        err = np.ones(len(y_obs)) * 0.3  # ~0.3 dex uncertainty for BHMF
 
         return x_obs, y_obs, err, err
     
@@ -1020,7 +1022,7 @@ class BHMF_z50(BHMF):
         valid_mask = ~np.isnan(logm) & ~np.isnan(logphi)
         x_obs = logm[valid_mask]
         y_obs = logphi[valid_mask]
-        err = np.zeros(len(y_obs))
+        err = np.ones(len(y_obs)) * 0.3  # ~0.3 dex uncertainty for BHMF
 
         return x_obs, y_obs, err, err
     
@@ -1047,7 +1049,7 @@ class BHMF_z60(BHMF):
         valid_mask = ~np.isnan(logm) & ~np.isnan(logphi)
         x_obs = logm[valid_mask]
         y_obs = logphi[valid_mask]
-        err = np.zeros(len(y_obs))
+        err = np.ones(len(y_obs)) * 0.3  # ~0.3 dex uncertainty for BHMF
 
         return x_obs, y_obs, err, err
     
@@ -1074,7 +1076,7 @@ class BHMF_z70(BHMF):
         valid_mask = ~np.isnan(logm) & ~np.isnan(logphi)
         x_obs = logm[valid_mask]
         y_obs = logphi[valid_mask]
-        err = np.zeros(len(y_obs))
+        err = np.ones(len(y_obs)) * 0.3  # ~0.3 dex uncertainty for BHMF
 
         return x_obs, y_obs, err, err
     
@@ -1101,7 +1103,7 @@ class BHMF_z80(BHMF):
         valid_mask = ~np.isnan(logm) & ~np.isnan(logphi)
         x_obs = logm[valid_mask]
         y_obs = logphi[valid_mask]
-        err = np.zeros(len(y_obs))
+        err = np.ones(len(y_obs)) * 0.3  # ~0.3 dex uncertainty for BHMF
 
         return x_obs, y_obs, err, err
     
@@ -1128,7 +1130,7 @@ class BHMF_z100(BHMF):
         valid_mask = ~np.isnan(logm) & ~np.isnan(logphi)
         x_obs = logm[valid_mask]
         y_obs = logphi[valid_mask]
-        err = np.zeros(len(y_obs))
+        err = np.ones(len(y_obs)) * 0.3  # ~0.3 dex uncertainty for BHMF
 
         return x_obs, y_obs, err, err
     
@@ -1174,7 +1176,7 @@ class SMF_red_z0(SMF_red):
     
         x_obs = np.array([(value - (2*np.log10(self.h0/0.70))) for value in Baldry_Red_x])
         y_obs = np.array(Baldry_Red_y)
-        err = np.zeros(len(y_obs))
+        err = np.ones(len(y_obs)) * 0.2  # ~0.2 dex uncertainty for SMF
 
         return x_obs, y_obs, err, err
     
@@ -1220,7 +1222,7 @@ class SMF_blue_z0(SMF_blue):
         
         x_obs = np.array([(value - (2*np.log10(self.h0/0.70))) for value in Baldry_Blue_x])
         y_obs = np.array(Baldry_Blue_y)
-        err = np.zeros(len(y_obs))
+        err = np.ones(len(y_obs)) * 0.2  # ~0.2 dex uncertainty for SMF
 
         return x_obs, y_obs, err, err
     
@@ -1315,7 +1317,7 @@ class SMF_z02(SMF):
         valid_mask = ~np.isnan(logm) & ~np.isnan(logphi)
         x_obs = logm[valid_mask]
         y_obs = logphi[valid_mask]
-        err = np.zeros(len(y_obs))
+        err = np.ones(len(y_obs)) * 0.2  # ~0.2 dex uncertainty for SMF
 
         return x_obs, y_obs, err, err
     
@@ -1342,7 +1344,7 @@ class SMF_z05(SMF):
         valid_mask = ~np.isnan(logm) & ~np.isnan(logphi)
         x_obs = logm[valid_mask]
         y_obs = logphi[valid_mask]
-        err = np.zeros(len(y_obs))
+        err = np.ones(len(y_obs)) * 0.2  # ~0.2 dex uncertainty for SMF
 
         return x_obs, y_obs, err, err
     
@@ -1369,7 +1371,7 @@ class SMF_z08(SMF):
         valid_mask = ~np.isnan(logm) & ~np.isnan(logphi)
         x_obs = logm[valid_mask]
         y_obs = logphi[valid_mask]
-        err = np.zeros(len(y_obs))
+        err = np.ones(len(y_obs)) * 0.2  # ~0.2 dex uncertainty for SMF
 
         return x_obs, y_obs, err, err
     
@@ -1396,7 +1398,7 @@ class SMF_z10(SMF):
         valid_mask = ~np.isnan(logm) & ~np.isnan(logphi)
         x_obs = logm[valid_mask]
         y_obs = logphi[valid_mask]
-        err = np.zeros(len(y_obs))
+        err = np.ones(len(y_obs)) * 0.2  # ~0.2 dex uncertainty for SMF
 
         return x_obs, y_obs, err, err
     
@@ -1423,7 +1425,7 @@ class SMF_z11(SMF):
         valid_mask = ~np.isnan(logm) & ~np.isnan(logphi)
         x_obs = logm[valid_mask]
         y_obs = logphi[valid_mask]
-        err = np.zeros(len(y_obs))
+        err = np.ones(len(y_obs)) * 0.2  # ~0.2 dex uncertainty for SMF
 
         return x_obs, y_obs, err, err
     
@@ -1450,7 +1452,7 @@ class SMF_z15(SMF):
         valid_mask = ~np.isnan(logm) & ~np.isnan(logphi)
         x_obs = logm[valid_mask]
         y_obs = logphi[valid_mask]
-        err = np.zeros(len(y_obs))
+        err = np.ones(len(y_obs)) * 0.2  # ~0.2 dex uncertainty for SMF
 
         return x_obs, y_obs, err, err
     
@@ -1477,7 +1479,7 @@ class SMF_z20(SMF):
         valid_mask = ~np.isnan(logm) & ~np.isnan(logphi)
         x_obs = logm[valid_mask]
         y_obs = logphi[valid_mask]
-        err = np.zeros(len(y_obs))
+        err = np.ones(len(y_obs)) * 0.2  # ~0.2 dex uncertainty for SMF
 
         return x_obs, y_obs, err, err
     
@@ -1504,7 +1506,7 @@ class SMF_z24(SMF):
         valid_mask = ~np.isnan(logm) & ~np.isnan(logphi)
         x_obs = logm[valid_mask]
         y_obs = logphi[valid_mask]
-        err = np.zeros(len(y_obs))
+        err = np.ones(len(y_obs)) * 0.2  # ~0.2 dex uncertainty for SMF
 
         return x_obs, y_obs, err, err
     
@@ -1531,7 +1533,7 @@ class SMF_z31(SMF):
         valid_mask = ~np.isnan(logm) & ~np.isnan(logphi)
         x_obs = logm[valid_mask]
         y_obs = logphi[valid_mask]
-        err = np.zeros(len(y_obs))
+        err = np.ones(len(y_obs)) * 0.2  # ~0.2 dex uncertainty for SMF
 
         return x_obs, y_obs, err, err
     
@@ -1558,7 +1560,7 @@ class SMF_z36(SMF):
         valid_mask = ~np.isnan(logm) & ~np.isnan(logphi)
         x_obs = logm[valid_mask]
         y_obs = logphi[valid_mask]
-        err = np.zeros(len(y_obs))
+        err = np.ones(len(y_obs)) * 0.2  # ~0.2 dex uncertainty for SMF
 
         return x_obs, y_obs, err, err
     
@@ -1585,7 +1587,7 @@ class SMF_z46(SMF):
         valid_mask = ~np.isnan(logm) & ~np.isnan(logphi)
         x_obs = logm[valid_mask]
         y_obs = logphi[valid_mask]
-        err = np.zeros(len(y_obs))
+        err = np.ones(len(y_obs)) * 0.2  # ~0.2 dex uncertainty for SMF
 
         return x_obs, y_obs, err, err
     
@@ -1612,7 +1614,7 @@ class SMF_z57(SMF):
         valid_mask = ~np.isnan(logm) & ~np.isnan(logphi)
         x_obs = logm[valid_mask]
         y_obs = logphi[valid_mask]
-        err = np.zeros(len(y_obs))
+        err = np.ones(len(y_obs)) * 0.2  # ~0.2 dex uncertainty for SMF
 
         return x_obs, y_obs, err, err
     
@@ -1639,7 +1641,7 @@ class SMF_z63(SMF):
         valid_mask = ~np.isnan(logm) & ~np.isnan(logphi)
         x_obs = logm[valid_mask]
         y_obs = logphi[valid_mask]
-        err = np.zeros(len(y_obs))
+        err = np.ones(len(y_obs)) * 0.2  # ~0.2 dex uncertainty for SMF
 
         return x_obs, y_obs, err, err
     
@@ -1666,7 +1668,7 @@ class SMF_z77(SMF):
         valid_mask = ~np.isnan(logm) & ~np.isnan(logphi)
         x_obs = logm[valid_mask]
         y_obs = logphi[valid_mask]
-        err = np.zeros(len(y_obs))
+        err = np.ones(len(y_obs)) * 0.2  # ~0.2 dex uncertainty for SMF
 
         return x_obs, y_obs, err, err
     
@@ -1693,7 +1695,7 @@ class SMF_z85(SMF):
         valid_mask = ~np.isnan(logm) & ~np.isnan(logphi)
         x_obs = logm[valid_mask]
         y_obs = logphi[valid_mask]
-        err = np.zeros(len(y_obs))
+        err = np.ones(len(y_obs)) * 0.2  # ~0.2 dex uncertainty for SMF
 
         return x_obs, y_obs, err, err
     
@@ -1720,7 +1722,7 @@ class SMF_z104(SMF):
         valid_mask = ~np.isnan(logm) & ~np.isnan(logphi)
         x_obs = logm[valid_mask]
         y_obs = logphi[valid_mask]
-        err = np.zeros(len(y_obs))
+        err = np.ones(len(y_obs)) * 0.2  # ~0.2 dex uncertainty for SMF
         
         return x_obs, y_obs, err, err
     
