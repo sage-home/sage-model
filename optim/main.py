@@ -53,37 +53,13 @@ def get_required_snapshots(constraints_str):
     # Map of constraint classes to their snapshots 
     snapshot_map = {
         'SMF_z0': [63],
-        'SMF_z02': [43],
-        'SMF_z05': [38],
-        'SMF_z08': [34],
+        'SMF_z05': [48],
         'SMF_z10': [40], 
-        'SMF_z11': [38],
-        'SMF_z15': [27],
         'SMF_z20': [32],
-        'SMF_z24': [20],
-        'SMF_z31': [16],
-        'SMF_z36': [14],
-        'SMF_z46': [11],
-        'SMF_z57': [9],
-        'SMF_z63': [8],
-        'SMF_z77': [6],
-        'SMF_z85': [5],
-        'SMF_z104': [3],
+        'SMF_z30': [27],
+        'SMF_z40': [23],
         'BHMF_z0': [63],
-        'BHMF_z20': [32],
-        'BHBM_z0': [63],
-        'BHBM_z20': [32],
-        'HSMR_z0': [63],
-        'SMF_red_z0': [63],
-        'SMF_blue_z0': [63],
-        'SMF_Color_z0': [63],
-        'SMD_evolution': [63],
-        'TARGET_SMF_z0': [63],
-        'TARGET_SMF_z05': [38],
-        'TARGET_SMF_z10': [40],
-        'TARGET_SMF_z20': [32],
-        'TARGET_SMF_z31': [16],
-        'TARGET_SMF_z46': [11]
+        'BHBM_z0': [63]
     }
     
     snapshots = set()

@@ -58,7 +58,26 @@ def _exec_sage(msg, cmdline):
 
 def _evaluate(constraint, stat_test, modeldir, subvols):
     y_obs, y_mod, err = constraint.get_data(modeldir, subvols)
-    return stat_test(y_obs, y_mod, err)
+    
+    # Debug: write to file to verify data is correct
+    constraint_name = constraint.__class__.__name__
+    debug_file = os.path.join(os.path.dirname(modeldir), 'constraint_debug.txt')
+    with open(debug_file, 'a') as f:
+        f.write(f"\n=== {constraint_name} Evaluation Debug ===\n")
+        f.write(f"Number of data points: {len(y_obs)}\n")
+        f.write(f"y_obs (first 5): {y_obs[:5]}\n")
+        f.write(f"y_obs (last 5): {y_obs[-5:]}\n")
+        f.write(f"y_obs min/max: {np.min(y_obs):.3f} / {np.max(y_obs):.3f}\n")
+        f.write(f"y_obs all same? {np.all(y_obs == y_obs[0])}\n")
+        f.write(f"err (first 5): {err[:5]}\n")
+    
+    score = stat_test(y_obs, y_mod, err)
+    
+    with open(debug_file, 'a') as f:
+        f.write(f"Chi-squared score: {score:.2f}\n")
+        f.write("="*50 + "\n")
+    
+    return score
 
 count = 0
 def run_sage_hpc(particles, *args):

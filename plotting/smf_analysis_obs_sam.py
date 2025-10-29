@@ -49,7 +49,7 @@ MODEL_CONFIGS = [
     },
     {
         'name': 'SAGE C16',           # Display name for legend
-        'dir': './output/millennium_vanilla/',  # Second directory path
+        'dir': '../../SAGE-VANILLA/sage-model/output/millennium/',  # Second directory path
         'color': 'blue',             # Color for plotting
         'linestyle': '--',           # Dashed line style
         'linewidth': 2,              # Thin line for Vanilla SAGE

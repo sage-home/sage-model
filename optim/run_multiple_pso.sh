@@ -19,7 +19,7 @@ NUM_RUNS=$1
 CONSTRAINTS=$2
 
 # Base directory for storing results
-BASE_OUTPUT_DIR="/fred/oz004/mbradley/SAGE-GAS/sage-model/output/millennium_pso_multi"
+BASE_OUTPUT_DIR="/Users/mbradley/Documents/PhD/SAGE-2.0/sage-model/output/millennium_pso_multi"
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 MULTI_RUN_DIR="${BASE_OUTPUT_DIR}_${TIMESTAMP}"
 
@@ -36,18 +36,18 @@ echo "========================================="
 echo ""
 
 # Fixed parameters (from run_pso.sh)
-CONFIG_PATH="/fred/oz004/mbradley/SAGE-GAS/sage-model/input/minimillennium.par"
-BASE_PATH="/fred/oz004/mbradley/SAGE-GAS/sage-model/sage"
+CONFIG_PATH="/Users/mbradley/Documents/PhD/SAGE-2.0/sage-model/input/millennium.par"
+BASE_PATH="/Users/mbradley/Documents/PhD/SAGE-2.0/sage-model/sage"
 PARTICLES=16
-ITERATIONS=2
+ITERATIONS=50
 TEST="student-t"
-AGE_ALIST_FILE_MINI_MILLENNIUM="/fred/oz004/mbradley/SAGE-GAS/sage-model/input/millennium/trees/millennium.a_list"
+AGE_ALIST_FILE_MINI_MILLENNIUM="/Users/mbradley/Documents/PhD/SAGE-2.0/sage-model/input/millennium/trees/millennium.a_list"
 BOXSIZE=62.5
 SIM_MINI_MILLENNIUM=1
 VOL_FRAC=1.0
 OMEGA0=0.25 
 H0=0.73
-SPACEFILE="/fred/oz004/mbradley/SAGE-GAS/sage-model/optim/space.txt"
+SPACEFILE="/Users/mbradley/Documents/PhD/SAGE-2.0/sage-model/optim/space.txt"
 ACCOUNT="oz004"
 
 # Array to store CSV output paths

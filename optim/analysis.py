@@ -55,11 +55,29 @@ def npsum(f):
 
 @npsum
 def chi2(obs, mod, err):
-    error = np.std(obs)
-    chi2 = ((mod - obs) / err)**2 #/ (len(mod) - 4.0) # hard-coded for 4 parameters being fit here for a reduced chi-squared.  Note that this array actually has to be summed to get the reduced chi^2 of the fit
-    #chi2 = ((mod**2 - obs**2) / error**2) #/ (len(mod) - 4.0) # hard-coded for 4 parameters being fit here for a reduced chi-squared.  Note that this array actually has to be summed to get the reduced chi^2 of the fit
-    #chi2 = np.nan_to_num(chi2, nan=0.0)
-    #print(chi2)
+    """
+    Calculate chi-squared statistic.
+    
+    Parameters:
+    -----------
+    obs : array
+        Observed values
+    mod : array
+        Model values
+    err : array
+        1-sigma uncertainties on observations
+        
+    Returns:
+    --------
+    chi2 : float
+        Sum of squared normalized residuals
+    """
+    # Ensure errors are valid (avoid division by zero)
+    err = np.maximum(err, 1e-8)
+    
+    # Standard chi-squared: sum of squared normalized residuals
+    chi2 = ((mod - obs) / err)**2
+    
     return chi2
 
 @npsum
