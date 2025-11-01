@@ -59,6 +59,7 @@ def get_required_snapshots(constraints_str):
         'SMF_z30': [27],
         'SMF_z40': [23],
         'BHMF_z0': [63],
+        'BHMF_z10': [40],
         'BHBM_z0': [63]
     }
     

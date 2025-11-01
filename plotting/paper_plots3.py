@@ -179,7 +179,7 @@ SFR_SimDirs = [
         'BHMFsnaps': [63, 40, 32, 27, 23, 20, 18, 16]
     },
     {
-        'path': './output/millennium_vanilla/', 
+        'path': '../../SAGE-VANILLA/sage-model/output/millennium/', 
         'label': 'SAGE C16', 
         'color': 'blue', 
         'linestyle': '--',
@@ -220,7 +220,7 @@ SMF_SimConfigs = [
         'VolumeFraction': 1.0
     },
     {
-        'path': './output/millennium_vanilla/', 
+        'path': '../../SAGE-VANILLA/sage-model/output/millennium/', 
         'label': 'SAGE C16', 
         'color': 'blue', 
         'linestyle': '--',  # dashed line
@@ -255,7 +255,7 @@ GAS_SimConfigs = [
         'alpha': 0.9
     },
     {
-        'path': './output/millennium_vanilla/', 
+        'path': '../../SAGE-VANILLA/sage-model/output/millennium/', 
         'label': 'SAGE C16', 
         'color': 'blue', 
         'linestyle': '--',

@@ -74,6 +74,7 @@ MODEL_CONFIGS = [
         'alpha': 0.8,               # Transparency
         'boxsize': 62.5,            # Box size in h^-1 Mpc for this model
         'volume_fraction': 1.0,     # Fraction of the full volume output by the model
+        'use_for_residuals': False,   # NEW: Flag to indicate this is the comparison model
         'hubble_h': 0.73,            # Different Hubble parameter for this model
         'redshifts': [127.000, 79.998, 50.000, 30.000, 19.916, 18.244, 16.725, 15.343, 14.086, 12.941, 11.897, 10.944, 10.073, 
                      9.278, 8.550, 7.883, 7.272, 6.712, 6.197, 5.724, 5.289, 4.888, 4.520, 4.179, 3.866, 3.576, 3.308, 3.060, 

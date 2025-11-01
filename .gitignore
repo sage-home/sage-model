@@ -22,7 +22,6 @@ codecov
 *.ipynb_checkpoints
 *.dSYM
 sage_analysis/plots/
-*.txt
 *.log
 *.out
 *.DS_Store

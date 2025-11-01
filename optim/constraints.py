@@ -475,17 +475,30 @@ class BHMF_z0(BHMF):
     z = [0]
 
     def get_obs_x_y_err(self):
-        #Load data from Zhang et al. (2023)
-        logm, logphi = self.load_observation('./data/zhang_data.csv', cols=[0,1])
+        # Load data from TRINITY PaperIV (z=0.1)
+        obs_data = np.loadtxt('./data/fig4_bhmf_z0.1.txt')
+        logm = obs_data[:, 0]           # log10(Mbh [Msun])
+        phi = obs_data[:, 1]            # BHMF_best [Mpc^-3 dex^-1]
+        phi_16th = obs_data[:, 2]       # BHMF_16th [Mpc^-3 dex^-1]
+        phi_84th = obs_data[:, 3]       # BHMF_84th [Mpc^-3 dex^-1]
+        
+        # Convert to log10 space
+        logphi = np.log10(phi)
+        logphi_16th = np.log10(phi_16th)
+        logphi_84th = np.log10(phi_84th)
+        
+        # Calculate asymmetric errors in log space
+        y_dn = logphi - logphi_16th  # Lower error (positive value)
+        y_up = logphi_84th - logphi  # Upper error (positive value)
+        
         # Remove NaN values
-        valid_mask = ~np.isnan(logm) & ~np.isnan(logphi)
+        valid_mask = ~np.isnan(logm) & ~np.isnan(logphi) & ~np.isnan(y_dn) & ~np.isnan(y_up)
         x_obs = logm[valid_mask]
         y_obs = logphi[valid_mask]
-        # err = self.estimate_errors(y_obs, min_err=0.05, max_err=0.15)  # Dynamic errors based on phi
-        # Add realistic observational errors (typical for BHMF)
-        err = self.estimate_errors(y_obs, min_err=0.1, max_err=0.3)  # Dynamic errors based on phi
+        y_dn = y_dn[valid_mask]
+        y_up = y_up[valid_mask]
     
-        return x_obs, y_obs, err, err
+        return x_obs, y_obs, y_dn, y_up
     
     def get_sage_x_y(self):
         # Load data from SAGE
@@ -497,6 +510,49 @@ class BHMF_z0(BHMF):
         y_sage = logphi[valid_mask]
 
         return x_sage, y_sage
+    
+class BHMF_z10(BHMF):
+    """The BHMF constraint at z=1.0"""
+
+    z = [1.0]
+
+    def get_obs_x_y_err(self):
+        # Load data from TRINITY PaperIV (z=1.0)
+        obs_data = np.loadtxt('./data/fig4_bhmf_z1.0.txt')
+        logm = obs_data[:, 0]           # log10(Mbh [Msun])
+        phi = obs_data[:, 1]            # BHMF_best [Mpc^-3 dex^-1]
+        phi_16th = obs_data[:, 2]       # BHMF_16th [Mpc^-3 dex^-1]
+        phi_84th = obs_data[:, 3]       # BHMF_84th [Mpc^-3 dex^-1]
+        
+        # Convert to log10 space
+        logphi = np.log10(phi)
+        logphi_16th = np.log10(phi_16th)
+        logphi_84th = np.log10(phi_84th)
+        
+        # Calculate asymmetric errors in log space
+        y_dn = logphi - logphi_16th  # Lower error (positive value)
+        y_up = logphi_84th - logphi  # Upper error (positive value)
+        
+        # Remove NaN values
+        valid_mask = ~np.isnan(logm) & ~np.isnan(logphi) & ~np.isnan(y_dn) & ~np.isnan(y_up)
+        x_obs = logm[valid_mask]
+        y_obs = logphi[valid_mask]
+        y_dn = y_dn[valid_mask]
+        y_up = y_up[valid_mask]
+    
+        return x_obs, y_obs, y_dn, y_up
+    
+    def get_sage_x_y(self):
+        # Load data from SAGE
+        logm, phi = self.load_observation('./data/sage_bhmf_all_redshifts.csv', cols=[4,5])
+        # Remove NaN values
+        logphi = np.log10(phi)
+        valid_mask = ~np.isnan(logm) & ~np.isnan(logphi)
+        x_sage = logm[valid_mask]
+        y_sage = logphi[valid_mask]
+
+        return x_sage, y_sage
+
 
 class SMF(Constraint):
     """Common logic for SMF constraints"""
@@ -718,18 +774,25 @@ class BHBM(Constraint):
         y = BlackHoleMass[mask]
         x = BulgeMass[mask]
         
-        if len(x) < 10:  # Not enough points for reliable fit
+        if len(x) < 10:  # Not enough points for reliable median
             # Return dummy arrays that will result in poor fit
             return np.array([8.0, 12.0]), np.array([6.0, 8.0])
-            
-        # Fit line to model data
-        slope, intercept, r_value, _, _ = stats.linregress(x, y)
         
-        # Generate points along the best-fit line
-        x_points = np.linspace(8.0, 12.0, 20)  # Create 20 evenly spaced points
-        y_points = slope * x_points + intercept
+        # Create bins for bulge mass and calculate median black hole mass in each bin
+        bin_edges = np.arange(8.0, 12.1, 0.2)  # Bins every 0.2 dex
+        bin_centers = []
+        median_bh_mass = []
         
-        return x_points, y_points
+        for i in range(len(bin_edges) - 1):
+            bin_mask = (x >= bin_edges[i]) & (x < bin_edges[i+1])
+            if np.sum(bin_mask) >= 5:  # At least 5 galaxies in bin
+                bin_centers.append((bin_edges[i] + bin_edges[i+1]) / 2.0)
+                median_bh_mass.append(np.median(y[bin_mask]))
+        
+        if len(bin_centers) < 3:  # Not enough bins for reliable relation
+            return np.array([8.0, 12.0]), np.array([6.0, 8.0])
+        
+        return np.array(bin_centers), np.array(median_bh_mass)
     
 class BHBM_z0(BHBM):
     """The BHBM constraint at z=0"""
@@ -738,18 +801,19 @@ class BHBM_z0(BHBM):
 
     def get_obs_x_y_err(self):
         
-        # Load observational data
-        blackholemass, bulgemass = self.load_observation('./data/Haring_Rix_2004_line.csv', cols=[2,3])
+        # Häring & Rix 2004 relation
+        w_bulge = 10. ** np.arange(8.0, 12.5, 0.1)  # More reasonable range
+        BHdata_haring = 10. ** (8.2 + 1.12 * np.log10(w_bulge / 1.0e11))
         
-        # Fit line to observational data
-        slope, intercept, _, _, _ = stats.linregress(bulgemass, blackholemass)
+        # Convert to log space
+        x_points = np.log10(w_bulge)
+        y_points = np.log10(BHdata_haring)
         
-        # Generate points along the best-fit line (same x-coordinates as model)
-        x_points = np.linspace(8.0, 12.0, 20)
-        y_points = slope * x_points + intercept
+        # Typical scatter is ~0.3-0.4 dex
+        scatter_dex = 0.34  # Häring & Rix 2004 intrinsic scatter
         
-        # Small constant error for each point
-        err = np.ones_like(y_points) * 0.1
+        # Use scatter as symmetric error
+        err = np.ones_like(y_points) * scatter_dex
         
         return x_points, y_points, err, err
     
@@ -770,6 +834,7 @@ def parse(spec, snapshot=None, sim=None, boxsize=None, vol_frac=None, age_alist_
 
     _constraints = {
         'BHMF_z0': BHMF_z0,
+        'BHMF_z10': BHMF_z10,
         'SMF_z0': SMF_z0,
         'SMF_z05': SMF_z05,
         'SMF_z10': SMF_z10,

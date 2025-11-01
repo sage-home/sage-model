@@ -711,6 +711,108 @@ if __name__ == '__main__':
     
    # --------------------------------------------------------
 
+    # Black Hole Mass Function at specific redshifts
+    print('Plotting black hole mass function at specific redshifts')
+
+    plt.figure(figsize=(10, 8))
+    ax = plt.subplot(111)
+
+    # Define redshifts to plot (these correspond to the observation files)
+    bhmf_redshifts = [0.1, 1.0, 2.0, 4.0, 6.0, 8.0]
+    
+    # Map redshifts to closest snapshots
+    bhmf_snapshots = []
+    actual_redshifts = []
+    for target_z in bhmf_redshifts:
+        snap_idx = np.argmin(np.abs(np.array(redshifts) - target_z))
+        bhmf_snapshots.append(snap_idx)
+        actual_redshifts.append(redshifts[snap_idx])
+    
+    # Define colormap - plasma from dark to light
+    colors_bhmf = plt.cm.plasma(np.linspace(0.1, 0.9, len(bhmf_redshifts)))
+    
+    # Define mass bins for BHMF
+    bhmf_mass_bins = np.arange(6.0, 11.5, 0.1)
+    bhmf_mass_centers = bhmf_mass_bins[:-1] + 0.05
+    bin_width = bhmf_mass_bins[1] - bhmf_mass_bins[0]
+    
+    # Plot SAGE model predictions for each redshift
+    for i, (snap_idx, target_z, actual_z) in enumerate(zip(bhmf_snapshots, bhmf_redshifts, actual_redshifts)):
+        # Filter for galaxies with black holes
+        w = np.where(BlackHoleMassFull[snap_idx] > 0.0)[0]
+        
+        if len(w) > 0:
+            bh_masses = np.log10(BlackHoleMassFull[snap_idx][w])
+            counts, bin_edges = np.histogram(bh_masses, bins=bhmf_mass_bins)
+            phi = counts / (volume * bin_width)
+            
+            # Only plot where we have data
+            valid = phi > 0
+            if np.any(valid):
+                label = f'z = {actual_z:.1f} (SAGE)'
+                ax.plot(bhmf_mass_centers[valid], phi[valid], 
+                       color=colors_bhmf[i], linewidth=2, linestyle='-', label=label)
+    
+    # Load and plot observational data
+    data_dir = './data/'
+    obs_files = {
+        0.1: 'fig4_bhmf_z0.1.txt',
+        1.0: 'fig4_bhmf_z1.0.txt',
+        2.0: 'fig4_bhmf_z2.0.txt',
+        4.0: 'fig4_bhmf_z4.0.txt',
+        6.0: 'fig4_bhmf_z6.0.txt',
+        8.0: 'fig4_bhmf_z8.0.txt'
+    }
+    
+    for i, target_z in enumerate(bhmf_redshifts):
+        if target_z in obs_files:
+            obs_file = data_dir + obs_files[target_z]
+            try:
+                # Load observation data (skip header lines starting with #)
+                obs_data = np.loadtxt(obs_file)
+                obs_mass = obs_data[:, 0]     # log10(Mbh [Msun])
+                obs_phi = obs_data[:, 1]      # BHMF_best [Mpc^-3 dex^-1]
+                obs_phi_16th = obs_data[:, 2] # BHMF_16th [Mpc^-3 dex^-1]
+                obs_phi_84th = obs_data[:, 3] # BHMF_84th [Mpc^-3 dex^-1]
+                
+                # Plot observations with dashed line
+                label = f'z = {target_z:.1f} (Obs)'
+                ax.plot(obs_mass, obs_phi, color=colors_bhmf[i], 
+                       linewidth=2, linestyle='--', label=label, alpha=0.8)
+                
+                # Add shaded error region for observations
+                ax.fill_between(obs_mass, obs_phi_16th, obs_phi_84th,
+                               color=colors_bhmf[i], alpha=0.2)
+            except Exception as e:
+                print(f'Warning: Could not load {obs_file}: {e}')
+    
+    # Set log scale and limits
+    ax.set_yscale('log')
+    ax.set_xlim(6.0, 11.0)
+    ax.set_ylim(1e-5, 1e-1)
+    
+    # Labels and formatting
+    ax.set_xlabel(r'$\log_{10} M_{\rm BH} [M_\odot]$', fontsize=14)
+    ax.set_ylabel(r'$\phi$ [Mpc$^{-3}$ dex$^{-1}$]', fontsize=14)
+    
+    # Set minor ticks
+    ax.xaxis.set_minor_locator(plt.MultipleLocator(0.2))
+    
+    # Create legend
+    leg = ax.legend(loc='upper right', fontsize=9, frameon=False, ncol=2)
+    for text in leg.get_texts():
+        text.set_fontsize(9)
+    
+    plt.tight_layout()
+    
+    # Save the plot
+    outputFile = OutputDir + 'F2.BlackHoleMassFunction' + OutputFormat
+    plt.savefig(outputFile, dpi=300, bbox_inches='tight')
+    print('Saved file to', outputFile, '\n')
+    plt.close()
+    
+   # --------------------------------------------------------
+
     # Quenched fraction as a function of StellarMass across the same redshift bins (centrals/satellites separated)
     print('Plotting quenched fraction as a function of StellarMass evolution with redshift bins (centrals/satellites)')
 

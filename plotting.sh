@@ -14,8 +14,10 @@ scripts=(
     "plotting/smhm.py"
     "plotting/smf_analysis_obs_sam.py"
     "plotting/cgm-diag.py"
+    "plotting/halo-evolve.py"
     # "plotting/sf_pop_trace.py"
     # "plotting/stat_test.py"
+    # "plotting/stat_test2.py"
 )
 
 # Run each script
