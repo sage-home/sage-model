@@ -52,23 +52,8 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
 
         total_molecular_gas = calculate_molecular_fraction_BR06(gas_surface_density, stellar_surface_density, 
                                                                rs_pc) * galaxies[p].ColdGas;
-        // float actual_f_mol = calculate_molecular_fraction_BR06(gas_surface_density, stellar_surface_density, rs_pc);
 
         galaxies[p].H2gas = total_molecular_gas;
-        // galaxy_debug_counter++;
-
-        // if (galaxy_debug_counter % 750000 == 0) {
-            // Calculate additional quantities for debugging
-            // float pressure = calculate_midplane_pressure_BR06(gas_surface_density, stellar_surface_density, rs_pc);
-            // float h_star = calculate_stellar_scale_height_BR06(rs_pc);
-            // printf("DEBUG BR06: rs_pc=%.2e, h_star_pc=%.2e, pressure=%.2e K cm^-3, f_mol=%.4f\n",
-            //     rs_pc, h_star, pressure, actual_f_mol);  // NOW PRINTS THE ACTUAL FRACTION
-            // printf("DEBUG BR06: gas_sigma=%.2e, star_sigma=%.2e M_sun/pc^2\n",
-            //     gas_surface_density, stellar_surface_density);
-            // printf("DEBUG BR06: ColdGas=%.2e, StellarMass=%.2e M_sun\n",
-            //     galaxies[p].ColdGas, galaxies[p].StellarMass);
-            // printf("DEBUG BR06: H2_gas=%.4e, HI_gas=%.4e\n", galaxies[p].H2gas, galaxies[p].ColdGas - galaxies[p].H2gas);
-            // }
 
         const double cold_crit = 0.19 * galaxies[p].Vvir * reff;
         if(galaxies[p].ColdGas > cold_crit) {
