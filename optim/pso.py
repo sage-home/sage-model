@@ -94,9 +94,10 @@ def _cons_f_ieqcons_wrapper(f_ieqcons, args, kwargs, x):
     return np.array(f_ieqcons(x, *args, **kwargs))
     
 def pso(func, lb, ub, ieqcons=[], f_ieqcons=None, args=(), kwargs={}, 
-        swarmsize=100, omega=0.5, phip=0.7, phig=0.3, maxiter=100, 
-        minstep=1e-3, minfunc=1e-3, debug=True, processes=1,
-        particle_output=False, dumpfile_prefix=None, csv_output_path=None):
+        swarmsize=100, omega=0.729, phip=1.49445, phig=1.49445, maxiter=100, 
+        minstep=1e-8, minfunc=1e-8, debug=True, processes=1,
+        particle_output=False, dumpfile_prefix=None, csv_output_path=None,
+        random_seed=None):
     """
     Perform a particle swarm optimization (PSO)
    
@@ -127,13 +128,17 @@ def pso(func, lb, ub, ieqcons=[], f_ieqcons=None, args=(), kwargs={},
     swarmsize : int
         The number of particles in the swarm (Default: 100)
     omega : scalar
-        Particle velocity scaling factor (Default: 0.5)
+        Particle velocity scaling factor / inertia weight (Default: 0.729)
+        Constriction coefficient from Clerc & Kennedy (2002).
+        Standard range: 0.7-0.9. Controls exploration vs exploitation balance.
     phip : scalar
-        Scaling factor to search away from the particle's best known position
-        (Default: 0.5)
+        Cognitive parameter - scaling factor to search away from the particle's 
+        best known position (Default: 1.49445 ≈ 2.05 × 0.729). 
+        Standard range: 1.5-2.5. Higher values increase personal best attraction.
     phig : scalar
-        Scaling factor to search away from the swarm's best known position
-        (Default: 0.5)
+        Social parameter - scaling factor to search away from the swarm's 
+        best known position (Default: 1.49445 ≈ 2.05 × 0.729). 
+        Standard range: 1.5-2.5. Higher values increase global best attraction.
     maxiter : int
         The maximum number of iterations for the swarm to search (Default: 100)
     minstep : scalar
@@ -155,6 +160,8 @@ def pso(func, lb, ub, ieqcons=[], f_ieqcons=None, args=(), kwargs={},
     csv_output_path : str, optional
         Path to save CSV file with best positions and their objective values
         (Default: None)
+    random_seed : int, optional
+        Random seed for reproducibility (Default: None)
    
     Returns
     =======
@@ -168,6 +175,10 @@ def pso(func, lb, ub, ieqcons=[], f_ieqcons=None, args=(), kwargs={},
         The objective values at each position in p
    
     """
+   
+    # Set random seed if provided for reproducibility
+    if random_seed is not None:
+        np.random.seed(random_seed)
    
     assert len(lb)==len(ub), 'Lower- and upper-bounds must be the same length'
     assert hasattr(func, '__call__'), 'Invalid function handle'
@@ -243,15 +254,14 @@ def pso(func, lb, ub, ieqcons=[], f_ieqcons=None, args=(), kwargs={},
     p[i_update, :] = x[i_update, :].copy()
     fp[i_update] = fx[i_update]
 
-    # Initialize global best position and score
+    # Update swarm's best position
     i_min = np.argmin(fp)
-    p_min = p[i_min, :].copy()  # Initialize p_min with best initial position
-    fp_min = fp[i_min]  # Initialize fp_min with best initial score
-
     if fp[i_min] < fg:
         fg = fp[i_min]
         g = p[i_min, :].copy()
     else:
+        # At the start, there may not be any feasible starting point, so just
+        # give it a temporary "best" point since it's likely to change
         g = x[0, :].copy()
 
     # Initialize the particle's velocity
@@ -303,15 +313,31 @@ def pso(func, lb, ub, ieqcons=[], f_ieqcons=None, args=(), kwargs={},
                 print('New best for swarm at iteration {:}: {:} {:}'.format(it, p[i_min, :], fp[i_min]))
 
             p_min = p[i_min, :].copy()
-            fp_min = fp[i_min]
             stepsize = np.sqrt(np.sum((g - p_min)**2))
 
             if np.abs(fg - fp[i_min]) <= minfunc:
                 print('Stopping search: Swarm best objective change less than {:}'.format(minfunc))
-                break
+                
+                # Write CSV before returning
+                if csv_output_path:
+                    _write_results_to_csv(csv_output_path, iteration_history, p, fp, p_min, fp[i_min])
+                
+                if particle_output:
+                    return p_min, fp[i_min], p, fp
+                else:
+                    return p_min, fp[i_min]
+                    
             elif stepsize <= minstep:
                 print('Stopping search: Swarm best position change less than {:}'.format(minstep))
-                break
+                
+                # Write CSV before returning
+                if csv_output_path:
+                    _write_results_to_csv(csv_output_path, iteration_history, p, fp, p_min, fp[i_min])
+                
+                if particle_output:
+                    return p_min, fp[i_min], p, fp
+                else:
+                    return p_min, fp[i_min]
             else:
                 g = p_min.copy()
                 fg = fp[i_min]
@@ -320,12 +346,11 @@ def pso(func, lb, ub, ieqcons=[], f_ieqcons=None, args=(), kwargs={},
             print('Best after iteration {:}: {:} {:}'.format(it, g, fg))
         it += 1
 
-    if it >= maxiter:
-        print('Stopping search: maximum iterations reached --> {:}'.format(maxiter))
-
+    print('Stopping search: maximum iterations reached --> {:}'.format(maxiter))
+    
     # Write final results to CSV if path is provided
     if csv_output_path:
-        _write_results_to_csv(csv_output_path, iteration_history, p, fp, p_min, fp_min)
+        _write_results_to_csv(csv_output_path, iteration_history, p, fp, g, fg)
 
     if not is_feasible(g):
         print("However, the optimization couldn't find a feasible design. Sorry")

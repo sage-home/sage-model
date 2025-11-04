@@ -27,24 +27,24 @@ GyrToYr = 1e9
 dilute = 75000 
 #######################
 # Binning configuration
-mupp = 12
+mupp = 11.5
 dm = 0.1
 mlow = 8
 mbins = np.arange(mlow, mupp, dm)
-xmf = mbins
+xmf = mbins + dm/2.0
 
-mupp2 = 10
+mupp2 = 9.5
 dm2 = 0.1
-mlow2 = 4
+mlow2 = 6
 mbins2 = np.arange(mlow2,mupp2,dm2)
-xmf2 = mbins2 
+xmf2 = mbins2 + dm2/2.0
 
 ssfrlow = -6
 ssfrupp = 4
 dssfr = 0.2
 ssfrbins = np.arange(ssfrlow,ssfrupp,dssfr)
 
-Nmin = 2 # minimum number of galaxies expected in a mass bin for the simulation volume, based on observations, to warrant fitting to that bin for mass functions
+Nmin = 5 # minimum number of galaxies expected in a mass bin for the simulation volume, based on observations, to warrant fitting to that bin for mass functions
 
 # These are two easily create variables of these different shapes without
 # actually storing a reference ourselves; we don't need it
@@ -100,114 +100,192 @@ class Constraint(object):
         # Allow snapshots to be a list
         if not isinstance(self.snapshot, list):
             self.snapshot = [self.snapshot]
-            
-        data_by_snapshot = {}
-        for snap in self.snapshot:
+        
+        # For constraints that need multiple snapshots (like CSFRDH), we'll collect SFRD for each
+        Nage = 14
+        num_snapshots = len(self.snapshot)
+        SFRbyAge = np.zeros(num_snapshots)
+        SnapshotTimes = np.zeros(num_snapshots)  # Store lookback time for each snapshot
+        
+        # For hist_smf, hist_bhmf, etc., always use the last (most recent) snapshot
+        # This ensures SMF_z0 uses snapshot 63 even when combined with CSFRDH
+        snap_to_use = self.snapshot[-1]
+        
+        # Loop through snapshots to build SFRD history
+        for snap_idx, snap in enumerate(self.snapshot):
             if len(subvols) > 1:
                 subvols = ["multiple_batches"]
 
-            # Histograms we are interested in
-            hist_smf = zeros3()
-            hist_bhmf = zeros6()
-            hist_smf_red = zeros7()
-            hist_smf_blue = zeros8()
-            hist_h2 = zeros9()
-
             seed(2222)
-            fields = ['StellarMass', 'BlackHoleMass', 'Len', 'SfrBulge', 'BulgeMass', 'Mvir', 'SfrDisk']
-            Nage = 14
+            fields = ['StellarMass', 'BlackHoleMass', 'Len', 'SfrBulge', 'BulgeMass', 'Mvir', 'SfrDisk', 'ColdGas', 'H2gas']
             snap_num = f'Snap_{snap}'
             sSFRcut = -11.0
 
             # Get list of model files in directory
-        model_files = [f for f in os.listdir(modeldir) if f.startswith('model_') and f.endswith('.hdf5')]
-        model_files.sort()
+            model_files = [f for f in os.listdir(modeldir) if f.startswith('model_') and f.endswith('.hdf5')]
+            model_files.sort()
 
-        if len(model_files) > 1:
-            combined_properties = {}
-            for model_file in model_files:
-                G = r.read_sage_hdf(os.path.join(modeldir, model_file), snap_num=snap_num, fields=fields)
+            if len(model_files) > 1:
+                combined_properties = {}
+                for model_file in model_files:
+                    G = r.read_sage_hdf(os.path.join(modeldir, model_file), snap_num=snap_num, fields=fields)
+                    
+                    # Combine properties
+                    for field in fields:
+                        if field not in combined_properties:
+                            combined_properties[field] = G[field]
+                        else:
+                            combined_properties[field] = np.concatenate((combined_properties[field], G[field]))
                 
-                # Combine properties
-                for field in fields:
-                    if field not in combined_properties:
-                        combined_properties[field] = G[field]
-                    else:
-                        combined_properties[field] = np.concatenate((combined_properties[field], G[field]))
+                G = combined_properties
+            else:
+                G = r.read_sage_hdf(os.path.join(modeldir, 'model_0.hdf5'), snap_num=snap_num, fields=fields)
+
+            # Calculate SFRD for this snapshot
+            total_SFR = np.sum(G['SfrBulge'] + G['SfrDisk'])
+            SFRbyAge[snap_idx] = total_SFR / self.vol  # Msun/yr/Mpc^3
             
-            G = combined_properties
-            print('Number of galaxies: ', len(G['StellarMass']))
-        else:
-            G = r.read_sage_hdf(os.path.join(modeldir, 'model_0.hdf5'), snap_num=snap_num, fields=fields)
-            print('Number of galaxies: ', len(G['StellarMass']))
-
-        # Process properties - Use self.h0 instead of h0
-        BlackHoleMass = np.log10(G['BlackHoleMass'] * 1e10 / self.h0)
-        BlackHoleMass[~np.isfinite(BlackHoleMass)] = -20
-
-        BulgeMass = np.log10(G['BulgeMass'] * 1e10 / self.h0)
-        BulgeMass[~np.isfinite(BulgeMass)] = -20
-
-        HaloMass = np.log10(G['Mvir'] * 1e10 / self.h0)
-        HaloMass[~np.isfinite(HaloMass)] = -20
-
-        StellarMass = np.log10(G['StellarMass'] * 1e10 / self.h0)
-        StellarMass[~np.isfinite(StellarMass)] = -20
-
-        logSM = np.log10(G['StellarMass'] * 1e10 / self.h0)
-        logSM[~np.isfinite(logSM)] = -20
-
-        logBHM = np.log10(G['BlackHoleMass'] * 1e10 / self.h0)
-        logBHM[~np.isfinite(logBHM)] = -20
-
-        smass = (G['StellarMass'] * 1e10 / self.h0)
-        SfrDisk = G['SfrDisk']
-        SfrBulge = G['SfrBulge']
-        
-        # calculate all
-        w = np.where(smass > 0.0)[0]
-        mass = np.log10(smass[w])
-        sSFR = np.log10( (SfrDisk[w] + SfrBulge[w]) / StellarMass[w] )
-        
-        # additionally calculate red
-        w = np.where(sSFR < sSFRcut)[0]
-        massRED = mass[w]
-        (hist_smf_red, binedges) = np.histogram(massRED, bins=mbins)
-        hist_smf_red = hist_smf_red / dm / self.vol
-
-        # additionally calculate blue
-        w = np.where(sSFR > sSFRcut)[0]
-        massBLU = mass[w]
-        (hist_smf_blue, binedges) = np.histogram(massBLU, bins=mbins)
-        hist_smf_blue = hist_smf_blue / dm / self.vol
-
-        hist_smf, _ = np.histogram(logSM, bins=mbins)
-        hist_smf = hist_smf / dm / self.vol
-
-        hist_bhmf, _ = np.histogram(logBHM, bins=mbins2)
-        hist_bhmf = hist_bhmf / dm2 / self.vol
+            # Store snapshot number to calculate time later (after alist is loaded)
+            # We'll calculate the times after loading the alist properly below
             
-        # get the edges of the age bins
-        # Load and convert scale factors to redshifts
-        alist = np.loadtxt(self.age_alist_file)
-        if Nage >= len(alist)-1:
-            alist = alist[::-1]
-            RedshiftBinEdge = 1./alist - 1  # Convert scale factors to redshifts
+            # For the reference snapshot (used by SMF, BHMF, etc.), save the properties
+            if snap == snap_to_use:
+                # Process properties - Use self.h0 instead of h0
+                BlackHoleMass = np.log10(G['BlackHoleMass'] * 1e10 / self.h0)
+                BlackHoleMass[~np.isfinite(BlackHoleMass)] = -20
+
+                BulgeMass = np.log10(G['BulgeMass'] * 1e10 / self.h0)
+                BulgeMass[~np.isfinite(BulgeMass)] = -20
+
+                HaloMass = np.log10(G['Mvir'] * 1e10 / self.h0)
+                HaloMass[~np.isfinite(HaloMass)] = -20
+
+                StellarMass = np.log10(G['StellarMass'] * 1e10 / self.h0)
+                StellarMass[~np.isfinite(StellarMass)] = -20
+
+                logSM = np.log10(G['StellarMass'] * 1e10 / self.h0)
+                logSM[~np.isfinite(logSM)] = -20
+
+                logBHM = np.log10(G['BlackHoleMass'] * 1e10 / self.h0)
+                logBHM[~np.isfinite(logBHM)] = -20
+
+                smass = (G['StellarMass'] * 1e10 / self.h0)
+                SfrDisk = G['SfrDisk']
+                SfrBulge = G['SfrBulge']
+                
+                # calculate all
+                w = np.where(smass > 0.0)[0]
+                mass = np.log10(smass[w])
+                sSFR = np.log10( (SfrDisk[w] + SfrBulge[w]) / StellarMass[w] )
+                
+                # additionally calculate red
+                w = np.where(sSFR < sSFRcut)[0]
+                massRED = mass[w]
+                (hist_smf_red_counts, binedges) = np.histogram(massRED, bins=mbins)
+                hist_smf_red = hist_smf_red_counts / dm / self.vol
+
+                # additionally calculate blue
+                w = np.where(sSFR > sSFRcut)[0]
+                massBLU = mass[w]
+                (hist_smf_blue_counts, binedges) = np.histogram(massBLU, bins=mbins)
+                hist_smf_blue = hist_smf_blue_counts / dm / self.vol
+
+                # Calculate SMF and track galaxy counts for Poisson errors
+                hist_smf_counts, _ = np.histogram(logSM, bins=mbins)
+                hist_smf = hist_smf_counts / dm / self.vol
+
+                # Calculate BHMF and track BH counts for Poisson errors
+                hist_bhmf_counts, _ = np.histogram(logBHM, bins=mbins2)
+                hist_bhmf = hist_bhmf_counts / dm2 / self.vol
+                
+                # Calculate HIMF (HI Mass Function)
+                # HI mass = ColdGas - H2_gas (ColdGas includes both HI and H2)
+                HI_mass = (G['ColdGas'] - G['H2gas']) * 1e10 / self.h0  # Convert to Msun
+                logHI = np.log10(HI_mass)
+                logHI[~np.isfinite(logHI)] = -20
+                
+                hist_himf_counts, _ = np.histogram(logHI, bins=mbins)
+                hist_himf = hist_himf_counts / dm / self.vol
+        
+        # Get the edges of the age bins (after the loop)
+        alist_full = np.loadtxt(self.age_alist_file)
+        
+        # Calculate lookback times for the actual snapshots we loaded
+        for snap_idx, snap in enumerate(self.snapshot):
+            if snap < len(alist_full):
+                redshift = 1.0 / alist_full[snap] - 1.0
+                SnapshotTimes[snap_idx] = r.z2tL(redshift, self.h0, self.Omega0, 1.0-self.Omega0)
+        
+        # Also calculate generic age bins for other constraints
+        if Nage>=len(alist_full)-1:
+            alist = alist_full[::-1]
+            RedshiftBinEdge = 1./ alist - 1.
         else:
-            indices_float = np.arange(Nage+1) * (len(alist)-1.0) / Nage
+            indices_float = np.arange(Nage+1) * (len(alist_full)-1.0) / Nage
             indices = indices_float.astype(np.int32)
-            alist = alist[indices][::-1]
-            RedshiftBinEdge = 1./alist - 1  # Convert scale factors to redshifts
-
-        TimeBinEdge = np.array([r.z2tL(redshift, self.h0, self.Omega0, 1.0-self.Omega0) for redshift in RedshiftBinEdge])
-        
+            alist = alist_full[indices][::-1]
+            RedshiftBinEdge = 1./ alist - 1.
+        TimeBinEdge = np.array([r.z2tL(redshift, self.h0, self.Omega0, 1.0-self.Omega0) for redshift in RedshiftBinEdge]) # look-back time [Gyr]
         dT = np.diff(TimeBinEdge) # time step for each bin
         TimeBinCentre = TimeBinEdge[:-1] + 0.5*dT
-#        m, lifetime, returned_mass_fraction_integrated, ncum_SN = r.return_fraction_and_SN_ChabrierIMF()
-#        eff_recycle = np.interp(TimeBinCentre, lifetime[::-1], returned_mass_fraction_integrated[::-1])
-        SFRbyAge = np.sum(G['SfrBulge'], axis=0)*1e10/self.h0 / (dT*1e9)
 
-
+        #########################
+        # Calculate Poisson errors before taking logs
+        # For a number count N, the Poisson error is sqrt(N)
+        # In log space: sigma_log(phi) ≈ 0.434 / sqrt(N) for N >> 1
+        # We use the more accurate formula: sigma_log = |log10(phi) - log10(phi ± sqrt(N)/Volume/dm)|
+        
+        # SMF errors
+        hist_smf_err = np.zeros_like(hist_smf)
+        for i in range(len(hist_smf)):
+            if hist_smf_counts[i] >= 1:
+                # Calculate error from Poisson statistics
+                phi_upper = (hist_smf_counts[i] + np.sqrt(hist_smf_counts[i])) / dm / self.vol
+                phi_lower = np.maximum((hist_smf_counts[i] - np.sqrt(hist_smf_counts[i])), 0.5) / dm / self.vol
+                if hist_smf[i] > 0:
+                    # Symmetric error in log space (average of upper and lower)
+                    err_up = np.log10(phi_upper) - np.log10(hist_smf[i])
+                    err_dn = np.log10(hist_smf[i]) - np.log10(phi_lower)
+                    hist_smf_err[i] = (err_up + err_dn) / 2.0
+                else:
+                    hist_smf_err[i] = 999  # Large error for empty bins
+            else:
+                hist_smf_err[i] = 999  # Large error for empty bins
+        
+        # BHMF errors
+        hist_bhmf_err = np.zeros_like(hist_bhmf)
+        for i in range(len(hist_bhmf)):
+            if hist_bhmf_counts[i] >= 1:
+                # Calculate error from Poisson statistics
+                phi_upper = (hist_bhmf_counts[i] + np.sqrt(hist_bhmf_counts[i])) / dm2 / self.vol
+                phi_lower = np.maximum((hist_bhmf_counts[i] - np.sqrt(hist_bhmf_counts[i])), 0.5) / dm2 / self.vol
+                if hist_bhmf[i] > 0:
+                    # Symmetric error in log space (average of upper and lower)
+                    err_up = np.log10(phi_upper) - np.log10(hist_bhmf[i])
+                    err_dn = np.log10(hist_bhmf[i]) - np.log10(phi_lower)
+                    hist_bhmf_err[i] = (err_up + err_dn) / 2.0
+                else:
+                    hist_bhmf_err[i] = 999  # Large error for empty bins
+            else:
+                hist_bhmf_err[i] = 999  # Large error for empty bins
+        
+        # HIMF errors
+        hist_himf_err = np.zeros_like(hist_himf)
+        for i in range(len(hist_himf)):
+            if hist_himf_counts[i] >= 1:
+                # Calculate error from Poisson statistics
+                phi_upper = (hist_himf_counts[i] + np.sqrt(hist_himf_counts[i])) / dm / self.vol
+                phi_lower = np.maximum((hist_himf_counts[i] - np.sqrt(hist_himf_counts[i])), 0.5) / dm / self.vol
+                if hist_himf[i] > 0:
+                    # Symmetric error in log space (average of upper and lower)
+                    err_up = np.log10(phi_upper) - np.log10(hist_himf[i])
+                    err_dn = np.log10(hist_himf[i]) - np.log10(phi_lower)
+                    hist_himf_err[i] = (err_up + err_dn) / 2.0
+                else:
+                    hist_himf_err[i] = 999  # Large error for empty bins
+            else:
+                hist_himf_err[i] = 999  # Large error for empty bins
+        
         #########################
         # take logs
         ind = (hist_smf > 0.)
@@ -230,7 +308,12 @@ class Constraint(object):
         hist_bhmf[ind] = np.log10(hist_bhmf[ind])
         hist_bhmf[~ind] = -20
 
-        SFRD_Age = np.log10(SFRbyAge/self.vol)
+        ind = (hist_himf > 0.)
+
+        hist_himf[ind] = np.log10(hist_himf[ind])
+        hist_himf[~ind] = -20
+
+        SFRD_Age = np.log10(SFRbyAge)
         SFRD_Age[~np.isfinite(SFRD_Age)] = -20
         
         # have moved where this was in the code. Don't understand its purpose
@@ -238,10 +321,18 @@ class Constraint(object):
         hist_smf = hist_smf[np.newaxis]
         hist_smf_red = hist_smf_red[np.newaxis]
         hist_smf_blue = hist_smf_blue[np.newaxis]
+        hist_smf_err = hist_smf_err[np.newaxis]
+        hist_bhmf_err = hist_bhmf_err[np.newaxis]
+        hist_himf = hist_himf[np.newaxis]
+        hist_himf_err = hist_himf_err[np.newaxis]
 
-        print(hist_smf_red,hist_smf_blue)
-
-        return self.h0, self.Omega0, hist_smf, hist_bhmf, TimeBinEdge, SFRD_Age, BlackHoleMass, BulgeMass, HaloMass, StellarMass, hist_smf_red, hist_smf_blue
+        # For CSFRDH, use SnapshotTimes; for others, calculate generic time bins
+        if num_snapshots > 1:
+            # CSFRDH case: use the snapshot times directly
+            return self.h0, self.Omega0, hist_smf, hist_bhmf, hist_himf, SnapshotTimes, SFRD_Age, BlackHoleMass, BulgeMass, HaloMass, StellarMass, hist_smf_red, hist_smf_blue, hist_smf_err, hist_bhmf_err, hist_himf_err
+        else:
+            # Other constraints: use the generic TimeBinEdge
+            return self.h0, self.Omega0, hist_smf, hist_bhmf, hist_himf, TimeBinEdge, SFRD_Age, BlackHoleMass, BulgeMass, HaloMass, StellarMass, hist_smf_red, hist_smf_blue, hist_smf_err, hist_bhmf_err, hist_himf_err
 
 
     def load_observation(self, *args, **kwargs):
@@ -249,14 +340,22 @@ class Constraint(object):
 #        obsdir = os.path.normpath(os.path.abspath(__file__))
         return common.load_observation(obsdir, *args, **kwargs)
     
-    def plot_smf(self, x_obs, y_obs, y_mod, x_sage, y_sage, output_dir):
+    def plot_smf(self, x_obs, y_obs, y_mod, x_sage, y_sage, y_dn, y_up, output_dir):
         """Plot Stellar Mass Function comparison"""
         plt.figure()  # New figure
         ax = plt.subplot(111)  # 1 plot on the figure
 
         plt.plot(x_obs, 10**y_mod, c='b', label='Model - SAGE')
-        plt.plot(x_sage, 10**y_sage, c='r', label='SAGE')
-        plt.scatter(x_obs, 10**y_obs, marker='d', s=50, c='k', label='Observation')
+        plt.plot(x_sage, 10**y_sage, c='k', label='SAGE')
+        
+        # Convert errors from log space to linear space for shaded region
+        y_obs_linear = 10**y_obs
+        y_lower = 10**(y_obs - y_dn)
+        y_upper = 10**(y_obs + y_up)
+        
+        # Plot observation as red line with shaded error region
+        plt.plot(x_obs, y_obs_linear, c='r', linewidth=2, label='Observation')
+        plt.fill_between(x_obs, y_lower, y_upper, color='r', alpha=0.2)
 
         class_name = self.__class__.__name__
     
@@ -307,15 +406,22 @@ class Constraint(object):
         plt.close()
         return
 
-    def plot_bhmf(self, x_obs, y_obs, y_mod, x_sage, y_sage, output_dir):
+    def plot_bhmf(self, x_obs, y_obs, y_mod, x_sage, y_sage, y_dn, y_up, output_dir):
         """Plot Black Hole Mass Function comparison"""
         plt.figure()
         ax = plt.subplot(111)
 
-        y_obs_converted = [10**y for y in y_obs]
         plt.plot(x_obs, 10**y_mod, c='b', label='Model - SAGE')
         plt.plot(x_sage, 10**y_sage, c='k', label='SAGE')
-        plt.plot(x_obs, y_obs_converted, c='r', label='Observation')
+        
+        # Convert errors from log space to linear space for shaded region
+        y_obs_linear = 10**y_obs
+        y_lower = 10**(y_obs - y_dn)
+        y_upper = 10**(y_obs + y_up)
+        
+        # Plot observation as red line with shaded error region
+        plt.plot(x_obs, y_obs_linear, c='r', linewidth=2, label='Observation')
+        plt.fill_between(x_obs, y_lower, y_upper, color='r', alpha=0.2)
 
         plt.yscale('log')
         plt.axis([6.0, 10.3, 1.0e-6, 1.0e-1])
@@ -331,14 +437,50 @@ class Constraint(object):
         plt.close()
         return
 
-    def plot_bhbm(self, x_obs, y_obs, y_mod, x_sage, y_sage, BlackHoleMass, BulgeMass, output_dir):
+    def plot_himf(self, x_obs, y_obs, y_mod, x_sage, y_sage, y_dn, y_up, output_dir):
+        """Plot HI Mass Function comparison"""
+        plt.figure()
+        ax = plt.subplot(111)
+
+        plt.plot(x_obs, 10**y_mod, c='b', label='Model - SAGE')
+        plt.plot(x_sage, 10**y_sage, c='k', label='SAGE')
+        
+        # Convert errors from log space to linear space for shaded region
+        y_obs_linear = 10**y_obs
+        y_lower = 10**(y_obs - y_dn)
+        y_upper = 10**(y_obs + y_up)
+        
+        # Plot observation as red line with shaded error region
+        plt.plot(x_obs, y_obs_linear, c='r', linewidth=2, label='Observation')
+        plt.fill_between(x_obs, y_lower, y_upper, color='r', alpha=0.2)
+
+        plt.yscale('log')
+        plt.axis([8.0, 11.5, 1.0e-6, 1.0e-1])
+        ax.xaxis.set_minor_locator(plt.MultipleLocator(0.1))
+        plt.ylabel(r'$\phi\ (\mathrm{Mpc}^{-3}\ \mathrm{dex}^{-1})$')
+        plt.xlabel(r'$\log_{10} M_{\mathrm{HI}}\ (M_{\odot})$')
+        leg = plt.legend(loc='upper right', numpoints=1, labelspacing=0.1)
+        leg.draw_frame(False)
+        for t in leg.get_texts():
+            t.set_fontsize('medium')
+        plotfile = os.path.join(output_dir, 'himf_sage.png')
+        plt.savefig(plotfile, dpi=100)
+        plt.close()
+        return
+
+    def plot_bhbm(self, x_obs, y_obs, y_mod, x_sage, y_sage, y_dn, y_up, BlackHoleMass, BulgeMass, output_dir):
         """Plot Black Hole-Bulge Mass relation comparison"""
         plt.figure()
         ax = plt.subplot(111)
         #print(x_sage,y_sage)
         plt.plot(x_obs, y_mod, c='b', label='Model - SAGE')
         plt.plot(x_sage, y_sage, c='k', label='SAGE')
-        plt.plot(x_obs, y_obs, c='r', label="Observation")
+        
+        # Plot observation as red line with shaded error region
+        y_lower = y_obs - np.abs(y_dn)
+        y_upper = y_obs + np.abs(y_up)
+        plt.plot(x_obs, y_obs, c='r', linewidth=2, label="Observation")
+        plt.fill_between(x_obs, y_lower, y_upper, color='r', alpha=0.2)
         #print(y_mod, y_obs, y_sage)
 
         w = np.where(BlackHoleMass > 0.0)[0]
@@ -364,23 +506,91 @@ class Constraint(object):
         plt.savefig(plotfile, dpi=100)
         plt.close()
         return
+    
+    def plot_CSFRDH(self, x_obs, y_obs, y_mod, x_sage, y_sage, y_dn, y_up, TimeBinEdge, SFRD_Age, output_dir):
+        """Plot Cosmic Star Formation Rate Density History"""
+        plt.figure()
+        ax = plt.subplot(111)
+        #print(x_sage,y_sage)
+        plt.plot(x_obs, y_mod, c='b', label='Model - SAGE', linewidth=1.5)
+        plt.plot(x_sage, y_sage, c='k', label='SAGE', linewidth=1.5)
+        
+        # Plot observation as red line with shaded error region
+        y_lower = y_obs - np.abs(y_dn)
+        y_upper = y_obs + np.abs(y_up)
+        plt.plot(x_obs, y_obs, c='r', linewidth=2, label="Observation")
+        plt.fill_between(x_obs, y_lower, y_upper, color='r', alpha=0.2)
+        #print(y_mod, y_obs, y_sage)
+
+        w = np.where(TimeBinEdge > 0.0)[0]
+        if(len(w) > dilute): w = sample(list(range(len(w))), dilute)
+        # plt.plot(TimeBinEdge, SFRD_Age, c='green', linewidth=2, label='SAGE galaxies')
+
+        plt.ylabel(r'$\log_{10} \mathrm{SFRD}\ (\mathrm{M_{\odot}\ yr^{-1}\ Mpc^{-3}})$')
+        plt.xlabel(r'$\log_{10} \mathrm{Time}\ (\mathrm{Gyr})$')
+
+        leg = plt.legend(loc='upper left')
+        leg.draw_frame(False)
+        for t in leg.get_texts():
+            t.set_fontsize('medium')
+        plotfile = os.path.join(output_dir, 'csfrd_sage.png')
+        plt.savefig(plotfile, dpi=100)
+        plt.close()
+        return
+
+    def plot_diagnostic(self, x_obs, y_obs, obs_err_dn, obs_err_up,
+                       x_mod, y_mod, y_mod_interp, x_obs_sel, y_obs_sel, y_mod_sel, err, output_dir):
+        """Generic diagnostic plot showing all interpolation/selection steps"""
+        import analysis
+        
+        fig = plt.figure(figsize=(4.5, 4.5))
+        ax = fig.add_subplot(111)
+        
+        # Domain boundaries
+        ax.axvline(self.domain[0], ls='dotted', c='red', alpha=0.5, label='Domain')
+        ax.axvline(self.domain[1], ls='dotted', c='red', alpha=0.5)
+        
+        # Plot data
+        ax.plot(x_obs_sel, y_obs_sel, marker='v', ls='None', c='blue', markersize=6, label="Selected obs")
+        ax.plot(x_mod, y_mod, marker='^', ls='solid', c='orange', markersize=4, alpha=0.7, label="Raw model")
+        ax.plot(x_obs, y_mod_interp, ls='solid', c='green', linewidth=2, label="Interp model")
+        ax.plot(x_obs_sel, y_mod_sel, ls='None', marker='o', c='brown', markersize=5, label="Selected model")
+        
+        # Error bars - ensure errors are positive
+        for i, x_val in enumerate(x_obs):
+            ax.errorbar(x_val, y_obs[i], 
+                       yerr=[[np.abs(obs_err_dn[i])], [np.abs(obs_err_up[i])]], 
+                       fmt='none', c='black', alpha=0.5, capsize=3)
+        
+        # Calculate metrics
+        chi2 = analysis.chi2(y_obs_sel, y_mod_sel, err)
+        st = analysis.studentT(y_obs_sel, y_mod_sel, err)
+        
+        ax.set_title('%s\n$\chi^2$ = %.2f, student-t = %.2f' % (str(self), chi2, st), fontsize=10)
+        ax.legend(loc='best', fontsize=8, frameon=False)
+        ax.grid(alpha=0.3)
+        
+        plotfile = os.path.join(output_dir, f'{self.__class__.__name__}_diagnostic.png')
+        plt.savefig(plotfile, dpi=100, bbox_inches='tight')
+        plt.close()
+        return
 
     def _get_raw_data(self, modeldir, subvols):
         """Gets the model and observational data for further analysis.
         The model data is interpolated to match the observation's X values."""
 
-        self.h0, self.Omega0, hist_smf, hist_bhmf, TimeBinEdge, SFRD_Age, BlackHoleMass, BulgeMass, HaloMass, StellarMass, hist_smf_red, hist_smf_blue = self._load_model_data(modeldir, subvols)
+        self.h0, self.Omega0, hist_smf, hist_bhmf, hist_himf, TimeBinEdge, SFRD_Age, BlackHoleMass, BulgeMass, HaloMass, StellarMass, hist_smf_red, hist_smf_blue, hist_smf_err, hist_bhmf_err, hist_himf_err = self._load_model_data(modeldir, subvols)
         x_obs, y_obs, y_dn, y_up = self.get_obs_x_y_err()
         x_sage, y_sage = self.get_sage_x_y()
-        x_mod, y_mod = self.get_model_x_y(hist_smf, hist_bhmf, TimeBinEdge, SFRD_Age, BlackHoleMass, BulgeMass, HaloMass, StellarMass, hist_smf_red, hist_smf_blue)
-        return x_obs, y_obs, y_dn, y_up, x_sage, y_sage, x_mod, y_mod
+        x_mod, y_mod, y_mod_err = self.get_model_x_y(hist_smf, hist_bhmf, hist_himf, TimeBinEdge, SFRD_Age, BlackHoleMass, BulgeMass, HaloMass, StellarMass, hist_smf_red, hist_smf_blue, hist_smf_err, hist_bhmf_err, hist_himf_err)
+        return x_obs, y_obs, y_dn, y_up, x_sage, y_sage, x_mod, y_mod, y_mod_err
 
     def get_data(self, modeldir, subvols):
 
-        self.h0, self.Omega0, hist_smf, hist_bhmf, TimeBinEdge, SFRD_Age, BlackHoleMass, BulgeMass, HaloMass, StellarMass, hist_smf_red, hist_smf_blue = self._load_model_data(modeldir, subvols)
+        self.h0, self.Omega0, hist_smf, hist_bhmf, hist_himf, TimeBinEdge, SFRD_Age, BlackHoleMass, BulgeMass, HaloMass, StellarMass, hist_smf_red, hist_smf_blue, hist_smf_err, hist_bhmf_err, hist_himf_err = self._load_model_data(modeldir, subvols)
         x_obs, y_obs, y_dn, y_up = self.get_obs_x_y_err()
         x_sage, y_sage = self.get_sage_x_y()
-        x_mod, y_mod = self.get_model_x_y(hist_smf, hist_bhmf, TimeBinEdge, SFRD_Age, BlackHoleMass, BulgeMass, HaloMass, StellarMass, hist_smf_red, hist_smf_blue)
+        x_mod, y_mod, y_mod_err = self.get_model_x_y(hist_smf, hist_bhmf, hist_himf, TimeBinEdge, SFRD_Age, BlackHoleMass, BulgeMass, HaloMass, StellarMass, hist_smf_red, hist_smf_blue, hist_smf_err, hist_bhmf_err, hist_himf_err)
 
         # Both observations and model values don't come necessarily in order,
         # but if at the end of the day we want to perform array-wise operations
@@ -395,12 +605,10 @@ class Constraint(object):
         sorted_mod = np.argsort(x_mod)
         x_mod = x_mod[sorted_mod]
         y_mod = y_mod[sorted_mod]
+        y_mod_err = y_mod_err[sorted_mod]
         
-        # Calculate model errors (Poisson errors from number counts)
-        # For log(phi), error is approximately 1/sqrt(N) in linear space
-        # which translates to approximately 0.434/sqrt(N) in log space
-        # We assume a minimum of 5 galaxies per bin for Poisson errors
-        y_mod_err = np.ones_like(y_mod) * 0.2  # Conservative estimate
+        # Model errors now come from proper Poisson statistics calculated in _load_model_data
+        # (already computed above from get_model_x_y)
 
         # Linearly interpolate model Y values respect to the observations'
         # X values, and only take those within the domain. We do the same 
@@ -420,14 +628,14 @@ class Constraint(object):
         err = np.sqrt(y_obs_err_sel ** 2.0 + y_mod_err_sel ** 2.0)
         
         print('in get_data:')
-        print('obs x:', x_obs_sel)
-        print('obs y:', y_obs_sel)
-        print('mod y:', y_mod_sel)
-        print('obs errors:', y_obs_err_sel)
-        print('mod errors:', y_mod_err_sel)
-        print('combined errors:', err)
-        print('differences (mod-obs):', y_mod_sel - y_obs_sel)
-        print('normalized differences:', (y_mod_sel - y_obs_sel) / err)
+        print('obs x:', np.round(x_obs_sel, 2))
+        print('obs y:', np.round(y_obs_sel, 2))
+        print('mod y:', np.round(y_mod_sel, 2))
+        print('obs errors:', np.round(y_obs_err_sel, 2))
+        print('mod errors:', np.round(y_mod_err_sel, 2))
+        print('combined errors:', np.round(err, 2))
+        print('differences (mod-obs):', np.round(y_mod_sel - y_obs_sel, 2))
+        print('normalized differences:', np.round((y_mod_sel - y_obs_sel) / err, 2))
 
         # Get the constraint name and create filename directly in outdir
         constraint_name = self.__class__.__name__
@@ -440,16 +648,25 @@ class Constraint(object):
                 f.write(f"{x_val}\t{y_val}\t{mod_y_val}\n")
             
         # Get constraint name for appropriate plotting function
-        constraint_name = self.__class__.__name__
-
-        if constraint_name.startswith('TARGET_SMF'):
-            self.plot_target_smf(x_obs_sel, y_obs_sel, y_mod_sel, x_sage, y_sage, self.output_dir)
-        if 'SMF' in constraint_name:
-            self.plot_smf(x_obs_sel, y_obs_sel, y_mod_sel, x_sage, y_sage, self.output_dir)
-        if 'BHMF' in constraint_name:
-            self.plot_bhmf(x_obs_sel, y_obs_sel, y_mod_sel, x_sage, y_sage, self.output_dir)
-        if 'BHBM' in constraint_name:
-            self.plot_bhbm(x_obs_sel, y_obs_sel, y_mod_sel, x_sage, y_sage, BlackHoleMass, BulgeMass, self.output_dir)
+        # constraint_name = self.__class__.__name__
+        
+        # # Create specialized publication-quality plots
+        # if 'SMF' in constraint_name:
+        #     self.plot_smf(x_obs_sel, y_obs_sel, y_mod_sel, x_sage, y_sage, y_dn[sel], y_up[sel], self.output_dir)
+        # elif 'BHMF' in constraint_name:
+        #     self.plot_bhmf(x_obs_sel, y_obs_sel, y_mod_sel, x_sage, y_sage, y_dn[sel], y_up[sel], self.output_dir)
+        # elif 'HIMF' in constraint_name:
+        #     self.plot_himf(x_obs_sel, y_obs_sel, y_mod_sel, x_sage, y_sage, y_dn[sel], y_up[sel], self.output_dir)
+        # elif 'BHBM' in constraint_name:
+        #     self.plot_bhbm(x_obs_sel, y_obs_sel, y_mod_sel, x_sage, y_sage, y_dn[sel], y_up[sel], BlackHoleMass, BulgeMass, self.output_dir)
+        # elif 'CSFRDH' in constraint_name:
+        #     self.plot_CSFRDH(x_obs_sel, y_obs_sel, y_mod_sel, x_sage, y_sage, y_dn[sel], y_up[sel], TimeBinEdge, SFRD_Age, self.output_dir)
+        
+        # Always create diagnostic plot showing interpolation/selection steps
+        self.plot_diagnostic(x_obs, y_obs, y_dn, y_up, 
+                           x_mod, y_mod, y_mod_interp, 
+                           x_obs_sel, y_obs_sel, y_mod_sel, err, 
+                           self.output_dir)
         
         return y_obs_sel, y_mod_sel, err
 
@@ -459,15 +676,16 @@ class Constraint(object):
         return s % args
 
 class BHMF(Constraint):
-    """Common logic for SMF constraints"""
+    """Common logic for BHMF constraints"""
 
-    domain = (6, 10)
+    domain = (6, 9.5)
 
-    def get_model_x_y(self, _, hist_bhmf, _2, _3, _4, _5, _6, _7, _8, _9):
+    def get_model_x_y(self, hist_smf, hist_bhmf, hist_himf, TimeBinEdge, SFRD_Age, BlackHoleMass, BulgeMass, HaloMass, StellarMass, hist_smf_red, hist_smf_blue, hist_smf_err, hist_bhmf_err, hist_himf_err):
         y = hist_bhmf[0]
+        yerr = hist_bhmf_err[0]
         ind = np.where(y < 0.)
 
-        return xmf2[ind], y[ind]
+        return xmf2[ind], y[ind], yerr[ind]
     
 class BHMF_z0(BHMF):
     """The BHMF constraint at z=0"""
@@ -557,12 +775,13 @@ class BHMF_z10(BHMF):
 class SMF(Constraint):
     """Common logic for SMF constraints"""
 
-    domain = (8.0, 12.0)
+    domain = (8.0, 11.5)
 
-    def get_model_x_y(self, hist_smf, _, _2, _3, _4, _5, _6, _7, _8, _9):
+    def get_model_x_y(self, hist_smf, hist_bhmf, hist_himf, TimeBinEdge, SFRD_Age, BlackHoleMass, BulgeMass, HaloMass, StellarMass, hist_smf_red, hist_smf_blue, hist_smf_err, hist_bhmf_err, hist_himf_err):
         y = hist_smf[0,:]
+        yerr = hist_smf_err[0,:]
         ind = np.where(y < 0.)
-        return xmf[ind], y[ind]
+        return xmf[ind], y[ind], yerr[ind]
 
 class SMF_z0(SMF):
     """The SMF constraint at z=0"""
@@ -728,8 +947,10 @@ class SMF_z40(SMF):
                               
 class CSFRDH(Constraint):
 
-    z = [0]
-    domain = (0, 14) # look-back time in Gyr
+    # Select snapshots that span cosmic history (approximately evenly spaced in redshift/time)
+    # From z~4 to z=0: snapshots [23, 27, 32, 36, 40, 44, 48, 52, 56, 60, 63]
+    z = [23, 27, 32, 36, 40, 44, 48, 52, 56, 60, 63]
+    domain = (0, 12) # look-back time in Gyr
     
     def get_obs_x_y_err(self):
 #        zmin, zmax, logSFRD, err1, err2, err3 = self.load_observation('./data/Driver_SFRD.dat', cols=[1,2,3,5,6,7])
@@ -760,15 +981,32 @@ class CSFRDH(Constraint):
         
         return tLB_D23, CSFH_D23, D23[:,2], D23[:,1]
         
-    def get_model_x_y(self, _, _2, TimeBinEdge, SFRD_Age, _3, _4):
-        return 0.5*(TimeBinEdge[1:]+TimeBinEdge[:-1]), SFRD_Age
+    def get_model_x_y(self, hist_smf, hist_bhmf, hist_himf, TimeBinEdge, SFRD_Age, BlackHoleMass, BulgeMass, HaloMass, StellarMass, hist_smf_red, hist_smf_blue, hist_smf_err, hist_bhmf_err, hist_himf_err):
+        # TimeBinEdge now contains the actual snapshot times (lookback times in Gyr) for CSFRDH
+        # Ignore the hist_smf and hist_bhmf arrays which contain -20 values
+        # For CSFRDH, errors are not well-defined, return zeros
+        yerr = np.zeros_like(SFRD_Age)
+        return TimeBinEdge, SFRD_Age, yerr
+    
+    def get_sage_x_y(self):
+        # Load data from SAGE
+        # logm, phi = self.load_observation('./data/sage_smf_all_redshifts.csv', cols=[20,21])
+        logm, phi = np.zeros(1), np.zeros(1)
+
+        # Remove NaN values
+        logphi = np.log10(phi)
+        valid_mask = ~np.isnan(logm) & ~np.isnan(logphi)
+        x_sage = logm[valid_mask]
+        y_sage = logphi[valid_mask]
+
+        return x_sage, y_sage
         
 class BHBM(Constraint):
     """The Black hole-Bulge mass relation constraint"""
 
-    domain = (8.0, 12.0)
+    domain = (8.0, 11.5)
 
-    def get_model_x_y(self, _, _2, _3, _4, BlackHoleMass, BulgeMass, _5, _6, _7, _8):
+    def get_model_x_y(self, hist_smf, hist_bhmf, hist_himf, TimeBinEdge, SFRD_Age, BlackHoleMass, BulgeMass, HaloMass, StellarMass, hist_smf_red, hist_smf_blue, hist_smf_err, hist_bhmf_err, hist_himf_err):
         
         mask = (BlackHoleMass > 0) & (BulgeMass > 0) & np.isfinite(BlackHoleMass) & np.isfinite(BulgeMass)
         y = BlackHoleMass[mask]
@@ -776,23 +1014,31 @@ class BHBM(Constraint):
         
         if len(x) < 10:  # Not enough points for reliable median
             # Return dummy arrays that will result in poor fit
-            return np.array([8.0, 12.0]), np.array([6.0, 8.0])
+            yerr_dummy = np.array([999.0, 999.0])
+            return np.array([8.0, 12.0]), np.array([6.0, 8.0]), yerr_dummy
         
         # Create bins for bulge mass and calculate median black hole mass in each bin
         bin_edges = np.arange(8.0, 12.1, 0.2)  # Bins every 0.2 dex
         bin_centers = []
         median_bh_mass = []
+        bin_errors = []
         
         for i in range(len(bin_edges) - 1):
             bin_mask = (x >= bin_edges[i]) & (x < bin_edges[i+1])
             if np.sum(bin_mask) >= 5:  # At least 5 galaxies in bin
                 bin_centers.append((bin_edges[i] + bin_edges[i+1]) / 2.0)
                 median_bh_mass.append(np.median(y[bin_mask]))
+                # Error on median is approximately 1.25 * std / sqrt(N) for Gaussian
+                # For scatter in BHBM relation, use standard deviation / sqrt(N)
+                N_bin = np.sum(bin_mask)
+                std_bin = np.std(y[bin_mask])
+                bin_errors.append(std_bin / np.sqrt(N_bin))
         
         if len(bin_centers) < 3:  # Not enough bins for reliable relation
-            return np.array([8.0, 12.0]), np.array([6.0, 8.0])
+            yerr_dummy = np.array([999.0, 999.0])
+            return np.array([8.0, 12.0]), np.array([6.0, 8.0]), yerr_dummy
         
-        return np.array(bin_centers), np.array(median_bh_mass)
+        return np.array(bin_centers), np.array(median_bh_mass), np.array(bin_errors)
     
 class BHBM_z0(BHBM):
     """The BHBM constraint at z=0"""
@@ -825,6 +1071,40 @@ class BHBM_z0(BHBM):
 
         return x_sage, y_sage
 
+class HIMF(Constraint):
+    """The HI Mass Function constraint"""
+
+    domain = (8.5, 11.5)
+    z = [0]
+
+    def get_obs_x_y_err(self):
+        # Load Zwaan05 data and correct data for their choice of cosmology
+        lmHI, pHI, dpHIdn, dpHIup = self.load_observation('./data/HIMF_Zwaan2005.dat', cols=[0,1,2,3])
+
+        # Correct data for their choice of cosmology
+        hobs = 0.75
+        x_obs = lmHI + np.log10(pow(hobs, 2) / pow(self.h0, 2))
+        y_obs = pHI + np.log10(pow(self.h0, 3) / pow(hobs, 3))
+        y_dn = dpHIdn
+        y_up = dpHIup
+
+        return x_obs, y_obs, y_dn, y_up
+
+    def get_model_x_y(self, hist_smf, hist_bhmf, hist_himf, TimeBinEdge, SFRD_Age, BlackHoleMass, BulgeMass, HaloMass, StellarMass, hist_smf_red, hist_smf_blue, hist_smf_err, hist_bhmf_err, hist_himf_err):
+        y = hist_himf[0]
+        yerr = hist_himf_err[0]
+        ind = np.where(y < 0.)
+        return xmf[ind], y[ind], yerr[ind]
+    
+    def get_sage_x_y(self):
+        # Placeholder - add SAGE HI MF data if available
+        logm, phi = np.zeros(1), np.zeros(1)
+        logphi = np.log10(phi)
+        valid_mask = ~np.isnan(logm) & ~np.isnan(logphi)
+        x_sage = logm[valid_mask]
+        y_sage = logphi[valid_mask]
+        return x_sage, y_sage
+
 _constraint_re = re.compile((r'([0-9_a-zA-Z]+)' # name
                               r'(?:\(([0-9\.]+)-([0-9\.]+)\))?' # domain boundaries
                               r'(?:\*([0-9\.]+))?')) # weight
@@ -841,7 +1121,9 @@ def parse(spec, snapshot=None, sim=None, boxsize=None, vol_frac=None, age_alist_
         'SMF_z20': SMF_z20,
         'SMF_z30': SMF_z30,
         'SMF_z40': SMF_z40,
-        'BHBM_z0': BHBM_z0
+        'BHBM_z0': BHBM_z0,
+        'CSFRDH': CSFRDH,
+        'HIMF': HIMF
     }
 
     def _parse(s,output_dir):

@@ -60,7 +60,9 @@ def get_required_snapshots(constraints_str):
         'SMF_z40': [23],
         'BHMF_z0': [63],
         'BHMF_z10': [40],
-        'BHBM_z0': [63]
+        'BHBM_z0': [63],
+        'CSFRDH': [23, 27, 32, 36, 40, 44, 48, 52, 56, 60, 63],  # Snapshots spanning cosmic history
+        'HIMF': [63]
     }
     
     snapshots = set()
@@ -178,6 +180,14 @@ def main():
                                 "and/or a relative weight (e.g. 'BHMF*6,SMF_z0(8-11)*10)'"))
     pso_opts.add_argument('-csv', '--csv-output', help='Path to save PSO results as CSV file. If not specified, no CSV will be generated.',
                       type=_abspath, default=None)
+    pso_opts.add_argument('-r', '--random-seed', help='Random seed for reproducibility. If not specified, PSO will use random initialization.',
+                      type=int, default=None)
+    pso_opts.add_argument('--omega', help='PSO inertia weight (default: 0.729). Standard constriction coefficient from Clerc & Kennedy (2002).',
+                      type=float, default=0.729)
+    pso_opts.add_argument('--phip', help='PSO cognitive parameter (default: 1.49445). Particle learning from own best. Standard value ~1.5-2.0.',
+                      type=float, default=1.49445)
+    pso_opts.add_argument('--phig', help='PSO social parameter (default: 1.49445). Particle learning from swarm best. Standard value ~1.5-2.0.',
+                      type=float, default=1.49445)
 
 ### 
     hpc_opts = parser.add_argument_group('HPC options')
@@ -277,6 +287,10 @@ def main():
     logger.info('    Search space parameters: %s', ' '.join(space['name']))
     logger.info('    Swarm size: %d', ss)
     logger.info('    Maximum iterations: %d', opts.max_iterations)
+    logger.info('    PSO Hyperparameters:')
+    logger.info('        omega (inertia): %.3f', opts.omega)
+    logger.info('        phip (cognitive): %.3f', opts.phip)
+    logger.info('        phig (social): %.3f', opts.phig)
     logger.info('    Lower bounds: %r', space['lb'])
     logger.info('    Upper bounds: %r', space['ub'])
     logger.info('    Test function: %s', opts.stat_test)
@@ -284,6 +298,7 @@ def main():
     for c in opts.constraints:
         logger.info('    %s', c)
     logger.info('    CSV Output Path: %s', opts.csv_output if opts.csv_output else 'Not specified')
+    logger.info('    Random Seed: %s', opts.random_seed if opts.random_seed is not None else 'Not specified (random initialization)')
     logger.info('HPC mode: %d', opts.hpc_mode)
     if opts.hpc_mode:
         logger.info('    Account used to submit: %s', opts.account if opts.account else '')
@@ -319,7 +334,10 @@ def main():
         os.chdir(os.path.join(opts.outdir, '../../optim/'))
     xopt, fopt = pso.pso(f, space['lb'], space['ub'], args=args, swarmsize=ss,
                          maxiter=opts.max_iterations, processes=procs,
-                         dumpfile_prefix=os.path.join(tracksdir, 'track_%03d'),csv_output_path=opts.csv_output)
+                         omega=opts.omega, phip=opts.phip, phig=opts.phig,
+                         dumpfile_prefix=os.path.join(tracksdir, 'track_%03d'),
+                         csv_output_path=opts.csv_output,
+                         random_seed=opts.random_seed)
     tEnd = time.time()
 
     global count
