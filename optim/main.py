@@ -60,7 +60,7 @@ def get_required_snapshots(constraints_str):
         'SMF_z40': [23],
         'BHMF_z0': [63],
         'BHMF_z10': [40],
-        'BHBM_z0': [63],
+        'BHBM': [63],
         'CSFRDH': [23, 27, 32, 36, 40, 44, 48, 52, 56, 60, 63],  # Snapshots spanning cosmic history
         'HIMF': [63]
     }

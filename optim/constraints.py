@@ -791,7 +791,7 @@ class SMF_z0(SMF):
     def get_obs_x_y_err(self):
         # SMF from Li & White (2009)
         lm, p, dpdn, dpup = self.load_observation('../data/SMF_Li2009.dat', cols=[0,1,2,3])
-        hobs = 0.733
+        hobs = self.h0
         x_obs = lm - 2.0 * np.log10(hobs) + 2.0 * np.log10(hobs/self.h0)
         y_obs = p + 3.0 * np.log10(hobs) - 3.0 * np.log10(hobs/self.h0)
         y_dn = dpdn
@@ -818,7 +818,7 @@ class SMF_z05(SMF):
     def get_obs_x_y_err(self):
         # SMF from Weaver et al. (2022)
         lm, pD, dn, du = self.load_observation('../data/COSMOS2020/SMF_Farmer_v2.1_0.2z0.5_total.txt', cols=[0,2,3,4])
-        hobs = 0.73
+        hobs = self.h0
         y_obs = np.log10(pD) + 3.0 * np.log10(hobs/self.h0)
         y_dn = np.log10(pD) - np.log10(dn)
         y_up = np.log10(du) - np.log10(pD)
@@ -845,7 +845,7 @@ class SMF_z10(SMF):
     def get_obs_x_y_err(self):
         # SMF from Weaver et al. (2022)
         lm, pD, dn, du = self.load_observation('../data/COSMOS2020/SMF_Farmer_v2.1_0.8z1.1_total.txt', cols=[0,2,3,4])
-        hobs = 0.73
+        hobs = self.h0
         y_obs = np.log10(pD) + 3.0 * np.log10(hobs/self.h0)
         y_dn = np.log10(pD) - np.log10(dn)
         y_up = np.log10(du) - np.log10(pD)
@@ -872,7 +872,7 @@ class SMF_z20(SMF):
     def get_obs_x_y_err(self):
         # SMF from Weaver et al. (2022)
         lm, pD, dn, du = self.load_observation('../data/COSMOS2020/SMF_Farmer_v2.1_1.5z2.0_total.txt', cols=[0,2,3,4])
-        hobs = 0.73
+        hobs = self.h0
         y_obs = np.log10(pD) + 3.0 * np.log10(hobs/self.h0)
         y_dn = np.log10(pD) - np.log10(dn)
         y_up = np.log10(du) - np.log10(pD)
@@ -899,7 +899,7 @@ class SMF_z30(SMF):
     def get_obs_x_y_err(self):
         # SMF from Weaver et al. (2022)
         lm, pD, dn, du = self.load_observation('../data/COSMOS2020/SMF_Farmer_v2.1_2.5z3.0_total.txt', cols=[0,2,3,4])
-        hobs = 0.73
+        hobs = self.h0
         y_obs = np.log10(pD) + 3.0 * np.log10(hobs/self.h0)
         y_dn = np.log10(pD) - np.log10(dn)
         y_up = np.log10(du) - np.log10(pD)
@@ -926,7 +926,7 @@ class SMF_z40(SMF):
     def get_obs_x_y_err(self):
         # SMF from Weaver et al. (2022)
         lm, pD, dn, du = self.load_observation('../data/COSMOS2020/SMF_Farmer_v2.1_3.5z4.5_total.txt', cols=[0,2,3,4])
-        hobs = 0.73
+        hobs = self.h0
         y_obs = np.log10(pD) + 3.0 * np.log10(hobs/self.h0)
         y_dn = np.log10(pD) - np.log10(dn)
         y_up = np.log10(du) - np.log10(pD)
@@ -1005,6 +1005,7 @@ class BHBM(Constraint):
     """The Black hole-Bulge mass relation constraint"""
 
     domain = (8.0, 11.5)
+    z = [0]
 
     def get_model_x_y(self, hist_smf, hist_bhmf, hist_himf, TimeBinEdge, SFRD_Age, BlackHoleMass, BulgeMass, HaloMass, StellarMass, hist_smf_red, hist_smf_blue, hist_smf_err, hist_bhmf_err, hist_himf_err):
         
@@ -1039,11 +1040,6 @@ class BHBM(Constraint):
             return np.array([8.0, 12.0]), np.array([6.0, 8.0]), yerr_dummy
         
         return np.array(bin_centers), np.array(median_bh_mass), np.array(bin_errors)
-    
-class BHBM_z0(BHBM):
-    """The BHBM constraint at z=0"""
-
-    z = [0]
 
     def get_obs_x_y_err(self):
         
@@ -1082,7 +1078,7 @@ class HIMF(Constraint):
         lmHI, pHI, dpHIdn, dpHIup = self.load_observation('./data/HIMF_Zwaan2005.dat', cols=[0,1,2,3])
 
         # Correct data for their choice of cosmology
-        hobs = 0.75
+        hobs = self.h0 
         x_obs = lmHI + np.log10(pow(hobs, 2) / pow(self.h0, 2))
         y_obs = pHI + np.log10(pow(self.h0, 3) / pow(hobs, 3))
         y_dn = dpHIdn
@@ -1121,7 +1117,7 @@ def parse(spec, snapshot=None, sim=None, boxsize=None, vol_frac=None, age_alist_
         'SMF_z20': SMF_z20,
         'SMF_z30': SMF_z30,
         'SMF_z40': SMF_z40,
-        'BHBM_z0': BHBM_z0,
+        'BHBM': BHBM,
         'CSFRDH': CSFRDH,
         'HIMF': HIMF
     }
