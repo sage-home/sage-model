@@ -73,9 +73,28 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
 
     // Calculate reheated mass - use FIRE model if enabled, otherwise use original feedback
     double reheated_mass = 0.0;
+    
     if(run_params->SupernovaRecipeOn == 1) {
         if(run_params->FIREmodeOn == 1) {
-            reheated_mass = calculate_muratov_mass_loading(centralgal, galaxies, run_params->ZZ[galaxies[centralgal].SnapNum], run_params) * stars;
+            // FIRE: Calculate velocity/redshift scaling from Muratov et al. 2015
+            const double z = run_params->ZZ[galaxies[centralgal].SnapNum];
+            const double vc = galaxies[centralgal].Vvir;
+            const double V_CRIT = 60.0;
+            
+            double z_term = pow(1.0 + z, run_params->RedshiftPowerLawExponent);
+            double v_term;
+            if (vc < V_CRIT) {
+                v_term = pow(vc / V_CRIT, -3.2);
+            } else {
+                v_term = pow(vc / V_CRIT, -1.0);
+            }
+            double scaling_factor = z_term * v_term;
+            
+            // Reheating with Muratov scaling: η = 2.9 × (1+z)^α × (V/60)^β
+            double eta_reheat = run_params->FeedbackReheatingEpsilon * scaling_factor;
+            // Store mass loading for analysis (cast to float)
+            galaxies[p].MassLoading = (float)eta_reheat;
+            reheated_mass = eta_reheat * stars;
         } else {
             reheated_mass = run_params->FeedbackReheatingEpsilon * stars;
         }
@@ -95,24 +114,53 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
     if(run_params->SupernovaRecipeOn == 1) {
         if(galaxies[centralgal].Vvir > 0.0) {
             if(run_params->FIREmodeOn == 1) {
-                ejected_mass =
-                    (run_params->FeedbackEjectionEfficiency * (run_params->EtaSNcode * run_params->EnergySNcode) / (galaxies[centralgal].Vvir * galaxies[centralgal].Vvir) -
-                     calculate_muratov_mass_loading(centralgal, galaxies, run_params->ZZ[galaxies[centralgal].SnapNum], run_params)) * stars;
+                // FIRE model: Energy-based ejection following Hirschmann+2016
+                // Energy from supernovae (with Muratov scaling)
+                const double z = run_params->ZZ[galaxies[centralgal].SnapNum];
+                const double vc = galaxies[centralgal].Vvir;
+                const double V_CRIT = 60.0;
+                
+                double z_term = pow(1.0 + z, run_params->RedshiftPowerLawExponent);
+                double v_term;
+                if (vc < V_CRIT) {
+                    v_term = pow(vc / V_CRIT, -3.2);
+                } else {
+                    v_term = pow(vc / V_CRIT, -1.0);
+                }
+                double scaling_factor = z_term * v_term;
+                
+                // Total feedback energy: E_FB = ε_eject × scaling × 0.5 × M_* × (η_SN × E_SN)
+                double E_FB = run_params->FeedbackEjectionEfficiency * scaling_factor * 
+                              0.5 * stars * (run_params->EtaSNcode * run_params->EnergySNcode);
+                
+                // Energy needed to lift reheated gas to virial radius: E_lift = 0.5 × M_reheat × V_vir²
+                double E_lift = 0.5 * reheated_mass * vc * vc;
+                
+                // Leftover energy ejects additional gas: E_eject = E_FB - E_lift
+                // Ejected mass: M_eject = E_eject / (0.5 × V_vir²)
+                if(E_FB > E_lift) {
+                    ejected_mass = (E_FB - E_lift) / (0.5 * vc * vc);
+                } else {
+                    ejected_mass = 0.0;
+                }
             } else {
-                ejected_mass =
-                    (run_params->FeedbackEjectionEfficiency * (run_params->EtaSNcode * run_params->EnergySNcode) / (galaxies[centralgal].Vvir * galaxies[centralgal].Vvir) -
-                     run_params->FeedbackReheatingEpsilon) * stars;
+                // Original non-FIRE calculation
+                ejected_mass = (run_params->FeedbackEjectionEfficiency * 
+                               (run_params->EtaSNcode * run_params->EnergySNcode) / 
+                               (galaxies[centralgal].Vvir * galaxies[centralgal].Vvir) -
+                               run_params->FeedbackReheatingEpsilon) * stars;
             }
         } else {
             ejected_mass = 0.0;
         }
-
+        
         if(ejected_mass < 0.0) {
             ejected_mass = 0.0;
         }
     } else {
         ejected_mass = 0.0;
     }
+
 
     // update the star formation rate
     galaxies[p].SfrDisk[step] += stars / dt;

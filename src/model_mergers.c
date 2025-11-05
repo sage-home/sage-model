@@ -264,7 +264,23 @@ void collisional_starburst_recipe(const double mass_ratio, const int merger_cent
     // this bursting results in SN feedback on the cold/hot gas - use FIRE model if enabled
     if(run_params->SupernovaRecipeOn == 1) {
         if(run_params->FIREmodeOn == 1) {
-            reheated_mass = calculate_muratov_mass_loading(merger_centralgal, galaxies, run_params->ZZ[galaxies[merger_centralgal].SnapNum], run_params) * stars;
+            // FIRE: Calculate velocity/redshift scaling from Muratov et al. 2015
+            const double z = run_params->ZZ[galaxies[merger_centralgal].SnapNum];
+            const double vc = galaxies[merger_centralgal].Vvir;
+            const double V_CRIT = 60.0;
+            
+            double z_term = pow(1.0 + z, run_params->RedshiftPowerLawExponent);
+            double v_term;
+            if (vc < V_CRIT) {
+                v_term = pow(vc / V_CRIT, -3.2);
+            } else {
+                v_term = pow(vc / V_CRIT, -1.0);
+            }
+            double scaling_factor = z_term * v_term;
+            
+            // Reheating with Muratov scaling: η = 2.9 × (1+z)^α × (V/60)^β
+            double eta_reheat = run_params->FeedbackReheatingEpsilon * scaling_factor;
+            reheated_mass = eta_reheat * stars;
         } else {
             reheated_mass = run_params->FeedbackReheatingEpsilon * stars;
         }
@@ -285,14 +301,39 @@ void collisional_starburst_recipe(const double mass_ratio, const int merger_cent
 
     // determine ejection
     if(run_params->SupernovaRecipeOn == 1) {
-        if(galaxies[centralgal].Vvir > 0.0) {
+        if(galaxies[merger_centralgal].Vvir > 0.0) {
             if(run_params->FIREmodeOn == 1) {
-                ejected_mass =
-                    (run_params->FeedbackEjectionEfficiency * (run_params->EtaSNcode * run_params->EnergySNcode) / (galaxies[centralgal].Vvir * galaxies[centralgal].Vvir) -
-                     calculate_muratov_mass_loading(centralgal, galaxies, run_params->ZZ[galaxies[centralgal].SnapNum], run_params)) * stars;
+                // FIRE model: Energy-based ejection following Hirschmann+2016
+                const double z = run_params->ZZ[galaxies[merger_centralgal].SnapNum];
+                const double vc = galaxies[merger_centralgal].Vvir;
+                const double V_CRIT = 60.0;
+                
+                double z_term = pow(1.0 + z, run_params->RedshiftPowerLawExponent);
+                double v_term;
+                if (vc < V_CRIT) {
+                    v_term = pow(vc / V_CRIT, -3.2);
+                } else {
+                    v_term = pow(vc / V_CRIT, -1.0);
+                }
+                double scaling_factor = z_term * v_term;
+                
+                // Total feedback energy: E_FB = ε_eject × scaling × 0.5 × M_* × (η_SN × E_SN)
+                double E_FB = run_params->FeedbackEjectionEfficiency * scaling_factor * 
+                              0.5 * stars * (run_params->EtaSNcode * run_params->EnergySNcode);
+                
+                // Energy needed to lift reheated gas to virial radius: E_lift = 0.5 × M_reheat × V_vir²
+                double E_lift = 0.5 * reheated_mass * vc * vc;
+                
+                // Leftover energy ejects additional gas: E_eject = E_FB - E_lift
+                // Ejected mass: M_eject = E_eject / (0.5 × V_vir²)
+                if(E_FB > E_lift) {
+                    ejected_mass = (E_FB - E_lift) / (0.5 * vc * vc);
+                } else {
+                    ejected_mass = 0.0;
+                }
             } else {
                 ejected_mass =
-                    (run_params->FeedbackEjectionEfficiency * (run_params->EtaSNcode * run_params->EnergySNcode) / (galaxies[centralgal].Vvir * galaxies[centralgal].Vvir) -
+                    (run_params->FeedbackEjectionEfficiency * (run_params->EtaSNcode * run_params->EnergySNcode) / (galaxies[merger_centralgal].Vvir * galaxies[merger_centralgal].Vvir) -
                      run_params->FeedbackReheatingEpsilon) * stars;
             }
         } else {
