@@ -92,14 +92,21 @@ double cooling_recipe_hot(const int gal, const double dt, struct GALAXY *galaxie
             if(f_stream < 0.0) f_stream = 0.0;
             
             // Calculate cooling: mix of cold streams + hot halo cooling
-            // Cold stream component: rapid accretion on dynamical time
-            const double cold_stream_cooling = f_stream * galaxies[gal].HotGas / 
-                                               (galaxies[gal].Rvir / galaxies[gal].Vvir) * dt;
-            
-            // Hot halo component: traditional cooling from the shocked gas
+            double cold_stream_cooling = 0.0;
             double hot_halo_cooling = 0.0;
+            
             if(rcool < galaxies[gal].Rvir) {
+                // When rcool < Rvir: both cold streams and hot halo cooling
+                // Cold stream component: rapid accretion on dynamical time
+                cold_stream_cooling = f_stream * galaxies[gal].HotGas / 
+                                     (galaxies[gal].Rvir / galaxies[gal].Vvir) * dt;
+                
+                // Hot halo component: traditional cooling from the shocked gas
                 hot_halo_cooling = (1.0 - f_stream) * (galaxies[gal].HotGas / galaxies[gal].Rvir) * 
+                                  (rcool / (2.0 * tcool)) * dt;
+            } else {
+                // When rcool >= Rvir: only hot halo cooling (no cold streams)
+                hot_halo_cooling = (galaxies[gal].HotGas / galaxies[gal].Rvir) * 
                                   (rcool / (2.0 * tcool)) * dt;
             }
             
