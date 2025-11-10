@@ -66,7 +66,21 @@ if __name__ == '__main__':
     # Find example central galaxies in each regime (at z=0, snap=63)
     z0_snap = 63
     centrals_z0 = TypeFull[z0_snap] == 0
-    massive_z0 = HaloMassFull[z0_snap] > 1e11  # Only consider massive galaxies
+    
+    # DIAGNOSTICS: Print halo mass statistics
+    print(f"=== HALO MASS DIAGNOSTICS (z=0) ===")
+    print(f"Box size: {BoxSize} Mpc/h")
+    print(f"Volume: {volume:.2e} (Mpc)^3")
+    print(f"Total galaxies: {len(HaloMassFull[z0_snap])}")
+    print(f"Central galaxies: {np.sum(centrals_z0)}")
+    central_masses = HaloMassFull[z0_snap][centrals_z0]
+    print(f"Central halo mass range: {central_masses.min():.2e} - {central_masses.max():.2e} Msun")
+    print(f"Number of centrals > 1e11 Msun: {np.sum(central_masses > 1e11)}")
+    print(f"Number of centrals > 1e12 Msun: {np.sum(central_masses > 1e12)}")
+    print(f"Number of centrals > 1e13 Msun: {np.sum(central_masses > 1e13)}")
+    print()
+    
+    massive_z0 = HaloMassFull[z0_snap] > 1e10  # Only consider massive galaxies
     
     # CGM regime galaxy (Regime == 0)
     cgm_regime_mask = (centrals_z0) & (RegimeFull[z0_snap] == 0) & (massive_z0)
@@ -76,9 +90,13 @@ if __name__ == '__main__':
     hot_regime_mask = (centrals_z0) & (RegimeFull[z0_snap] == 1) & (massive_z0)
     hot_indices = np.where(hot_regime_mask)[0]
     
+    print(f"CGM regime centrals (>1e11 Msun): {len(cgm_indices)}")
+    print(f"Hot regime centrals (>1e11 Msun): {len(hot_indices)}")
+    print()
+    
     if len(cgm_indices) > 0 and len(hot_indices) > 0:
         # Pick three galaxies from each regime
-        n_galaxies = min(3, len(cgm_indices), len(hot_indices))
+        n_galaxies = min(7, len(cgm_indices), len(hot_indices))
         
         # Select evenly spaced galaxies from sorted arrays
         cgm_selected = [cgm_indices[i * len(cgm_indices) // (n_galaxies + 1)] for i in range(1, n_galaxies + 1)]
@@ -97,8 +115,8 @@ if __name__ == '__main__':
         print()
         
         # Track these galaxies through time
-        cgm_histories = [{'z': [], 'mass': []} for _ in range(n_galaxies)]
-        hot_histories = [{'z': [], 'mass': []} for _ in range(n_galaxies)]
+        cgm_histories = [{'z': [], 'mass': [], 'regime': []} for _ in range(n_galaxies)]
+        hot_histories = [{'z': [], 'mass': [], 'regime': []} for _ in range(n_galaxies)]
         
         for snap in range(FirstSnap, LastSnap+1):
             # Track CGM galaxies
@@ -109,6 +127,7 @@ if __name__ == '__main__':
                     if TypeFull[snap][idx] == 0:  # Still central
                         cgm_histories[i]['z'].append(redshifts[snap])
                         cgm_histories[i]['mass'].append(HaloMassFull[snap][idx])
+                        cgm_histories[i]['regime'].append(RegimeFull[snap][idx])
             
             # Track Hot galaxies
             for i, gal_idx in enumerate(hot_galaxy_indices):
@@ -118,6 +137,7 @@ if __name__ == '__main__':
                     if TypeFull[snap][idx] == 0:  # Still central
                         hot_histories[i]['z'].append(redshifts[snap])
                         hot_histories[i]['mass'].append(HaloMassFull[snap][idx])
+                        hot_histories[i]['regime'].append(RegimeFull[snap][idx])
         
         # Create the plot
         fig, ax = plt.subplots(figsize=(8.34, 6.25), dpi=96)
@@ -126,8 +146,8 @@ if __name__ == '__main__':
         ax.set_xlim(0, 5)
         ax.set_ylim(1e9, 1e14)
         ax.set_yscale('log')
-        ax.set_xlabel('redshift z', fontsize=16)
-        ax.set_ylabel(r'halo mass M [$\mathrm{M}_{\odot}$]', fontsize=16)
+        ax.set_xlabel('Redshift', fontsize=16)
+        ax.set_ylabel(r'$\mathrm{M_{vir}}$ [$\mathrm{M}_{\odot}$]', fontsize=16)
         
         # # Draw the boundary lines (just visual, not calculated)
         # # Upper diagonal dashed line (from ~(0, 10^13.5) to ~(5, 10^10))
@@ -144,31 +164,92 @@ if __name__ == '__main__':
         # # Label for 2σ line
         # ax.text(4.5, 1.5e10, '2$\\sigma$', fontsize=12)
         
-        # Horizontal red line at ~10^12 M_sun
-        ax.axhline(y=6e11, color='red', linewidth=2.5, zorder=2)
+        # Horizontal black line at ~10^12 M_sun (shock boundary)
+        ax.axhline(y=6e11, color='black', linewidth=2.5, zorder=10)
         
-        # Diagonal magenta line (from ~(1.5, 10^11) to ~(3, 10^14))
+        # Diagonal black line (from ~(1.5, 10^11) to ~(3, 10^14))
         z_mag = np.array([1.4, 3.4])
         mass_mag = np.array([6e11, 1e14])
-        ax.plot(z_mag, mass_mag, color='magenta', linewidth=3, zorder=2)
+        ax.plot(z_mag, mass_mag, color='black', linewidth=3, zorder=10)
         
         # Add text labels for regions
-        ax.text(0.7, 2e12, 'hot', fontsize=18, color='red', fontweight='bold')
-        ax.text(0.7, 3e11, 'cold', fontsize=18, color='blue', fontweight='bold')
-        ax.text(3.2, 9e12, 'cold', fontsize=18, color='blue', fontweight='bold')
-        ax.text(3.2, 5e12, 'in hot', fontsize=16, color='red', fontweight='bold')
-        ax.text(3.2, 7e11, 'shock', fontsize=16, color='red', fontweight='bold')
+        ax.text(0.7, 2e12, 'hot', fontsize=18, color='red', fontweight='bold', zorder=11)
+        ax.text(0.7, 3e11, 'cold', fontsize=18, color='blue', fontweight='bold', zorder=11)
+        ax.text(3.2, 9e12, 'cold', fontsize=18, color='blue', fontweight='bold', zorder=11)
+        ax.text(3.2, 5e12, 'in hot', fontsize=16, color='orange', fontweight='bold', zorder=11)
+        ax.text(3.2, 7e11, 'shock', fontsize=16, color='black', fontweight='bold', zorder=11)
         
-        # Plot the galaxy evolution tracks
-        for i, hist in enumerate(cgm_histories):
-            ax.plot(hist['z'], hist['mass'], 'o-', color='cyan', linewidth=2, 
-                    markersize=4, alpha=0.7, label='CGM-regime' if i == 0 else '', zorder=5)
+        # Map regime values to color names
+        def get_region_name(regime_val):
+            """Convert regime integer to color region name"""
+            if regime_val == 0:
+                return 'cold'  # CGM/cold mode
+            elif regime_val == 1:
+                return 'hot'   # Hot mode
+            elif regime_val == 2:
+                return 'cold_in_hot'  # Cold flows in hot halo
+            else:
+                return 'unknown'
         
-        for i, hist in enumerate(hot_histories):
-            ax.plot(hist['z'], hist['mass'], 's-', color='orange', linewidth=2, 
-                    markersize=4, alpha=0.7, label='Hot-regime' if i == 0 else '', zorder=5)
+        # Create colormaps for evolution
+        from matplotlib.cm import Blues, Oranges, Reds
         
-        ax.legend(loc='lower left', fontsize=12, framealpha=0.9)
+        # Plot the galaxy evolution tracks with region-based coloring
+        print("\n=== Checking for regime transitions ===")
+        for i, hist in enumerate(cgm_histories + hot_histories):
+            if len(hist['z']) == 0:
+                continue
+            
+            galaxy_type = "CGM" if i < len(cgm_histories) else "Hot"
+            transitions = []
+            prev_region = None
+            
+            # Plot segments with appropriate colors based on actual regime from simulation
+            for j in range(len(hist['z']) - 1):
+                z_start, z_end = hist['z'][j], hist['z'][j+1]
+                mass_start, mass_end = hist['mass'][j], hist['mass'][j+1]
+                regime_end = hist['regime'][j+1]
+                
+                # Use the actual regime from the simulation at the endpoint
+                region = get_region_name(regime_end)
+                
+                # Track transitions
+                if prev_region is not None and prev_region != region:
+                    transitions.append((z_end, mass_end, prev_region, region, regime_end))
+                prev_region = region
+                
+                # Map redshift to color intensity (higher z = darker/more saturated)
+                z_mid = (z_start + z_end) / 2.0
+                z_norm = z_mid / 5.0  # Normalize to [0, 1] range
+                
+                if region == 'cold':
+                    color = Blues(0.3 + 0.7 * z_norm)  # Range from light to dark blue
+                elif region == 'cold_in_hot':
+                    color = Oranges(0.3 + 0.7 * z_norm)  # Range from light to dark orange
+                elif region == 'hot':
+                    color = Reds(0.3 + 0.7 * z_norm)  # Range from light to dark red
+                else:
+                    color = 'gray'  # Unknown regime
+                
+                ax.plot([z_start, z_end], [mass_start, mass_end], 'o-', 
+                       color=color, linewidth=2, markersize=4, alpha=0.8, zorder=5)
+            
+            # Report transitions
+            if transitions:
+                print(f"\n{galaxy_type} Galaxy {i % len(cgm_histories) + 1}:")
+                for z, m, old_reg, new_reg, regime_val in transitions:
+                    print(f"  z={z:.2f}, M={m:.2e}: {old_reg} → {new_reg} (Regime={regime_val})")
+        
+        # Add legend with color patches
+        from matplotlib.patches import Patch
+        legend_elements = [
+            Patch(facecolor='blue', label='Cold regime'),
+            Patch(facecolor='orange', label='Cold-in-hot regime'),
+            Patch(facecolor='red', label='Hot regime')
+        ]
+        # ax.legend(handles=legend_elements, loc='lower left', fontsize=12, framealpha=0.9)
+        
+        # ax.legend(loc='lower left', fontsize=12, framealpha=0.9)
         ax.grid(False)
         
         plt.tight_layout()

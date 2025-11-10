@@ -16,7 +16,7 @@ warnings.filterwarnings("ignore")
 # File details
 DirName = './output/millennium/'
 FileName = 'model_0.hdf5'
-Snapshot = 'Snap_41'
+Snapshot = 'Snap_63'
 
 # Simulation details
 Hubble_h = 0.73        # Hubble parameter

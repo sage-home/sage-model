@@ -222,24 +222,41 @@ double cooling_recipe_cgm(const int gal, const double dt, struct GALAXY *galaxie
     double precipitation_fraction = 0.0;
     
     if(tcool_over_tff < precipitation_threshold) {
-        // Don't always precipitate at free-fall rate!
-        // Scale by how much tcool < tff
+        // UNSTABLE: Precipitation cooling
         double instability_factor = precipitation_threshold / tcool_over_tff;
-        instability_factor = fmin(instability_factor, 3.0);  // Cap at 3x
-        precipitation_fraction = tanh(instability_factor / 2.0);  // Smooth scaling
+        instability_factor = fmin(instability_factor, 3.0);
+        precipitation_fraction = tanh(instability_factor / 2.0);
+        
+    } else if(tcool_over_tff < precipitation_threshold + transition_width) {
+        // TRANSITION: Smoothly reduce precipitation_fraction to zero
+        const double x = (tcool_over_tff - precipitation_threshold) / transition_width;
+        precipitation_fraction = 0.5 * (1.0 - tanh(x));
+        
+    } else {
+        if(tcool > 0) {
+        // Cooling rate: dM/dt = M_CGM / t_cool
+        coolingGas = galaxies[gal].CGMgas / tcool * dt;
+        
+        // Safety check
+        if(coolingGas > galaxies[gal].CGMgas) {
+            coolingGas = galaxies[gal].CGMgas;
+        }
+    } else {
+        coolingGas = 0.0;
+        }
 
-        } else if(tcool_over_tff < precipitation_threshold + transition_width) {
-            // Transition regime - smooth with hyperbolic tangent
-            const double x = (tcool_over_tff - precipitation_threshold) / transition_width;
-            precipitation_fraction = 0.5 * (1.0 - tanh(x));
-            const double rho_rcool = x / tcool * 0.885;  // 0.885 = 3/2 * mu, mu=0.59 for a fully ionized gas
-
-            // an isothermal density profile for the hot gas is assumed here
-            const double rho0 = galaxies[gal].CGMgas / (4 * M_PI * galaxies[gal].Rvir);
-            const double rcool = sqrt(rho0 / rho_rcool);
-
-            galaxies[gal].RcoolToRvir = rcool / galaxies[gal].Rvir;
     }
+
+    // Adding this diagnostic for output
+    const double x = (tcool_over_tff - precipitation_threshold) / transition_width;
+
+    const double rho_rcool = x / tcool * 0.885;  // 0.885 = 3/2 * mu, mu=0.59 for a fully ionized gas
+
+    // an isothermal density profile for the hot gas is assumed here
+    const double rho0 = galaxies[gal].CGMgas / (4 * M_PI * galaxies[gal].Rvir);
+    const double rcool = sqrt(rho0 / rho_rcool);
+
+    galaxies[gal].RcoolToRvir = rcool / galaxies[gal].Rvir;
     // else: tcool_over_tff >= 15, precipitation_fraction = 0.0 (thermally stable)
 
     // ========================================================================

@@ -2,6 +2,7 @@ sage
 tests/test_data/
 input/millennium/
 output/
+groups/
 
 *.o
 *.*~
