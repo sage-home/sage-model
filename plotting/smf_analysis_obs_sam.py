@@ -118,6 +118,7 @@ ObsDataFile = './data/SMF_data_points.ecsv'  # Path to observational data file
 MuzzinDataFile = './data/SMF_Muzzin2013.dat'  # Path to Muzzin 2013 data file
 SantiniDataFile = './data/SMF_Santini2012.dat'  # Path to Santini 2012 data file
 WrightDataFile = './data/Wright18_CombinedSMF.dat'  # Path to Wright 2018 data file
+GAEADataFile = './data/all_gsmf_GPMS.dat'  # Path to GAEA data file
 
 # Simulation details - REMOVED GLOBAL VALUES: Now each model has its own hubble_h and redshifts
 
@@ -744,6 +745,64 @@ def get_baldry_2008_data(hubble_h=None):
     Baldry_yval = Baldry[:, 1] * hubble_h * hubble_h * hubble_h
     
     return Baldry_xval, Baldry_yval, Baldry_yvalU, Baldry_yvalL
+
+def load_gaea_data(filename, hubble_h=0.73):
+    """
+    Load GAEA stellar mass function data from text file
+    
+    Parameters:
+    -----------
+    filename : str
+        Path to GAEA data file (all_gsmf_GPMS.dat)
+    hubble_h : float
+        Hubble parameter for cosmology conversion
+        
+    Returns:
+    --------
+    dict : Dictionary with redshift as keys and (masses, phi) as values
+    """
+    if not os.path.exists(filename):
+        print(f"Warning: GAEA data file {filename} not found!")
+        return {}
+    
+    try:
+        print(f"Loading GAEA data from {filename}")
+        
+        # Load data: columns are Log(Mstar), Log(MF_intrinsic), Log(MF_convolved), Redshift
+        data = np.loadtxt(filename)
+        
+        log_mstar = data[:, 0]
+        log_mf_intrinsic = data[:, 1]
+        log_mf_convolved = data[:, 2]  # This includes observational errors
+        redshift = data[:, 3]
+        
+        # Organize by redshift
+        unique_redshifts = np.unique(redshift)
+        
+        gaea_data = {}
+        for z in unique_redshifts:
+            mask = redshift == z
+            
+            # Store both intrinsic and convolved versions
+            gaea_data[z] = {
+                'log_mstar': log_mstar[mask],
+                'log_phi_intrinsic': log_mf_intrinsic[mask],
+                'log_phi_convolved': log_mf_convolved[mask],
+                'z': z
+            }
+            
+            print(f"  Loaded GAEA data at z={z:.3f}: {np.sum(mask)} points")
+            print(f"    Mass range: {np.min(log_mstar[mask]):.2f} to {np.max(log_mstar[mask]):.2f}")
+            print(f"    Phi range: {np.min(log_mf_convolved[mask]):.2f} to {np.max(log_mf_convolved[mask]):.2f}")
+        
+        print(f"Total GAEA datasets loaded: {len(gaea_data)} redshift bins")
+        return gaea_data
+        
+    except Exception as e:
+        print(f"Error loading GAEA data: {e}")
+        import traceback
+        traceback.print_exc()
+        return {}
 
 
 def load_observational_data(filename=None):
@@ -1759,9 +1818,13 @@ def plot_smf_redshift_grid(galaxy_types='all', mass_range=(7, 12),
         'shark': False
     }
     
+
     # Track which models have appeared in legends globally
     models_in_legend = set()
-    
+
+    # Load GAEA data
+    gaea_data = load_gaea_data(GAEADataFile)
+
     if show_observations:
         obs_data = load_observational_data()
         muzzin_data = load_muzzin_2013_data()
@@ -1811,10 +1874,10 @@ def plot_smf_redshift_grid(galaxy_types='all', mass_range=(7, 12),
         raise ValueError("No redshift bins with data found for the specified range")
     
     print(f"Created {len(redshift_bins)} redshift bins with data for range {z_range}")
-    
+
     # Determine grid layout based on redshift range and number of bins
     n_bins = len(redshift_bins)
-    
+
     if z_range and z_range[1] <= 3.5:  # Low-z figure (z=0-3.5)
         n_rows = 2
         n_cols = 4
@@ -1823,15 +1886,15 @@ def plot_smf_redshift_grid(galaxy_types='all', mass_range=(7, 12),
         n_rows = 2  
         n_cols = 3
         figsize = (18, 12)
-    
+
     fig, axes = plt.subplots(n_rows, n_cols, figsize=figsize, 
                            sharex=True, sharey=True)
-    
+
     # Flatten axes for easier indexing
     if n_rows == 1:
         axes = axes.reshape(1, -1)
     axes_flat = axes.flatten()
-    
+
     for i, (z_low, z_high, z_center, snapshots) in enumerate(redshift_bins):
         if i >= len(axes_flat):
             break
@@ -1849,6 +1912,21 @@ def plot_smf_redshift_grid(galaxy_types='all', mass_range=(7, 12),
             obs_legend_items, sim_legend_items = add_observational_data_with_baldry(ax, z_low, z_high, obs_data, muzzin_data, santini_data, wright_data, obs_datasets_in_legend, sim_datasets_in_legend)
             panel_obs_legend_items.extend(obs_legend_items)
             panel_sim_legend_items.extend(sim_legend_items)
+
+        # Add GAEA data for this redshift bin
+        # Find closest GAEA redshift to bin center
+        if gaea_data:
+            gaea_zs = np.array(list(gaea_data.keys()))
+            z_center_bin = (z_low + z_high) / 2
+            closest_gaea_z = gaea_zs[np.argmin(np.abs(gaea_zs - z_center_bin))]
+            gaea_bin = gaea_data[closest_gaea_z]
+            # Plot only intrinsic data
+            # Only show legend for GAEA on the first subplot
+            if i == 0:
+                gaea_plot = ax.plot(gaea_bin['log_mstar'], gaea_bin['log_phi_intrinsic'], color='green', linestyle='-', linewidth=2, alpha=0.8, label=f'GAEA (intrinsic, z={closest_gaea_z:.2f})')
+                panel_sim_legend_items.append((gaea_plot[0], f'GAEA (intrinsic, z={closest_gaea_z:.2f})'))
+            else:
+                gaea_plot = ax.plot(gaea_bin['log_mstar'], gaea_bin['log_phi_intrinsic'], color='green', linestyle='-', linewidth=2, alpha=0.8, label=None)
         
         # Process each model
         model_redshifts_used = {}  # Track which redshift each model used in this panel
@@ -3237,9 +3315,13 @@ def plot_smf_all_redshift_bins(galaxy_types='all', mass_range=(7, 12),
         'shark': False
     }
     
+
     # Track which models have appeared in legends globally
     models_in_legend = set()
-    
+
+    # Load GAEA data
+    gaea_data = load_gaea_data(GAEADataFile)
+
     if show_observations:
         obs_data = load_observational_data()
         muzzin_data = load_muzzin_2013_data()
@@ -3289,13 +3371,13 @@ def plot_smf_all_redshift_bins(galaxy_types='all', mass_range=(7, 12),
         raise ValueError("No redshift bins with data found")
     
     print(f"Created {len(redshift_bins)} redshift bins covering full redshift range z=0-12")
-    
+
     # Create 3x5 grid (15 panels total)
     n_rows = 5
     n_cols = 3
     fig, axes = plt.subplots(n_rows, n_cols, figsize=(15, 25), sharex=True, sharey=True)
     axes_flat = axes.flatten()
-    
+
     for i, (z_low, z_high, z_center, snapshots) in enumerate(redshift_bins):
         if i >= len(axes_flat):
             break
@@ -3313,6 +3395,21 @@ def plot_smf_all_redshift_bins(galaxy_types='all', mass_range=(7, 12),
             obs_legend_items, sim_legend_items = add_observational_data_with_baldry(ax, z_low, z_high, obs_data, muzzin_data, santini_data, wright_data, obs_datasets_in_legend, sim_datasets_in_legend)
             panel_obs_legend_items.extend(obs_legend_items)
             panel_sim_legend_items.extend(sim_legend_items)
+
+        # Add GAEA data for this redshift bin
+        # Find closest GAEA redshift to bin center
+        if gaea_data:
+            gaea_zs = np.array(list(gaea_data.keys()))
+            z_center_bin = (z_low + z_high) / 2
+            closest_gaea_z = gaea_zs[np.argmin(np.abs(gaea_zs - z_center_bin))]
+            gaea_bin = gaea_data[closest_gaea_z]
+            # Plot only intrinsic data
+            # Only show legend for GAEA on the first subplot
+            if i == 0:
+                gaea_plot = ax.plot(gaea_bin['log_mstar'], gaea_bin['log_phi_intrinsic'], color='green', linestyle='-', linewidth=2, alpha=0.8, label=f'GAEA (intrinsic, z={closest_gaea_z:.2f})')
+                panel_sim_legend_items.append((gaea_plot[0], f'GAEA (intrinsic, z={closest_gaea_z:.2f})'))
+            else:
+                gaea_plot = ax.plot(gaea_bin['log_mstar'], gaea_bin['log_phi_intrinsic'], color='green', linestyle='-', linewidth=2, alpha=0.8, label=None)
         
         # Process each model
         model_redshifts_used = {}  # Track which redshift each model used in this panel

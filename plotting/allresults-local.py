@@ -123,6 +123,9 @@ if __name__ == '__main__':
     print('Number of galaxies read:', len(StellarMass))
     print('Galaxies more massive than 10^10 h-1 Msun:', len(w), '\n')
 
+    Cooling = read_hdf(snap_num = Snapshot, param = 'Cooling')
+    print('Cooling sample:', Cooling[:50], '\n')
+
     Tvir = 35.9 * (Vvir)**2  # in Kelvin
     Tmax = 2.5e5  # K, corresponds to Vvir ~52.7 km/s
 
@@ -131,6 +134,196 @@ if __name__ == '__main__':
 # --------------------------------------------------------
 
     print('Plotting the stellar mass function')
+
+    def load_li_white_2009(filepath, hubble_h=0.73, whichimf=1):
+        """Load Li & White 2009 z~0 SMF data with FIXED error handling"""
+        try:
+            data = np.genfromtxt(filepath, comments='#')
+            
+            # Column 1: log stellar mass in Msun/h^2
+            log_mass = data[:, 0] + 2.0 * np.log10(hubble_h)
+            
+            # Column 2: log(phi)
+            log_phi = data[:, 1]
+            
+            # Columns 3, 4: error_lower, error_upper (in log space)
+            err_lower = np.abs(data[:, 2])  # Ensure positive
+            err_upper = np.abs(data[:, 3])  # Ensure positive
+            
+            # Convert to linear phi
+            phi = 10**log_phi
+            phi_upper = 10**(log_phi + err_upper)
+            phi_lower = 10**(log_phi - err_lower)
+            
+            # Calculate error bar magnitudes (always positive)
+            yerr_lower = np.abs(phi - phi_lower)
+            yerr_upper = np.abs(phi_upper - phi)
+            
+            # Filter valid points
+            mask = np.isfinite(log_mass) & np.isfinite(phi) & (phi > 0)
+            mask &= np.isfinite(yerr_lower) & np.isfinite(yerr_upper)
+            
+            return log_mass[mask], phi[mask], yerr_lower[mask], yerr_upper[mask]
+            
+        except Exception as e:
+            print(f"Error loading Li & White 2009 data: {e}")
+            import traceback
+            traceback.print_exc()
+            return None, None, None, None
+
+
+    def load_muzzin_2013(filepath, z_low=0.2, z_high=0.5, hubble_h=0.73, whichimf=1):
+        """Load Muzzin et al. 2013 SMF data with FIXED error handling"""
+        try:
+            data = np.genfromtxt(filepath, comments='#')
+            
+            # Filter for redshift bin
+            mask_z = (data[:, 0] == z_low) & (data[:, 1] == z_high)
+            
+            if not np.any(mask_z):
+                print(f"No Muzzin+13 data for z={z_low}-{z_high}")
+                return None, None, None, None
+            
+            stellar_mass = data[mask_z, 2]
+            log_phi = data[mask_z, 4]
+            err_upper = np.abs(data[mask_z, 5])  # Ensure positive
+            err_lower = np.abs(data[mask_z, 6])  # Ensure positive
+            
+            # Filter out -99 (no data)
+            mask_valid = (log_phi > -90)
+            
+            stellar_mass = stellar_mass[mask_valid]
+            log_phi = log_phi[mask_valid]
+            err_upper = err_upper[mask_valid]
+            err_lower = err_lower[mask_valid]
+            
+            # Cosmology correction
+            h_muzzin = 0.7
+            h_ours = hubble_h
+            
+            # Convert phi
+            phi = 10**log_phi * (h_muzzin / h_ours)**3
+            phi_upper = 10**(log_phi + err_upper) * (h_muzzin / h_ours)**3
+            phi_lower = 10**(log_phi - err_lower) * (h_muzzin / h_ours)**3
+            
+            # Calculate error bar magnitudes
+            yerr_lower = np.abs(phi - phi_lower)
+            yerr_upper = np.abs(phi_upper - phi)
+            
+            # IMF correction
+            if whichimf == 1:
+                stellar_mass = stellar_mass - 0.04
+            
+            return stellar_mass, phi, yerr_lower, yerr_upper
+            
+        except Exception as e:
+            print(f"Error loading Muzzin+13 data: {e}")
+            import traceback
+            traceback.print_exc()
+            return None, None, None, None
+
+
+    def load_santini_2012(filepath, z_low=0.6, z_high=1.0, hubble_h=0.73, whichimf=1):
+        """Load Santini et al. 2012 SMF data with FIXED error handling"""
+        try:
+            data = np.genfromtxt(filepath, comments='#')
+            
+            # Filter for redshift bin
+            mask_z = (data[:, 0] == z_low) & (data[:, 1] == z_high)
+            
+            if not np.any(mask_z):
+                print(f"No Santini+12 data for z={z_low}-{z_high}")
+                return None, None, None, None
+            
+            log_mass = data[mask_z, 2]
+            log_phi = data[mask_z, 3]
+            err_hi = np.abs(data[mask_z, 4])  # Ensure positive
+            err_lo = np.abs(data[mask_z, 5])  # Ensure positive
+            
+            # Cosmology correction
+            h_santini = 0.7
+            h_ours = hubble_h
+            
+            # Convert phi
+            phi = 10**log_phi * (h_santini / h_ours)**3
+            phi_upper = 10**(log_phi + err_hi) * (h_santini / h_ours)**3
+            phi_lower = 10**(log_phi - err_lo) * (h_santini / h_ours)**3
+            
+            # Calculate error bar magnitudes
+            yerr_lower = np.abs(phi - phi_lower)
+            yerr_upper = np.abs(phi_upper - phi)
+            
+            # IMF correction
+            if whichimf == 1:
+                log_mass = log_mass - 0.24
+            
+            return log_mass, phi, yerr_lower, yerr_upper
+            
+        except Exception as e:
+            print(f"Error loading Santini+12 data: {e}")
+            import traceback
+            traceback.print_exc()
+            return None, None, None, None
+
+
+    def load_wright_2018(filepath, target_z=0.5):
+        """Load Wright et al. 2018 SMF data with FIXED error handling"""
+        try:
+            data = np.genfromtxt(filepath, comments='#')
+            mask = data[:, 0] == target_z
+            
+            if not np.any(mask):
+                print(f"No Wright+18 data for z={target_z}")
+                return None, None, None, None
+            
+            stellar_mass = data[mask, 1]
+            log_phi = data[mask, 2]
+            err_upper = np.abs(data[mask, 3])  # Ensure positive
+            err_lower = np.abs(data[mask, 4])  # Ensure positive
+            
+            # Convert from 0.25 dex bins to per dex
+            log_phi_per_dex = log_phi + np.log10(4.0)
+            phi = 10**log_phi_per_dex
+            phi_upper = 10**(log_phi_per_dex + err_upper)
+            phi_lower = 10**(log_phi_per_dex - err_lower)
+            
+            # Calculate error bar magnitudes
+            yerr_lower = np.abs(phi - phi_lower)
+            yerr_upper = np.abs(phi_upper - phi)
+            
+            return stellar_mass, phi, yerr_lower, yerr_upper
+            
+        except Exception as e:
+            print(f"Error loading Wright+18 data: {e}")
+            import traceback
+            traceback.print_exc()
+            return None, None, None, None
+
+
+    def load_shark_z0(filepath):
+        """Load SHARK z=0 SMF data"""
+        try:
+            data = []
+            with open(filepath, 'r') as f:
+                for line in f:
+                    line = line.strip()
+                    if line.startswith('﻿'):  # Remove BOM
+                        line = line[1:]
+                    values = line.split(',')
+                    if len(values) >= 2:
+                        mass = float(values[0])
+                        phi = float(values[1])
+                        data.append([mass, phi])
+            data = np.array(data)
+            x = data[:, 0]
+            y = 10**data[:, 1]  # Convert from log to linear
+            mask = np.isfinite(x) & np.isfinite(y) & (y > 0)
+            return x[mask], y[mask]
+        except Exception as e:
+            print(f"Error loading SHARK data: {e}")
+            import traceback
+            traceback.print_exc()
+            return None, None
 
     plt.figure()  # New figure
     ax = plt.subplot(111)  # 1 plot on the figure
@@ -221,7 +414,50 @@ if __name__ == '__main__':
     
     # This next line is just to get the shaded region to appear correctly in the legend
     plt.plot(xaxeshisto, counts / volume / binwidth, label='Baldry et al. 2008', color='purple', alpha=0.3)
-    
+
+    # 2. Muzzin 2013
+    muz_x, muz_y, muz_err_lower, muz_err_upper = load_muzzin_2013(
+        './data/SMF_Muzzin2013.dat', z_low=0.2, z_high=0.5,
+        hubble_h=Hubble_h, whichimf=whichimf)
+
+    if muz_x is not None:
+        plt.errorbar(muz_x, muz_y, yerr=[muz_err_lower, muz_err_upper],
+                    fmt='o', color='grey', markersize=5, 
+                    label='Muzzin+13 (0.2<z<0.5)', alpha=0.7,
+                    capsize=3, elinewidth=1.5, zorder=2)
+        print(f'  ✓ Muzzin+13: {len(muz_x)} points')
+
+    # 3. Santini 2012
+    san_x, san_y, san_err_lower, san_err_upper = load_santini_2012(
+        './data/SMF_Santini2012.dat', z_low=0.6, z_high=1.0,
+        hubble_h=Hubble_h, whichimf=whichimf)
+
+    if san_x is not None:
+        plt.errorbar(san_x, san_y, yerr=[san_err_lower, san_err_upper],
+                    fmt='^', color='grey', markersize=5, 
+                    label='Santini+12 (0.6<z<1.0)', alpha=0.7,
+                    capsize=3, elinewidth=1.5, zorder=2)
+        print(f'  ✓ Santini+12: {len(san_x)} points')
+
+    # 4. SHARK z=0
+    shark_x, shark_y = load_shark_z0('./data/SHARK_smf_z0.csv')
+    if shark_x is not None:
+        plt.plot(shark_x, shark_y, ':', color='orange', linewidth=2.5, 
+                label='SHARK (z=0)', alpha=0.9, zorder=3)
+        print(f'  ✓ SHARK z=0: {len(shark_x)} points')
+
+    # 5. Wright+18
+    wri_x, wri_y, wri_err_lower, wri_err_upper = load_wright_2018(
+        './data/Wright18_CombinedSMF.dat', target_z=0.5)
+
+    if wri_x is not None:
+        plt.errorbar(wri_x, wri_y, yerr=[wri_err_lower, wri_err_upper],
+                    fmt='D', color='grey', markersize=5, 
+                    label='Wright+18 (z=0.5)', alpha=0.7,
+                    capsize=3, elinewidth=1.5, zorder=2)
+        print(f'  ✓ Wright+18: {len(wri_x)} points')
+
+        
     # Overplot the model histograms
     plt.plot(xaxeshisto, counts    / volume / binwidth, 'k-', label='Model - All')
     plt.plot(xaxeshisto, countsRED / volume / binwidth, 'r:', lw=2, label='Model - Red')
@@ -460,12 +696,17 @@ if __name__ == '__main__':
     mass = np.log10( (StellarMass[w] + ColdGas[w]) )
     vel = np.log10(Vmax[w])
                 
-    plt.scatter(vel, mass, marker='o', s=1, c='k', alpha=0.5, label='Model Sb/c galaxies')
+    plt.scatter(vel, mass, marker='x', s=50, c='k', alpha=0.3, label='Model Sb/c galaxies')
             
     # overplot Stark, McGaugh & Swatters 2009 (assumes h=0.75? ... what IMF?)
     w = np.arange(0.5, 10.0, 0.5)
     TF = 3.94*w + 1.79
-    plt.plot(w, TF, 'b-', lw=2.0, label='Stark, McGaugh & Swatters 2009')
+    TF_upper = TF + 0.26
+    TF_lower = TF - 0.26
+
+    # plt.plot(w, TF, 'b-', alpha=0.5, label='Stark, McGaugh & Swatters 2009')
+    plt.fill_between(w, TF_lower, TF_upper, color='blue', alpha=0.2)
+
         
     plt.ylabel(r'$\log_{10}\ M_{\mathrm{bar}}\ (M_{\odot})$')  # Set the y...
     plt.xlabel(r'$\log_{10}V_{max}\ (km/s)$')  # and the x-axis labels
@@ -474,7 +715,7 @@ if __name__ == '__main__':
     ax.xaxis.set_minor_locator(plt.MultipleLocator(0.05))
     ax.yaxis.set_minor_locator(plt.MultipleLocator(0.25))
         
-    plt.axis([1.4, 2.6, 8.0, 12.0])
+    plt.axis([1.4, 2.9, 7.5, 12.0])
         
     leg = plt.legend(loc='lower right')
     leg.draw_frame(False)  # Don't want a box frame
@@ -573,14 +814,16 @@ if __name__ == '__main__':
     plt.scatter(mass, Z, marker='o', s=1, c='k', alpha=0.5, label='Model galaxies')
         
     # overplot Tremonti et al. 2003 (h=0.7)
-    w = np.arange(7.0, 13.0, 0.1)
+    w = np.arange(7.0, 11.5, 0.1)
     Zobs = -1.492 + 1.847*w - 0.08026*w*w
     if(whichimf == 0):
         # Conversion from Kroupa IMF to Slapeter IMF
-        plt.plot(np.log10((10**w *1.5)), Zobs, 'b-', lw=2.0, label='Tremonti et al. 2003')
+        # plt.plot(np.log10((10**w *1.5)), Zobs, 'b-', lw=2.0, label='Tremonti et al. 2003')
+        plt.fill_between(np.log10((10**w *1.5)), Zobs+0.1, Zobs-0.1, color='blue', alpha=0.2)
     elif(whichimf == 1):
         # Conversion from Kroupa IMF to Slapeter IMF to Chabrier IMF
-        plt.plot(np.log10((10**w *1.5 /1.8)), Zobs, 'b-', lw=2.0, label='Tremonti et al. 2003')
+        # plt.plot(np.log10((10**w *1.5 /1.8)), Zobs, 'b-', lw=2.0, label='Tremonti et al. 2003')
+        plt.fill_between(np.log10((10**w *1.5 /1.8)), Zobs+0.1, Zobs-0.1, color='blue', alpha=0.2)
         
     plt.ylabel(r'$12\ +\ \log_{10}[\mathrm{O/H}]$')  # Set the y...
     plt.xlabel(r'$\log_{10} M_{\mathrm{stars}}\ (M_{\odot})$')  # and the x-axis labels
@@ -1503,8 +1746,8 @@ if __name__ == '__main__':
     if(len(w) > dilute): w = sample(list(w), dilute)
 
     log10_stellar_mass = np.log10(StellarMass[w])
-    log10_CGM_mass = np.log10(EjectedMass[w])
-    Z = np.log10((MetalsEjectedMass[w] / EjectedMass[w]) / 0.02) + 9.0
+    log10_CGM_mass = np.log10(CGMgas[w])
+    Z = np.log10((MetalsCGMgas[w] / CGMgas[w]) / 0.02) + 9.0
 
     plt.scatter(log10_stellar_mass, log10_CGM_mass, c=Z, cmap='plasma', s=5, vmin=7, vmax=9)
     plt.colorbar(label=r'$12\ +\ \log_{10}[\mathrm{O/H}]$')
@@ -1781,4 +2024,38 @@ if __name__ == '__main__':
 
     plt.savefig(OutputDir + '24.mass_loading_factor_vs_stellar_mass' + OutputFormat)
     print('Saved to', OutputDir + '24.mass_loading_factor_vs_stellar_mass' + OutputFormat, '\n')
+    plt.close()
+
+    # -------------------------------------------------------
+
+    print('Plotting Cooling Rate vs. Temperature')
+
+    plt.figure()
+
+    print('Cooling Rate statistics:')
+    print('Mean:', np.mean(Cooling))
+    print('Median:', np.median(Cooling))
+    print('Std Dev:', np.std(Cooling))
+    print('Max:', np.max(Cooling))
+    print('Min:', np.min(Cooling))
+    print('Sample of values:', Cooling[:10])
+
+    print('Temperature statistics:')
+    print('Mean:', np.mean(Tvir))
+    print('Median:', np.median(Tvir))
+    print('Std Dev:', np.std(Tvir))
+    print('Max:', np.max(Tvir))
+    print('Min:', np.min(Tvir))
+    print('Sample of values:', Tvir[:10])
+
+    temperature = Tvir * 8.6e-8  # Convert K to keV
+
+    plt.scatter(temperature, Cooling, c='orange', marker='o', s=1, alpha=0.7)
+    plt.xlabel(r'$\log_{10} T\ (\mathrm{keV})$')
+    plt.ylabel(r'$\log_{10} \mathrm{Cooling}\ \mathrm{erg\ s^{-1}}$')
+
+    plt.xlim(-0.2, 1)
+
+    plt.savefig(OutputDir + '25.cooling_rate_vs_temperature' + OutputFormat)
+    print('Saved to', OutputDir + '25.cooling_rate_vs_temperature' + OutputFormat, '\n')
     plt.close()
