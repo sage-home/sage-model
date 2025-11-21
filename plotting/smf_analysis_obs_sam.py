@@ -1919,14 +1919,16 @@ def plot_smf_redshift_grid(galaxy_types='all', mass_range=(7, 12),
             gaea_zs = np.array(list(gaea_data.keys()))
             z_center_bin = (z_low + z_high) / 2
             closest_gaea_z = gaea_zs[np.argmin(np.abs(gaea_zs - z_center_bin))]
-            gaea_bin = gaea_data[closest_gaea_z]
-            # Plot only intrinsic data
-            # Only show legend for GAEA on the first subplot
-            if i == 0:
-                gaea_plot = ax.plot(gaea_bin['log_mstar'], gaea_bin['log_phi_intrinsic'], color='green', linestyle='-', linewidth=2, alpha=0.8, label=f'GAEA (intrinsic, z={closest_gaea_z:.2f})')
-                panel_sim_legend_items.append((gaea_plot[0], f'GAEA (intrinsic, z={closest_gaea_z:.2f})'))
-            else:
-                gaea_plot = ax.plot(gaea_bin['log_mstar'], gaea_bin['log_phi_intrinsic'], color='green', linestyle='-', linewidth=2, alpha=0.8, label=None)
+            
+            if closest_gaea_z <= 4.0:
+                gaea_bin = gaea_data[closest_gaea_z]
+                # Plot only intrinsic data
+                # Only show legend for GAEA on the first subplot
+                if i == 0:
+                    gaea_plot = ax.plot(gaea_bin['log_mstar'], gaea_bin['log_phi_intrinsic'], color='green', linestyle='-', linewidth=2, alpha=0.8, label=f'GAEA (intrinsic, z={closest_gaea_z:.2f})')
+                    panel_sim_legend_items.append((gaea_plot[0], f'GAEA (intrinsic, z={closest_gaea_z:.2f})'))
+                else:
+                    gaea_plot = ax.plot(gaea_bin['log_mstar'], gaea_bin['log_phi_intrinsic'], color='green', linestyle='-', linewidth=2, alpha=0.8, label=None)
         
         # Process each model
         model_redshifts_used = {}  # Track which redshift each model used in this panel
@@ -3402,14 +3404,16 @@ def plot_smf_all_redshift_bins(galaxy_types='all', mass_range=(7, 12),
             gaea_zs = np.array(list(gaea_data.keys()))
             z_center_bin = (z_low + z_high) / 2
             closest_gaea_z = gaea_zs[np.argmin(np.abs(gaea_zs - z_center_bin))]
-            gaea_bin = gaea_data[closest_gaea_z]
-            # Plot only intrinsic data
-            # Only show legend for GAEA on the first subplot
-            if i == 0:
-                gaea_plot = ax.plot(gaea_bin['log_mstar'], gaea_bin['log_phi_intrinsic'], color='green', linestyle='-', linewidth=2, alpha=0.8, label=f'GAEA (intrinsic, z={closest_gaea_z:.2f})')
-                panel_sim_legend_items.append((gaea_plot[0], f'GAEA (intrinsic, z={closest_gaea_z:.2f})'))
-            else:
-                gaea_plot = ax.plot(gaea_bin['log_mstar'], gaea_bin['log_phi_intrinsic'], color='green', linestyle='-', linewidth=2, alpha=0.8, label=None)
+            
+            if closest_gaea_z <= 4.0:
+                gaea_bin = gaea_data[closest_gaea_z]
+                # Plot only intrinsic data
+                # Only show legend for GAEA on the first subplot
+                if i == 0:
+                    gaea_plot = ax.plot(gaea_bin['log_mstar'], gaea_bin['log_phi_intrinsic'], color='green', linestyle='-', linewidth=2, alpha=0.8, label=f'GAEA (intrinsic, z={closest_gaea_z:.2f})')
+                    panel_sim_legend_items.append((gaea_plot[0], f'GAEA (intrinsic, z={closest_gaea_z:.2f})'))
+                else:
+                    gaea_plot = ax.plot(gaea_bin['log_mstar'], gaea_bin['log_phi_intrinsic'], color='green', linestyle='-', linewidth=2, alpha=0.8, label=None)
         
         # Process each model
         model_redshifts_used = {}  # Track which redshift each model used in this panel
