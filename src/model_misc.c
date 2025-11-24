@@ -270,7 +270,7 @@ float calculate_stellar_scale_height_BR06(float disk_scale_length_pc)
     // BR06 equation (9): log h* = -0.23 - 0.8 log R*
     // where h* and R* are measured in parsecs
     if (disk_scale_length_pc <= 0.0) {
-        return 300.0; // Default fallback value in pc
+        return 0.0; // Default fallback value in pc
     }
     
     float log_h_star = -0.23 + 0.8 * log10(disk_scale_length_pc);
@@ -287,7 +287,7 @@ float calculate_stellar_scale_height_BR06(float disk_scale_length_pc)
 float calculate_midplane_pressure_BR06(float sigma_gas, float sigma_stars, float disk_scale_length_pc)
 {
     // Early termination for edge cases
-    if (sigma_gas <= 0.0 || disk_scale_length_pc <= 0.0) {
+    if (sigma_gas <= 0.5 || disk_scale_length_pc <= 0.0) {
         return 0.0;
     }
     
@@ -318,6 +318,7 @@ float calculate_midplane_pressure_BR06(float sigma_gas, float sigma_stars, float
 float calculate_molecular_fraction_BR06(float gas_surface_density, float stellar_surface_density, 
                                          float disk_scale_length_pc)
 {
+
     // Calculate midplane pressure using exact BR06 formula
     float pressure = calculate_midplane_pressure_BR06(gas_surface_density, stellar_surface_density, 
                                                      disk_scale_length_pc);
@@ -347,4 +348,60 @@ float calculate_molecular_fraction_BR06(float gas_surface_density, float stellar
     // }
     
     return f_mol;
+}
+
+float calculate_molecular_fraction_radial_integration(const int gal, struct GALAXY *galaxies, 
+                                                      const struct params *run_params)
+{
+    const float h = run_params->Hubble_h;
+    const float rs_pc = galaxies[gal].DiskScaleRadius * 1.0e6 / h;  // Scale radius in pc
+    
+    if (rs_pc <= 0.0 || galaxies[gal].ColdGas <= 0.0) {
+        return 0.0;
+    }
+    
+    // Total masses in physical units (M☉)
+    const float M_gas_total = galaxies[gal].ColdGas * 1.0e10 / h;
+    const float M_star_total = galaxies[gal].StellarMass * 1.0e10 / h;
+    
+    // Central surface densities for exponential profiles: Σ₀ = M_total / (2π r_s²)
+    const float sigma_gas_0 = M_gas_total / (2.0 * M_PI * rs_pc * rs_pc);
+    const float sigma_star_0 = M_star_total / (2.0 * M_PI * rs_pc * rs_pc);
+    
+    // Radial integration parameters
+    const int N_BINS = 50;  // Number of radial bins
+    const float R_MAX = 5.0 * rs_pc;  // Integrate out to 5 scale radii (~99% of mass)
+    const float dr = R_MAX / N_BINS;
+    
+    // Integrate molecular gas mass
+    float M_H2_total = 0.0;
+    
+    for (int i = 0; i < N_BINS; i++) {
+        // Bin center radius
+        const float r = (i + 0.5) * dr;
+        
+        // Exponential surface density profiles: Σ(r) = Σ₀ exp(-r/r_s)
+        const float exp_factor = exp(-r / rs_pc);
+        const float sigma_gas_r = sigma_gas_0 * exp_factor;
+        const float sigma_star_r = sigma_star_0 * exp_factor;
+        
+        // Skip bins with negligible gas
+        if (sigma_gas_r < 1e-3) continue;
+        
+        // Calculate molecular fraction at this radius using BR06
+        const float f_mol_r = calculate_molecular_fraction_BR06(sigma_gas_r, sigma_star_r, 
+                                                                rs_pc);
+        
+        // Mass of molecular gas in this annulus: dM = 2π r Σ_gas f_mol dr
+        const float dM_H2 = 2.0 * M_PI * r * sigma_gas_r * f_mol_r * dr;
+        
+        M_H2_total += dM_H2;
+    }
+    
+    // Convert back to code units (10^10 M☉/h)
+    const float H2_code_units = M_H2_total * h / 1.0e10;
+    
+    // Store and return
+    galaxies[gal].H2gas = H2_code_units;
+    return H2_code_units;
 }

@@ -25,7 +25,7 @@ VolumeFraction = 1.0   # Fraction of the full volume output by the model
 
 # Plotting options
 whichimf = 1        # 0=Slapeter; 1=Chabrier
-dilute = 7500       # Number of galaxies to plot in scatter plots
+dilute = 75000       # Number of galaxies to plot in scatter plots
 sSFRcut = -11.0     # Divide quiescent from star forming galaxies
 
 OutputFormat = '.png'
@@ -69,21 +69,21 @@ if __name__ == '__main__':
     MetalsHotGas = read_hdf(snap_num = Snapshot, param = 'MetalsHotGas') * 1.0e10 / Hubble_h
     EjectedMass = read_hdf(snap_num = Snapshot, param = 'EjectedMass') * 1.0e10 / Hubble_h
     CGMgas = read_hdf(snap_num = Snapshot, param = 'CGMgas') * 1.0e10 / Hubble_h
-    print('CGM gas sample:', CGMgas[:10], '\n')
+    # print('CGM gas sample:', CGMgas[:10], '\n')
     MetalsCGMgas = read_hdf(snap_num = Snapshot, param = 'MetalsCGMgas') * 1.0e10 / Hubble_h
-    print('CGM metals sample:', MetalsCGMgas[:10], '\n')
+    # print('CGM metals sample:', MetalsCGMgas[:10], '\n')
 
-    print('Total Ejected gas mass in box:', np.sum(EjectedMass))
-    print('Minimum Ejected gas mass:', np.min(EjectedMass[np.where(EjectedMass>0.0)]))
-    print('Maximum Ejected gas mass:', np.max(EjectedMass))
-    print('Negative Ejected gas mass:', len(np.where(EjectedMass<0.0)[0]), '\n')
-    print('Negative Ejected gas mass sample:', EjectedMass[np.where(EjectedMass<0.0)[0]][:10], '\n')
+    # print('Total Ejected gas mass in box:', np.sum(EjectedMass))
+    # print('Minimum Ejected gas mass:', np.min(EjectedMass[np.where(EjectedMass>0.0)]))
+    # print('Maximum Ejected gas mass:', np.max(EjectedMass))
+    # print('Negative Ejected gas mass:', len(np.where(EjectedMass<0.0)[0]), '\n')
+    # print('Negative Ejected gas mass sample:', EjectedMass[np.where(EjectedMass<0.0)[0]][:10], '\n')
 
-    print('Total CGM gas mass in box:', np.sum(CGMgas))
-    print('Minimum CGM gas mass:', np.min(CGMgas[np.where(CGMgas>0.0)]))
-    print('Maximum CGM gas mass:', np.max(CGMgas))
-    print('Negative CGM gas mass:', len(np.where(CGMgas<0.0)[0]), '\n')
-    print('Negative CGM gas mass sample:', CGMgas[np.where(CGMgas<0.0)[0]][:10], '\n')
+    # print('Total CGM gas mass in box:', np.sum(CGMgas))
+    # print('Minimum CGM gas mass:', np.min(CGMgas[np.where(CGMgas>0.0)]))
+    # print('Maximum CGM gas mass:', np.max(CGMgas))
+    # print('Negative CGM gas mass:', len(np.where(CGMgas<0.0)[0]), '\n')
+    # print('Negative CGM gas mass sample:', CGMgas[np.where(CGMgas<0.0)[0]][:10], '\n')
 
 
     IntraClusterStars = read_hdf(snap_num = Snapshot, param = 'IntraClusterStars') * 1.0e10 / Hubble_h
@@ -91,11 +91,11 @@ if __name__ == '__main__':
 
     H2gas = read_hdf(snap_num = Snapshot, param = 'H2gas') * 1.0e10 / Hubble_h
 
-    print('Total H2 gas mass in box:', np.sum(H2gas))
-    print('Minimum H2 gas mass:', np.min(H2gas[np.where(H2gas>0.0)]))
-    print('Maximum H2 gas mass:', np.max(H2gas))
-    print('Negative H2 gas mass:', len(np.where(H2gas<0.0)[0]), '\n')
-    print('Negative H2 gas mass sample:', H2gas[np.where(H2gas<0.0)[0]][:10], '\n')
+    # print('Total H2 gas mass in box:', np.sum(H2gas))
+    # print('Minimum H2 gas mass:', np.min(H2gas[np.where(H2gas>0.0)]))
+    # print('Maximum H2 gas mass:', np.max(H2gas))
+    # print('Negative H2 gas mass:', len(np.where(H2gas<0.0)[0]), '\n')
+    # print('Negative H2 gas mass sample:', H2gas[np.where(H2gas<0.0)[0]][:10], '\n')
 
     Vvir = read_hdf(snap_num = Snapshot, param = 'Vvir')
     Vmax = read_hdf(snap_num = Snapshot, param = 'Vmax')
@@ -410,7 +410,7 @@ if __name__ == '__main__':
     Baldry_yvalU = (Baldry[:, 1]+Baldry[:, 2]) * Hubble_h*Hubble_h*Hubble_h
     Baldry_yvalL = (Baldry[:, 1]-Baldry[:, 2]) * Hubble_h*Hubble_h*Hubble_h
     plt.fill_between(Baldry_xval, Baldry_yvalU, Baldry_yvalL, 
-        facecolor='purple', alpha=0.25, label='Baldry et al. 2008 (z=0.1)')
+        facecolor='purple', alpha=0.25)
     
     # This next line is just to get the shaded region to appear correctly in the legend
     plt.plot(xaxeshisto, counts / volume / binwidth, label='Baldry et al. 2008', color='purple', alpha=0.3)
@@ -443,7 +443,7 @@ if __name__ == '__main__':
     shark_x, shark_y = load_shark_z0('./data/SHARK_smf_z0.csv')
     if shark_x is not None:
         plt.plot(shark_x, shark_y, ':', color='orange', linewidth=2.5, 
-                label='SHARK (z=0)', alpha=0.9, zorder=3)
+                label='SHARK', alpha=0.9, zorder=3)
         print(f'  ✓ SHARK z=0: {len(shark_x)} points')
 
     # 5. Wright+18
@@ -459,9 +459,9 @@ if __name__ == '__main__':
 
         
     # Overplot the model histograms
-    plt.plot(xaxeshisto, counts    / volume / binwidth, 'k-', label='Model - All')
-    plt.plot(xaxeshisto, countsRED / volume / binwidth, 'r:', lw=2, label='Model - Red')
-    plt.plot(xaxeshisto, countsBLU / volume / binwidth, 'b:', lw=2, label='Model - Blue')
+    plt.plot(xaxeshisto, counts    / volume / binwidth, 'k-', label='SAGE26')
+    # plt.plot(xaxeshisto, countsRED / volume / binwidth, 'r:', lw=2, label='Model - Red')
+    # plt.plot(xaxeshisto, countsBLU / volume / binwidth, 'b:', lw=2, label='Model - Blue')
 
     plt.yscale('log')
     plt.axis([8.0, 12.2, 1.0e-6, 1.0e-1])
@@ -2048,13 +2048,22 @@ if __name__ == '__main__':
     print('Min:', np.min(Tvir))
     print('Sample of values:', Tvir[:10])
 
-    temperature = Tvir * 8.6e-8  # Convert K to keV
+    # Filter for valid cooling and temperature
+    w = np.where((Cooling > 0) & (Tvir > 0))[0]
 
-    plt.scatter(temperature, Cooling, c='orange', marker='o', s=1, alpha=0.7)
-    plt.xlabel(r'$\log_{10} T\ (\mathrm{keV})$')
-    plt.ylabel(r'$\log_{10} \mathrm{Cooling}\ \mathrm{erg\ s^{-1}}$')
+    # Convert Temperature to keV and take log10
+    log_T_keV = np.log10(Tvir[w] * 8.6e-8)
 
-    plt.xlim(-0.2, 1)
+    # Convert Cooling to units of 10^40 erg/s (log scale)
+    # Cooling is already log10(erg/s), so we subtract 40
+    log_Cooling_40 = Cooling[w] - 40.0
+
+    plt.scatter(log_T_keV, log_Cooling_40, c='grey', marker='x', s=50, alpha=0.3)
+    plt.xlabel(r'$\log_{10} T_{\mathrm{vir}}\ [\mathrm{keV}]$')
+    plt.ylabel(r'$\log_{10} \mathrm{Net\ Cooling}\ [10^{40}\ \mathrm{erg\ s^{-1}}]$')
+
+    plt.xlim(-0.2, 1.0)
+    plt.ylim(-1.0, 6.0)
 
     plt.savefig(OutputDir + '25.cooling_rate_vs_temperature' + OutputFormat)
     print('Saved to', OutputDir + '25.cooling_rate_vs_temperature' + OutputFormat, '\n')

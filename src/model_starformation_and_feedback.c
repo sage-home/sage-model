@@ -50,8 +50,10 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
         float gas_surface_density = (galaxies[p].ColdGas * 1.0e10 / h) / disk_area_pc2; // M☉/pc²
         float stellar_surface_density = (galaxies[p].StellarMass * 1.0e10 / h) / disk_area_pc2; // M☉/pc²
 
-        total_molecular_gas = calculate_molecular_fraction_BR06(gas_surface_density, stellar_surface_density, 
-                                                               rs_pc) * galaxies[p].ColdGas;
+        // total_molecular_gas = calculate_molecular_fraction_BR06(gas_surface_density, stellar_surface_density, 
+        //                                                        rs_pc) * galaxies[p].ColdGas;
+
+        total_molecular_gas = calculate_molecular_fraction_radial_integration(p, galaxies, run_params);
 
         galaxies[p].H2gas = total_molecular_gas;
 
@@ -77,8 +79,8 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
     if(run_params->SupernovaRecipeOn == 1) {
         if(run_params->FIREmodeOn == 1) {
             // FIRE: Calculate velocity/redshift scaling from Muratov et al. 2015
-            const double z = run_params->ZZ[galaxies[centralgal].SnapNum];
-            const double vc = galaxies[centralgal].Vvir;
+            const double z = run_params->ZZ[galaxies[p].SnapNum];
+            const double vc = galaxies[p].Vvir;
             const double V_CRIT = 60.0;
             
             // Check for valid inputs to avoid NaN
@@ -121,8 +123,8 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
             if(run_params->FIREmodeOn == 1) {
                 // FIRE model: Energy-based ejection following Hirschmann+2016
                 // Energy from supernovae (with Muratov scaling)
-                const double z = run_params->ZZ[galaxies[centralgal].SnapNum];
-                const double vc = galaxies[centralgal].Vvir;
+                const double z = run_params->ZZ[galaxies[p].SnapNum];
+                const double vc = galaxies[p].Vvir;
                 const double V_CRIT = 60.0;
                 
                 // Check for valid inputs to avoid NaN
@@ -157,7 +159,7 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
                 // Original non-FIRE calculation
                 ejected_mass = (run_params->FeedbackEjectionEfficiency * 
                                (run_params->EtaSNcode * run_params->EnergySNcode) / 
-                               (galaxies[centralgal].Vvir * galaxies[centralgal].Vvir) -
+                               (galaxies[p].Vvir * galaxies[p].Vvir) -
                                run_params->FeedbackReheatingEpsilon) * stars;
             }
         } else {
