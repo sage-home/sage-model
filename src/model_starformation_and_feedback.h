@@ -13,6 +13,9 @@ extern "C" {
     extern void update_from_feedback(const int p, const int centralgal, const double reheated_mass, double ejected_mass, const double metallicity,
                                      struct GALAXY *galaxies, const struct params *run_params);
 
+    extern void starformation_ffb(const int p, const int centralgal, const double dt, const int step,
+                                  struct GALAXY *galaxies, const struct params *run_params);
+
 #ifdef __cplusplus
 }
 #endif

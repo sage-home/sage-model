@@ -15,51 +15,21 @@
 void starformation_and_feedback(const int p, const int centralgal, const double time, const double dt, const int halonr, const int step,
                                 struct GALAXY *galaxies, const struct params *run_params)
 {
+
+    // ========================================================================
+    // CHECK FOR FFB REGIME - EARLY EXIT IF FFB
+    // ========================================================================
+    if(galaxies[p].FFBRegime == 1) {
+        // This is a Feedback-Free Burst halo
+        // Use specialized FFB star formation (no feedback)
+        starformation_ffb(p, centralgal, dt, step, galaxies, run_params);
+        return;  // Exit early - FFB path complete
+    }
+
     double reff, tdyn, strdot, stars, ejected_mass, metallicity, total_molecular_gas;
 
     // Initialise variables
     strdot = 0.0;
-
-    double ffb_boost_factor = 1.0;
-    double f_ffb = 0.0;  // Fraction in FFB regime
-    
-    if(run_params->FeedbackFreeModeOn == 1) {
-        const double z = run_params->ZZ[galaxies[p].SnapNum];
-        const double Mvir = galaxies[p].Mvir;
-        
-        // Calculate FFB fraction (0 = nonFFB, 1 = full FFB)
-        f_ffb = calculate_ffb_fraction(Mvir, z, run_params);
-        
-        // Calculate boost factor based on how much we're in FFB regime
-        // Base SFE is ~0.01-0.1, FFB max is 0.2-1.0
-        // So boost factor can be ~2-100x depending on parameters
-        const double base_sfe_reference = run_params->SfrEfficiency;  // Typical low-z SFE
-        const double ffb_relative_boost = run_params->FFBMaxEfficiency / base_sfe_reference;
-        
-        // Interpolate boost: no boost at f_ffb=0, full boost at f_ffb=1
-        ffb_boost_factor = 1.0 + f_ffb * (ffb_relative_boost - 1.0);
-        
-        // Print debug info for:
-        // 1. Very high redshift (z > 9) where we expect FFB
-        // 2. Any galaxy with non-trivial FFB fraction (f_ffb > 0.01)
-        // if(z > 9.0 || f_ffb > 0.01) {
-        //     // Calculate threshold for this redshift
-        //     const double Mvir_ffb = calculate_ffb_threshold_mass(z);
-        //     const double mass_ratio = Mvir / Mvir_ffb;
-            
-        //     printf("=== FFB Debug - Galaxy %d ===\n", p);
-        //     printf("  Redshift z = %.4f\n", z);
-        //     printf("  Galaxy Mvir = %.4e (10^10 Msun/h)\n", Mvir);
-        //     printf("  FFB threshold = %.4e (10^10 Msun/h)\n", Mvir_ffb);
-        //     printf("  Mass ratio (Mvir/Mvir_ffb) = %.4f\n", mass_ratio);
-        //     printf("  f_ffb (FFB fraction) = %.6f (%.1f%% in FFB regime)\n", f_ffb, f_ffb * 100.0);
-        //     printf("  SFE: base=%.4f, FFB_max=%.4f, boost=%.4fx\n", 
-        //            base_sfe_reference, run_params->FFBMaxEfficiency, ffb_relative_boost);
-        //     printf("  Final boost factor = %.6f (%.1f%% SFE increase)\n", 
-        //            ffb_boost_factor, (ffb_boost_factor - 1.0) * 100.0);
-        //     printf("===========================\n\n");
-        // }
-    }
 
     // star formation recipes
     if(run_params->SFprescription == 0) {
@@ -71,7 +41,6 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
         const double cold_crit = 0.19 * galaxies[p].Vvir * reff;
         if(galaxies[p].ColdGas > cold_crit && tdyn > 0.0) {
             strdot = run_params->SfrEfficiency * (galaxies[p].ColdGas - cold_crit) / tdyn;
-            strdot *= ffb_boost_factor;
         } else {
             strdot = 0.0;
         }
@@ -102,7 +71,6 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
         const double cold_crit = 0.19 * galaxies[p].Vvir * reff;
         if(galaxies[p].ColdGas > cold_crit) {
             strdot = run_params->SfrEfficiency * galaxies[p].H2gas / tdyn;
-            strdot *= ffb_boost_factor;
         } else {
             strdot = 0.0;
         }
@@ -370,4 +338,113 @@ void update_from_feedback(const int p, const int centralgal, const double reheat
 
         galaxies[p].OutflowRate += reheated_mass;
     }
+}
+
+void starformation_ffb(const int p, const int centralgal, const double dt, const int step,
+                       struct GALAXY *galaxies, const struct params *run_params)
+{
+    // ========================================================================
+    // FEEDBACK-FREE BURST (FFB) STAR FORMATION
+    // Implementation of Li et al. 2024 - Equation (4)
+    // ========================================================================
+    
+    double reff, tdyn, strdot, stars, metallicity;
+    
+    // Calculate dynamical time
+    reff = 3.0 * galaxies[p].DiskScaleRadius;
+    tdyn = (reff > 0.0 && galaxies[p].Vvir > 0.0) ? reff / galaxies[p].Vvir : 0.0;
+    
+    if(tdyn > 0.0 && galaxies[p].ColdGas > 0.0) {
+        // Equation (4): SFR = ε_FFB × M_gas / t_dyn
+        // Use maximum FFB efficiency (typically 0.2, can be up to 1.0)
+        const double epsilon_ffb = run_params->FFBMaxEfficiency;
+        const double cold_crit = 0.19 * galaxies[p].Vvir * reff;
+        strdot = epsilon_ffb * (galaxies[p].ColdGas - cold_crit) / tdyn;
+        
+        stars = strdot * dt;
+        
+        // Can't form more stars than gas available
+        if(stars > galaxies[p].ColdGas) {
+            stars = galaxies[p].ColdGas;
+        }
+        
+        // Debug output (only on first step to avoid spam)
+        // if(step == 0) {
+        //     const double z = run_params->ZZ[galaxies[p].SnapNum];
+        //     printf("FFB SF: z=%.2f, Mvir=%.2e, eps=%.1f%%, M_gas=%.2e, t_dyn=%.3f Gyr, SFR=%.2e Msun/yr\n",
+        //            z, galaxies[p].Mvir, epsilon_ffb*100, galaxies[p].ColdGas, 
+        //            tdyn * run_params->UnitTime_in_Megayears / 1000.0, strdot);
+        // }
+    } else {
+        stars = 0.0;
+    }
+    
+    // ========================================================================
+    // UPDATE GALAXY PROPERTIES (NO FEEDBACK!)
+    // ========================================================================
+    
+    // Update star formation rate tracking
+    galaxies[p].SfrDisk[step] += stars / dt;
+    galaxies[p].SfrDiskColdGas[step] = galaxies[p].ColdGas;
+    galaxies[p].SfrDiskColdGasMetals[step] = galaxies[p].MetalsColdGas;
+    
+    // Update for star formation (convert gas to stars)
+    metallicity = get_metallicity(galaxies[p].ColdGas, galaxies[p].MetalsColdGas);
+    update_from_star_formation(p, stars, metallicity, galaxies, run_params);
+    
+    // ========================================================================
+    // NO FEEDBACK UPDATE
+    // Key physics: star formation completes on free-fall time (~1 Myr)
+    // before feedback from these stars can act (~2 Myr)
+    // ========================================================================
+    
+    // NO reheating
+    // NO ejection
+    // NO outflows
+    // Gas converts directly to stars
+    
+    // ========================================================================
+    // METAL PRODUCTION (instantaneous recycling approximation - SNII only)
+    // ========================================================================
+    
+    if(galaxies[p].ColdGas > 1.0e-8) {
+        // Metals that stay in disk
+        const double FracZleaveDiskVal = run_params->FracZleaveDisk * exp(-1.0 * galaxies[centralgal].Mvir / 30.0);
+        galaxies[p].MetalsColdGas += run_params->Yield * (1.0 - FracZleaveDiskVal) * stars;
+        
+        // Metals that leave disk - goes to appropriate reservoir based on CGM regime
+        const double metals_leaving_disk = run_params->Yield * FracZleaveDiskVal * stars;
+        
+        if(run_params->CGMrecipeOn == 1) {
+            if(galaxies[centralgal].Regime == 0) {
+                // CGM-regime: metals go to CGM
+                galaxies[centralgal].MetalsCGMgas += metals_leaving_disk;
+            } else {
+                // Hot-ICM-regime: metals go to HotGas
+                galaxies[centralgal].MetalsHotGas += metals_leaving_disk;
+            }
+        } else {
+            // Original SAGE behavior: metals go to HotGas
+            galaxies[centralgal].MetalsHotGas += metals_leaving_disk;
+        }
+        
+    } else {
+        // All metals leave disk when ColdGas is very low
+        const double all_metals = run_params->Yield * stars;
+        
+        if(run_params->CGMrecipeOn == 1) {
+            if(galaxies[centralgal].Regime == 0) {
+                galaxies[centralgal].MetalsCGMgas += all_metals;
+            } else {
+                galaxies[centralgal].MetalsHotGas += all_metals;
+            }
+        } else {
+            galaxies[centralgal].MetalsHotGas += all_metals;
+        }
+    }
+    
+    // ========================================================================
+    // NO DISK INSTABILITY CHECK
+    // Rapid star formation stabilizes the disk
+    // ========================================================================
 }

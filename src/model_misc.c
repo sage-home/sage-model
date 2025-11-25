@@ -18,6 +18,7 @@ void init_galaxy(const int p, const int halonr, int *galaxycounter, const struct
 
     galaxies[p].Type = 0;
     galaxies[p].Regime = -1; // undefined at initialization
+    galaxies[p].FFBRegime = 0;
 
     galaxies[p].GalaxyNr = *galaxycounter;
     (*galaxycounter)++;
@@ -195,6 +196,53 @@ void determine_and_store_regime(const int ngal, struct GALAXY *galaxies,
     }
 }
 
+void determine_and_store_ffb_regime(const int ngal, struct GALAXY *galaxies,
+                                     const struct params *run_params)
+{
+    // Only apply FFB if the mode is enabled
+    if(run_params->FeedbackFreeModeOn == 0) {
+        // FFB mode disabled - mark all galaxies as normal
+        for(int p = 0; p < ngal; p++) {
+            galaxies[p].FFBRegime = 0;
+        }
+        return;
+    }
+    
+    // Classify each galaxy as FFB or normal based on equation (2)
+    for(int p = 0; p < ngal; p++) {
+        if(galaxies[p].mergeType > 0) continue;
+        
+        const double z = run_params->ZZ[galaxies[p].SnapNum];
+        const double Mvir = galaxies[p].Mvir;  // in 10^10 M☉/h
+        
+        // Calculate FFB threshold mass from equation (2)
+        const double Mvir_ffb = calculate_ffb_threshold_mass(z, run_params);
+        
+        // Simple threshold: if galaxy is above threshold, it's FFB
+        // Using 0.15 dex threshold for smooth transition
+        const double log_ratio = log10(Mvir / Mvir_ffb);
+        
+        // Critical threshold: log_ratio = 0 means Mvir = Mvir_ffb
+        // We use a sharp cutoff at the threshold
+        if(log_ratio > 0.0) {
+            galaxies[p].FFBRegime = 1;  // FFB halo
+        } else {
+            galaxies[p].FFBRegime = 0;  // Normal halo
+        }
+        
+        // Optional: Add debug output for FFB halos
+        // if(galaxies[p].FFBRegime == 1 && (z > 8.0 || p == 0)) {
+        //     printf("=== FFB HALO DETECTED ===\n");
+        //     printf("  Galaxy %d at z=%.4f\n", p, z);
+        //     printf("  Mvir = %.4e (10^10 Msun/h)\n", Mvir);
+        //     printf("  Threshold = %.4e (10^10 Msun/h)\n", Mvir_ffb);
+        //     printf("  Mass ratio = %.4f\n", Mvir / Mvir_ffb);
+        //     printf("  --> FFB MODE ACTIVATED\n");
+        //     printf("=========================\n\n");
+        // }
+    }
+}
+
 float calculate_stellar_scale_height_BR06(float disk_scale_length_pc)
 {
     // BR06 equation (9): log h* = -0.23 - 0.8 log R*
@@ -336,7 +384,7 @@ float calculate_molecular_fraction_radial_integration(const int gal, struct GALA
     return H2_code_units;
 }
 
-double calculate_ffb_threshold_mass(const double z)
+double calculate_ffb_threshold_mass(const double z, const struct params *run_params)
 {
     // Equation (2) from Li et al. 2024
     // M_v,ffb / 10^10.8 M_sun ~ ((1+z)/10)^-6.2
@@ -352,61 +400,61 @@ double calculate_ffb_threshold_mass(const double z)
     // This converts from log10(Msun) to log10(10^10 Msun/h)
     const double log_Mvir_ffb_code = log_Mvir_ffb_Msun - 10.0;
     
-    // Return in code units (10^10 M_sun/h)
-    return pow(10.0, log_Mvir_ffb_code);
+    const double h = run_params->Hubble_h;
+    return pow(10.0, log_Mvir_ffb_code) / h;    
 }
 
 
-double calculate_ffb_fraction(const double Mvir, const double z, const struct params *run_params)
-{
-    // Calculate the fraction of galaxies in FFB regime
-    // Uses smooth sigmoid transition from Li et al. 2024, equation (3)
+// double calculate_ffb_fraction(const double Mvir, const double z, const struct params *run_params)
+// {
+//     // Calculate the fraction of galaxies in FFB regime
+//     // Uses smooth sigmoid transition from Li et al. 2024, equation (3)
     
-    if (run_params->FeedbackFreeModeOn == 0) {
-        return 0.0;  // FFB mode disabled
-    }
+//     if (run_params->FeedbackFreeModeOn == 0) {
+//         return 0.0;  // FFB mode disabled
+//     }
     
-    // Calculate FFB threshold mass
-    const double Mvir_ffb = calculate_ffb_threshold_mass(z);
+//     // Calculate FFB threshold mass
+//     const double Mvir_ffb = calculate_ffb_threshold_mass(z, run_params);
     
-    // Width of transition in dex (Li et al. use 0.15 dex)
-    const double delta_log_M = 0.15;
+//     // Width of transition in dex (Li et al. use 0.15 dex)
+//     const double delta_log_M = 0.15;
     
-    // Calculate argument for sigmoid function
-    const double x = log10(Mvir / Mvir_ffb) / delta_log_M;
+//     // Calculate argument for sigmoid function
+//     const double x = log10(Mvir / Mvir_ffb) / delta_log_M;
     
-    // Sigmoid function: S(x) = 1 / (1 + exp(-x))
-    // Smoothly varies from 0 (well below threshold) to 1 (well above threshold)
-    const double f_ffb = 1.0 / (1.0 + exp(-x));
+//     // Sigmoid function: S(x) = 1 / (1 + exp(-x))
+//     // Smoothly varies from 0 (well below threshold) to 1 (well above threshold)
+//     const double f_ffb = 1.0 / (1.0 + exp(-x));
     
-    return f_ffb;
-}
+//     return f_ffb;
+// }
 
 
-double calculate_ffb_boosted_sfe(const int gal, const double base_sfe, 
-                                 struct GALAXY *galaxies, const struct params *run_params)
-{
-    // Calculate the effective SFE including FFB boost
-    // Interpolates between base SFE and maximum FFB efficiency
+// double calculate_ffb_boosted_sfe(const int gal, const double base_sfe, 
+//                                  struct GALAXY *galaxies, const struct params *run_params)
+// {
+//     // Calculate the effective SFE including FFB boost
+//     // Interpolates between base SFE and maximum FFB efficiency
     
-    if (run_params->FeedbackFreeModeOn == 0) {
-        return base_sfe;  // No FFB boost
-    }
+//     if (run_params->FeedbackFreeModeOn == 0) {
+//         return base_sfe;  // No FFB boost
+//     }
     
-    // Get galaxy properties
-    const double Mvir = galaxies[gal].Mvir;
-    const double z = run_params->ZZ[galaxies[gal].SnapNum];
+//     // Get galaxy properties
+//     const double Mvir = galaxies[gal].Mvir;
+//     const double z = run_params->ZZ[galaxies[gal].SnapNum];
     
-    // Calculate FFB fraction (0 = nonFFB, 1 = full FFB)
-    const double f_ffb = calculate_ffb_fraction(Mvir, z, run_params);
+//     // Calculate FFB fraction (0 = nonFFB, 1 = full FFB)
+//     const double f_ffb = calculate_ffb_fraction(Mvir, z, run_params);
     
-    // Maximum SFE in FFB regime (default 0.2, can be up to 1.0)
-    const double sfe_max = run_params->FFBMaxEfficiency;
+//     // Maximum SFE in FFB regime (default 0.2, can be up to 1.0)
+//     const double sfe_max = run_params->FFBMaxEfficiency;
     
-    // Interpolate between base SFE and FFB maximum
-    // For f_ffb = 0: returns base_sfe
-    // For f_ffb = 1: returns sfe_max
-    const double boosted_sfe = base_sfe * (1.0 - f_ffb) + sfe_max * f_ffb;
+//     // Interpolate between base SFE and FFB maximum
+//     // For f_ffb = 0: returns base_sfe
+//     // For f_ffb = 1: returns sfe_max
+//     const double boosted_sfe = base_sfe * (1.0 - f_ffb) + sfe_max * f_ffb;
     
-    return boosted_sfe;
-}
+//     return boosted_sfe;
+// }
