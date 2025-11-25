@@ -443,6 +443,7 @@ struct params
     int32_t    CGMrecipeOn;
     int32_t    FIREmodeOn;
     int32_t    CGMrecipeSAGEOn;
+    int32_t    FeedbackFreeModeOn;
 
     double RecycleFraction;
     double Yield;
@@ -451,6 +452,7 @@ struct params
     double ThreshMajorMerger;
     double BaryonFrac;
     double SfrEfficiency;
+    double FFBMaxEfficiency;
     double FeedbackReheatingEpsilon;
     double FeedbackEjectionEfficiency;
     double RadioModeEfficiency;

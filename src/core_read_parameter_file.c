@@ -248,6 +248,15 @@ int read_parameter_file(const char *fname, struct params *run_params)
     strncpy(ParamTag[NParam], "RedshiftPowerLawExponent", MAXTAGLEN);
     ParamAddr[NParam] = &(run_params->RedshiftPowerLawExponent);
     ParamID[NParam++] = DOUBLE;
+
+    strncpy(ParamTag[NParam], "FFBMaxEfficiency", MAXTAGLEN);
+    ParamAddr[NParam] = &(run_params->FFBMaxEfficiency);
+    ParamID[NParam++] = DOUBLE;
+
+    strncpy(ParamTag[NParam], "FeedbackFreeModeOn", MAXTAGLEN);
+    ParamAddr[NParam] = &(run_params->FeedbackFreeModeOn);
+    ParamID[NParam++] = INT;
+
     
     used_tag = mymalloc(sizeof(int) * NParam);
     for(int i=0; i<NParam; i++) {

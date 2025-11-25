@@ -53,12 +53,14 @@ DiskInstabilityOn     1   %0: switch off; 1: bulge and BH growth through instabi
 CGMrecipeOn           1   %0: switch off
 FIREmodeOn            1   %0: switch off
 CGMrecipeSAGEOn       0   %0: switch off
+FeedbackFreeModeOn    1   %0: switch off
 
 %------------------------------------------
 %----- SAGE model parameters --------------
 %------------------------------------------
 
 SfrEfficiency           0.03  %efficiency of SF (SFprescription=0)
+FFBMaxEfficiency        0.2   %0.2 fits observations best, 1.0 is theoretical maximum
 
 RedshiftPowerLawExponent    1.25   %alpha for (1+z)^alpha in mass loading calculation (FIREmodeOn=1)
 

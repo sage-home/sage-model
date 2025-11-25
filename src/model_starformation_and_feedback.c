@@ -20,6 +20,47 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
     // Initialise variables
     strdot = 0.0;
 
+    double ffb_boost_factor = 1.0;
+    double f_ffb = 0.0;  // Fraction in FFB regime
+    
+    if(run_params->FeedbackFreeModeOn == 1) {
+        const double z = run_params->ZZ[galaxies[p].SnapNum];
+        const double Mvir = galaxies[p].Mvir;
+        
+        // Calculate FFB fraction (0 = nonFFB, 1 = full FFB)
+        f_ffb = calculate_ffb_fraction(Mvir, z, run_params);
+        
+        // Calculate boost factor based on how much we're in FFB regime
+        // Base SFE is ~0.01-0.1, FFB max is 0.2-1.0
+        // So boost factor can be ~2-100x depending on parameters
+        const double base_sfe_reference = run_params->SfrEfficiency;  // Typical low-z SFE
+        const double ffb_relative_boost = run_params->FFBMaxEfficiency / base_sfe_reference;
+        
+        // Interpolate boost: no boost at f_ffb=0, full boost at f_ffb=1
+        ffb_boost_factor = 1.0 + f_ffb * (ffb_relative_boost - 1.0);
+        
+        // Print debug info for:
+        // 1. Very high redshift (z > 9) where we expect FFB
+        // 2. Any galaxy with non-trivial FFB fraction (f_ffb > 0.01)
+        // if(z > 9.0 || f_ffb > 0.01) {
+        //     // Calculate threshold for this redshift
+        //     const double Mvir_ffb = calculate_ffb_threshold_mass(z);
+        //     const double mass_ratio = Mvir / Mvir_ffb;
+            
+        //     printf("=== FFB Debug - Galaxy %d ===\n", p);
+        //     printf("  Redshift z = %.4f\n", z);
+        //     printf("  Galaxy Mvir = %.4e (10^10 Msun/h)\n", Mvir);
+        //     printf("  FFB threshold = %.4e (10^10 Msun/h)\n", Mvir_ffb);
+        //     printf("  Mass ratio (Mvir/Mvir_ffb) = %.4f\n", mass_ratio);
+        //     printf("  f_ffb (FFB fraction) = %.6f (%.1f%% in FFB regime)\n", f_ffb, f_ffb * 100.0);
+        //     printf("  SFE: base=%.4f, FFB_max=%.4f, boost=%.4fx\n", 
+        //            base_sfe_reference, run_params->FFBMaxEfficiency, ffb_relative_boost);
+        //     printf("  Final boost factor = %.6f (%.1f%% SFE increase)\n", 
+        //            ffb_boost_factor, (ffb_boost_factor - 1.0) * 100.0);
+        //     printf("===========================\n\n");
+        // }
+    }
+
     // star formation recipes
     if(run_params->SFprescription == 0) {
         // we take the typical star forming region as 3.0*r_s using the Milky Way as a guide
@@ -30,6 +71,7 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
         const double cold_crit = 0.19 * galaxies[p].Vvir * reff;
         if(galaxies[p].ColdGas > cold_crit && tdyn > 0.0) {
             strdot = run_params->SfrEfficiency * (galaxies[p].ColdGas - cold_crit) / tdyn;
+            strdot *= ffb_boost_factor;
         } else {
             strdot = 0.0;
         }
@@ -60,6 +102,7 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
         const double cold_crit = 0.19 * galaxies[p].Vvir * reff;
         if(galaxies[p].ColdGas > cold_crit) {
             strdot = run_params->SfrEfficiency * galaxies[p].H2gas / tdyn;
+            strdot *= ffb_boost_factor;
         } else {
             strdot = 0.0;
         }

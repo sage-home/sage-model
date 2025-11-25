@@ -335,3 +335,78 @@ float calculate_molecular_fraction_radial_integration(const int gal, struct GALA
     galaxies[gal].H2gas = H2_code_units;
     return H2_code_units;
 }
+
+double calculate_ffb_threshold_mass(const double z)
+{
+    // Equation (2) from Li et al. 2024
+    // M_v,ffb / 10^10.8 M_sun ~ ((1+z)/10)^-6.2
+    
+    const double z_norm = (1.0 + z) / 10.0;  // Normalized redshift
+    const double M_norm = 10.8;               // log10(M_sun)
+    const double z_exponent = -6.2;
+    
+    // Calculate log10(M_v,ffb) in units of M_sun
+    const double log_Mvir_ffb_Msun = M_norm + z_exponent * log10(z_norm);
+    
+    // Convert to code units (10^10 M_sun/h) by subtracting 10.0
+    // This converts from log10(Msun) to log10(10^10 Msun/h)
+    const double log_Mvir_ffb_code = log_Mvir_ffb_Msun - 10.0;
+    
+    // Return in code units (10^10 M_sun/h)
+    return pow(10.0, log_Mvir_ffb_code);
+}
+
+
+double calculate_ffb_fraction(const double Mvir, const double z, const struct params *run_params)
+{
+    // Calculate the fraction of galaxies in FFB regime
+    // Uses smooth sigmoid transition from Li et al. 2024, equation (3)
+    
+    if (run_params->FeedbackFreeModeOn == 0) {
+        return 0.0;  // FFB mode disabled
+    }
+    
+    // Calculate FFB threshold mass
+    const double Mvir_ffb = calculate_ffb_threshold_mass(z);
+    
+    // Width of transition in dex (Li et al. use 0.15 dex)
+    const double delta_log_M = 0.15;
+    
+    // Calculate argument for sigmoid function
+    const double x = log10(Mvir / Mvir_ffb) / delta_log_M;
+    
+    // Sigmoid function: S(x) = 1 / (1 + exp(-x))
+    // Smoothly varies from 0 (well below threshold) to 1 (well above threshold)
+    const double f_ffb = 1.0 / (1.0 + exp(-x));
+    
+    return f_ffb;
+}
+
+
+double calculate_ffb_boosted_sfe(const int gal, const double base_sfe, 
+                                 struct GALAXY *galaxies, const struct params *run_params)
+{
+    // Calculate the effective SFE including FFB boost
+    // Interpolates between base SFE and maximum FFB efficiency
+    
+    if (run_params->FeedbackFreeModeOn == 0) {
+        return base_sfe;  // No FFB boost
+    }
+    
+    // Get galaxy properties
+    const double Mvir = galaxies[gal].Mvir;
+    const double z = run_params->ZZ[galaxies[gal].SnapNum];
+    
+    // Calculate FFB fraction (0 = nonFFB, 1 = full FFB)
+    const double f_ffb = calculate_ffb_fraction(Mvir, z, run_params);
+    
+    // Maximum SFE in FFB regime (default 0.2, can be up to 1.0)
+    const double sfe_max = run_params->FFBMaxEfficiency;
+    
+    // Interpolate between base SFE and FFB maximum
+    // For f_ffb = 0: returns base_sfe
+    // For f_ffb = 1: returns sfe_max
+    const double boosted_sfe = base_sfe * (1.0 - f_ffb) + sfe_max * f_ffb;
+    
+    return boosted_sfe;
+}
