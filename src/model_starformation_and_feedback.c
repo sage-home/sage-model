@@ -402,6 +402,24 @@ void starformation_ffb(const int p, const int centralgal, const double dt, const
     // NO ejection
     // NO outflows
     // Gas converts directly to stars
+
+    // H2 for merger-compatibility, but isn't used for stars
+    if(run_params->SFprescription == 1 && galaxies[p].ColdGas > 0.0) {
+        const float h = run_params->Hubble_h;
+        const float rs_pc = galaxies[p].DiskScaleRadius * 1.0e6 / h;
+        
+        if(rs_pc > 0.0) {
+            float disk_area_pc2 = M_PI * pow(3.0 * rs_pc, 2);
+            float gas_surface_density = (galaxies[p].ColdGas * 1.0e10 / h) / disk_area_pc2;
+            float stellar_surface_density = (galaxies[p].StellarMass * 1.0e10 / h) / disk_area_pc2;
+            
+            float f_mol = calculate_molecular_fraction_BR06(gas_surface_density, 
+                                                            stellar_surface_density, rs_pc);
+            galaxies[p].H2gas = f_mol * galaxies[p].ColdGas;
+        } else {
+            galaxies[p].H2gas = 0.0;
+        }
+    }
     
     // ========================================================================
     // METAL PRODUCTION (instantaneous recycling approximation - SNII only)
