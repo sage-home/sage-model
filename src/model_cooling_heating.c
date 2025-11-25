@@ -664,44 +664,6 @@ double do_AGN_heating_cgm(double coolingGas, const int centralgal, const double 
     return coolingGas;
 }
 
-
-
-// void cool_gas_onto_galaxy_regime_aware(const int centralgal, const double coolingGas, struct GALAXY *galaxies)
-// {
-//     if(coolingGas <= 0.0) return;
-    
-//     double total_available = galaxies[centralgal].CGMgas + galaxies[centralgal].HotGas;
-//     if(total_available <= 0.0) return;
-    
-//     // Cap cooling to what's actually available
-//     double actual_cooling = (coolingGas > total_available) ? total_available : coolingGas;
-    
-//     // Calculate what fraction comes from each reservoir
-//     double cgm_fraction = galaxies[centralgal].CGMgas / total_available;
-//     double hot_fraction = galaxies[centralgal].HotGas / total_available;
-    
-//     double cgm_cooling = actual_cooling * cgm_fraction;
-//     double hot_cooling = actual_cooling * hot_fraction;
-    
-//     // Apply CGM cooling
-//     if(cgm_cooling > 0.0) {
-//         const double metallicity = get_metallicity(galaxies[centralgal].CGMgas, galaxies[centralgal].MetalsCGMgas);
-//         galaxies[centralgal].ColdGas += cgm_cooling;
-//         galaxies[centralgal].MetalsColdGas += metallicity * cgm_cooling;
-//         galaxies[centralgal].CGMgas -= cgm_cooling;
-//         galaxies[centralgal].MetalsCGMgas -= metallicity * cgm_cooling;
-//     }
-    
-//     // Apply HotGas cooling
-//     if(hot_cooling > 0.0) {
-//         const double metallicity = get_metallicity(galaxies[centralgal].HotGas, galaxies[centralgal].MetalsHotGas);
-//         galaxies[centralgal].ColdGas += hot_cooling;
-//         galaxies[centralgal].MetalsColdGas += metallicity * hot_cooling;
-//         galaxies[centralgal].HotGas -= hot_cooling;
-//         galaxies[centralgal].MetalsHotGas -= metallicity * hot_cooling;
-//     }
-// }
-
 void cool_gas_onto_galaxy(const int centralgal, const double coolingGas, struct GALAXY *galaxies)
 {
     // add the fraction 1/STEPS of the total cooling gas to the cold disk

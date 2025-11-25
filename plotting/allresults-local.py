@@ -69,34 +69,12 @@ if __name__ == '__main__':
     MetalsHotGas = read_hdf(snap_num = Snapshot, param = 'MetalsHotGas') * 1.0e10 / Hubble_h
     EjectedMass = read_hdf(snap_num = Snapshot, param = 'EjectedMass') * 1.0e10 / Hubble_h
     CGMgas = read_hdf(snap_num = Snapshot, param = 'CGMgas') * 1.0e10 / Hubble_h
-    # print('CGM gas sample:', CGMgas[:10], '\n')
     MetalsCGMgas = read_hdf(snap_num = Snapshot, param = 'MetalsCGMgas') * 1.0e10 / Hubble_h
-    # print('CGM metals sample:', MetalsCGMgas[:10], '\n')
-
-    # print('Total Ejected gas mass in box:', np.sum(EjectedMass))
-    # print('Minimum Ejected gas mass:', np.min(EjectedMass[np.where(EjectedMass>0.0)]))
-    # print('Maximum Ejected gas mass:', np.max(EjectedMass))
-    # print('Negative Ejected gas mass:', len(np.where(EjectedMass<0.0)[0]), '\n')
-    # print('Negative Ejected gas mass sample:', EjectedMass[np.where(EjectedMass<0.0)[0]][:10], '\n')
-
-    # print('Total CGM gas mass in box:', np.sum(CGMgas))
-    # print('Minimum CGM gas mass:', np.min(CGMgas[np.where(CGMgas>0.0)]))
-    # print('Maximum CGM gas mass:', np.max(CGMgas))
-    # print('Negative CGM gas mass:', len(np.where(CGMgas<0.0)[0]), '\n')
-    # print('Negative CGM gas mass sample:', CGMgas[np.where(CGMgas<0.0)[0]][:10], '\n')
-
 
     IntraClusterStars = read_hdf(snap_num = Snapshot, param = 'IntraClusterStars') * 1.0e10 / Hubble_h
     DiskRadius = read_hdf(snap_num = Snapshot, param = 'DiskRadius')
 
     H2gas = read_hdf(snap_num = Snapshot, param = 'H2gas') * 1.0e10 / Hubble_h
-
-    # print('Total H2 gas mass in box:', np.sum(H2gas))
-    # print('Minimum H2 gas mass:', np.min(H2gas[np.where(H2gas>0.0)]))
-    # print('Maximum H2 gas mass:', np.max(H2gas))
-    # print('Negative H2 gas mass:', len(np.where(H2gas<0.0)[0]), '\n')
-    # print('Negative H2 gas mass sample:', H2gas[np.where(H2gas<0.0)[0]][:10], '\n')
-
     Vvir = read_hdf(snap_num = Snapshot, param = 'Vvir')
     Vmax = read_hdf(snap_num = Snapshot, param = 'Vmax')
     Rvir = read_hdf(snap_num = Snapshot, param = 'Rvir')
@@ -110,21 +88,15 @@ if __name__ == '__main__':
     Posz = read_hdf(snap_num = Snapshot, param = 'Posz')
 
     OutflowRate = read_hdf(snap_num = Snapshot, param = 'OutflowRate')
-    print('Total outflow rate:', np.sum(OutflowRate), '\n')
-    print('Outflow rate sample:', OutflowRate[:10], '\n')
 
     MassLoading = read_hdf(snap_num = Snapshot, param = 'MassLoading')
 
-    print('Mass loading factor sample:', MassLoading[:10], '\n')
-    print('Maximum mass loading factor:', np.max(MassLoading[np.where(MassLoading<1.0e10)]), '\n')
-    print('Minimum mass loading factor:', np.min(MassLoading[np.where(MassLoading>0.0)]), '\n')
 
     w = np.where(StellarMass > 1.0e10)[0]
     print('Number of galaxies read:', len(StellarMass))
     print('Galaxies more massive than 10^10 h-1 Msun:', len(w), '\n')
 
     Cooling = read_hdf(snap_num = Snapshot, param = 'Cooling')
-    print('Cooling sample:', Cooling[:50], '\n')
 
     Tvir = 35.9 * (Vvir)**2  # in Kelvin
     Tmax = 2.5e5  # K, corresponds to Vvir ~52.7 km/s

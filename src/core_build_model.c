@@ -365,7 +365,7 @@ int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals
             double coolingGas;
             if(run_params->CGMrecipeOn == 1) {
 
-                coolingGas = cooling_recipe_regime_aware(p, deltaT / STEPS, galaxies, run_params);
+                cooling_recipe_regime_aware(p, deltaT / STEPS, galaxies, run_params);
                 // cool_gas_onto_galaxy_regime_aware(p, coolingGas, galaxies);
             } else {
                 coolingGas = cooling_recipe(p, deltaT / STEPS, galaxies, run_params);
@@ -418,7 +418,6 @@ int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals
             }
         }
     } // Go on to the next STEPS substep
-
 
     // Extra miscellaneous stuff before finishing this halo
     galaxies[centralgal].TotalSatelliteBaryons = 0.0;

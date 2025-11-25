@@ -173,31 +173,6 @@ double get_virial_radius(const int halonr, const struct halo_data *halos, const 
   return cbrt(get_virial_mass(halonr, halos, run_params) * fac);
 }
 
-
-// void determine_and_store_regime(const int ngal, struct GALAXY *galaxies, 
-//                                 const struct params *run_params)
-// {
-    
-//     // CGM recipe is on - classify based on virial temperature
-//     for(int p = 0; p < ngal; p++) {
-//         if(galaxies[p].mergeType > 0) continue;
-        
-//         // Calculate virial temperature: Tvir = (mu * mp / 2k) * Vvir^2
-//         // Simplifies to: Tvir ≈ 35.9 * Vvir^2 (Vvir in km/s, Tvir in K)
-//         const double z = run_params->ZZ[galaxies[p].SnapNum];
-//         const double Tvir = 35.9 * galaxies[p].Vvir * galaxies[p].Vvir;
-        
-//         // Threshold with redshift evolution
-//         const double Tvir_threshold_z0 = 8.0e5;  // 800,000 K at z=0
-//         const double z_scaling = pow(1.0 + z, 0.35);
-//         const double Tvir_threshold = Tvir_threshold_z0 * z_scaling;
-        
-//         // Regime 0: CGM regime (low-mass halos, Tvir < threshold)
-//         // Regime 1: Hot-ICM regime (high-mass halos, Tvir >= threshold)
-//         galaxies[p].Regime = (Tvir < Tvir_threshold) ? 0 : 1;
-//     }
-// }
-
 void determine_and_store_regime(const int ngal, struct GALAXY *galaxies, 
                                 const struct params *run_params)
 {
@@ -217,52 +192,7 @@ void determine_and_store_regime(const int ngal, struct GALAXY *galaxies,
 
         galaxies[p].Regime = (regime_criterion >= 1.0) ? 1 : 0;
         
-        // Optional: store the smooth value for use in cooling calculations
-        // This would require adding a new field like galaxies[p].RegimeSmooth = regime_smooth;
     }
-}
-
-float calculate_muratov_mass_loading(const int gal, struct GALAXY *galaxies, const double z, const struct params *run_params)
-{
-    // Get circular velocity in km/s
-    double vc = galaxies[gal].Vvir;  // Using virial velocity (already in km/s)
-
-    // Add safety check to prevent division by zero
-    if (vc <= 0.0) {
-        return 0.0;  // Return zero mass loading if velocity is invalid
-    }
-    
-    // Constants from Muratov et al. (2015) paper
-    const double V_CRIT = 60.0;  // Critical velocity where the power law breaks
-    const double NORM = 2.9;     // Normalization factor
-    const double Z_EXP = run_params->RedshiftPowerLawExponent;    // Redshift power-law exponent
-    const double LOW_V_EXP = -3.2;  // Low velocity power-law exponent
-    const double HIGH_V_EXP = -1.0; // High velocity power-law exponent
-
-    // Calculate redshift term: (1+z)^Z_EXP
-    double z_term = pow(1.0 + z, Z_EXP);
-    
-    // Calculate velocity term with SHARP BREAK at exactly 60 km/s
-    double v_term;
-    if (vc < V_CRIT) {
-        // Equation 4: For vc < 60 km/s
-        v_term = pow(vc / V_CRIT, LOW_V_EXP);
-    } else {
-        // Equation 5: For vc >= 60 km/s  
-        v_term = pow(vc / V_CRIT, HIGH_V_EXP);
-    }
-    
-    double eta = run_params->FeedbackReheatingEpsilon * NORM * z_term * v_term;
-
-    // Store mass loading for analysis (cast to float)
-    galaxies[gal].MassLoading = (float)eta;
-
-    // Safety check for the result
-    if (!isfinite(eta)) {
-        return 0.0;  // Return zero if result is NaN or infinity
-    }
-
-    return eta;
 }
 
 float calculate_stellar_scale_height_BR06(float disk_scale_length_pc)
