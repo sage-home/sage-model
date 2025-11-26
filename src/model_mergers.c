@@ -251,11 +251,6 @@ void collisional_starburst_recipe(const double mass_ratio, const int merger_cent
     if(run_params->SFprescription == 1) {
         // For H2-based prescriptions (BR06, DarkSAGE, GD14), use molecular gas
         gas_for_starburst = galaxies[merger_centralgal].H2gas;
-
-        // CRITICAL FIX: FFB galaxies don't calculate H2gas, so use ColdGas instead
-        if(run_params->FeedbackFreeModeOn == 1 && galaxies[merger_centralgal].FFBRegime == 1) {
-            gas_for_starburst = galaxies[merger_centralgal].ColdGas;
-        }
     } else {
         // For traditional prescription, use total cold gas
         gas_for_starburst = galaxies[merger_centralgal].ColdGas;
@@ -274,46 +269,25 @@ void collisional_starburst_recipe(const double mass_ratio, const int merger_cent
             const double vc = galaxies[merger_centralgal].Vvir;
             const double V_CRIT = 60.0;
             
-            // Comprehensive safety checks to avoid NaN
-            if(vc <= 0.0 || z < 0.0 || isnan(vc) || isnan(z) || isinf(vc) || isinf(z) || 
-               stars <= 0.0 || isnan(stars) || isinf(stars)) {
+            // Check for valid inputs to avoid NaN
+            if(vc <= 0.0 || z < 0.0) {
                 reheated_mass = 0.0;
             } else {
-                // Additional safety: check for reasonable ranges
-                if(vc > 10000.0 || z > 100.0) {
-                    // Unphysical values - skip feedback
-                    reheated_mass = 0.0;
+                double z_term = pow(1.0 + z, run_params->RedshiftPowerLawExponent);
+                double v_term;
+                if (vc < V_CRIT) {
+                    v_term = pow(vc / V_CRIT, -3.2);
                 } else {
-                    double z_term = pow(1.0 + z, run_params->RedshiftPowerLawExponent);
-                    double v_term;
-                    if (vc < V_CRIT) {
-                        v_term = pow(vc / V_CRIT, -3.2);
-                    } else {
-                        v_term = pow(vc / V_CRIT, -1.0);
-                    }
-                    double scaling_factor = z_term * v_term;
-                    
-                    // Final safety check on scaling factor
-                    if(isnan(scaling_factor) || isinf(scaling_factor) || scaling_factor < 0.0) {
-                        reheated_mass = 0.0;
-                    } else {
-                        // Reheating with Muratov scaling: η = 2.9 × (1+z)^α × (V/60)^β
-                        double eta_reheat = run_params->FeedbackReheatingEpsilon * scaling_factor;
-                        reheated_mass = eta_reheat * stars;
-                        
-                        // Final NaN check
-                        if(isnan(reheated_mass) || isinf(reheated_mass) || reheated_mass < 0.0) {
-                            reheated_mass = 0.0;
-                        }
-                    }
+                    v_term = pow(vc / V_CRIT, -1.0);
                 }
+                double scaling_factor = z_term * v_term;
+                
+                // Reheating with Muratov scaling: η = 2.9 × (1+z)^α × (V/60)^β
+                double eta_reheat = run_params->FeedbackReheatingEpsilon * scaling_factor;
+                reheated_mass = eta_reheat * stars;
             }
         } else {
             reheated_mass = run_params->FeedbackReheatingEpsilon * stars;
-            // Safety check for non-FIRE mode too
-            if(isnan(reheated_mass) || isinf(reheated_mass) || reheated_mass < 0.0) {
-                reheated_mass = 0.0;
-            }
         }
     } else {
         reheated_mass = 0.0;
@@ -339,13 +313,8 @@ void collisional_starburst_recipe(const double mass_ratio, const int merger_cent
                 const double vc = galaxies[merger_centralgal].Vvir;
                 const double V_CRIT = 60.0;
                 
-                // Comprehensive safety checks to avoid NaN
-                if(vc <= 0.0 || z < 0.0 || isnan(vc) || isnan(z) || isinf(vc) || isinf(z) ||
-                   stars <= 0.0 || isnan(stars) || isinf(stars) ||
-                   isnan(reheated_mass) || isinf(reheated_mass)) {
-                    ejected_mass = 0.0;
-                } else if(vc > 10000.0 || z > 100.0) {
-                    // Unphysical values - skip ejection
+                // Check for valid inputs to avoid NaN
+                if(vc <= 0.0 || z < 0.0) {
                     ejected_mass = 0.0;
                 } else {
                     double z_term = pow(1.0 + z, run_params->RedshiftPowerLawExponent);
@@ -357,40 +326,25 @@ void collisional_starburst_recipe(const double mass_ratio, const int merger_cent
                     }
                     double scaling_factor = z_term * v_term;
                     
-                    // Safety check on scaling factor
-                    if(isnan(scaling_factor) || isinf(scaling_factor) || scaling_factor < 0.0) {
-                        ejected_mass = 0.0;
+                    // Total feedback energy: E_FB = ε_eject × scaling × 0.5 × M_* × (η_SN × E_SN)
+                    double E_FB = run_params->FeedbackEjectionEfficiency * scaling_factor * 
+                                  0.5 * stars * (run_params->EtaSNcode * run_params->EnergySNcode);
+                    
+                    // Energy needed to lift reheated gas to virial radius: E_lift = 0.5 × M_reheat × V_vir²
+                    double E_lift = 0.5 * reheated_mass * vc * vc;
+                    
+                    // Leftover energy ejects additional gas: E_eject = E_FB - E_lift
+                    // Ejected mass: M_eject = E_eject / (0.5 × V_vir²)
+                    if(E_FB > E_lift) {
+                        ejected_mass = (E_FB - E_lift) / (0.5 * vc * vc);
                     } else {
-                        // Total feedback energy: E_FB = ε_eject × scaling × 0.5 × M_* × (η_SN × E_SN)
-                        double E_FB = run_params->FeedbackEjectionEfficiency * scaling_factor * 
-                                      0.5 * stars * (run_params->EtaSNcode * run_params->EnergySNcode);
-                        
-                        // Energy needed to lift reheated gas to virial radius: E_lift = 0.5 × M_reheat × V_vir²
-                        double E_lift = 0.5 * reheated_mass * vc * vc;
-                        
-                        // Leftover energy ejects additional gas: E_eject = E_FB - E_lift
-                        // Ejected mass: M_eject = E_eject / (0.5 × V_vir²)
-                        if(E_FB > E_lift) {
-                            ejected_mass = (E_FB - E_lift) / (0.5 * vc * vc);
-                        } else {
-                            ejected_mass = 0.0;
-                        }
-                        
-                        // Final NaN check
-                        if(isnan(ejected_mass) || isinf(ejected_mass) || ejected_mass < 0.0) {
-                            ejected_mass = 0.0;
-                        }
+                        ejected_mass = 0.0;
                     }
                 }
             } else {
                 ejected_mass =
                     (run_params->FeedbackEjectionEfficiency * (run_params->EtaSNcode * run_params->EnergySNcode) / (galaxies[merger_centralgal].Vvir * galaxies[merger_centralgal].Vvir) -
                      run_params->FeedbackReheatingEpsilon) * stars;
-                
-                // Safety check for non-FIRE mode
-                if(isnan(ejected_mass) || isinf(ejected_mass)) {
-                    ejected_mass = 0.0;
-                }
             }
         } else {
             ejected_mass = 0.0;

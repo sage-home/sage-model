@@ -197,7 +197,7 @@ void determine_and_store_regime(const int ngal, struct GALAXY *galaxies,
 }
 
 void determine_and_store_ffb_regime(const int ngal, struct GALAXY *galaxies,
-                                     const struct params *run_params)
+                                     const struct params *run_params, const int step)
 {
     // Only apply FFB if the mode is enabled
     if(run_params->FeedbackFreeModeOn == 0) {
@@ -215,33 +215,127 @@ void determine_and_store_ffb_regime(const int ngal, struct GALAXY *galaxies,
         const double z = run_params->ZZ[galaxies[p].SnapNum];
         const double Mvir = galaxies[p].Mvir;  // in 10^10 M☉/h
         
-        // Calculate FFB threshold mass from equation (2)
-        const double Mvir_ffb = calculate_ffb_threshold_mass(z, run_params);
+        // Calculate smooth FFB fraction using sigmoid transition (Li et al. 2024, eq. 3)
+        const double f_ffb = calculate_ffb_fraction(Mvir, z, run_params);
         
-        // Simple threshold: if galaxy is above threshold, it's FFB
-        // Using 0.15 dex threshold for smooth transition
-        const double log_ratio = log10(Mvir / Mvir_ffb);
+        // Probabilistic assignment based on smooth sigmoid function
+        // Galaxies near threshold have intermediate probability of being FFB
+        const double random_uniform = (double)rand() / (double)RAND_MAX;
         
-        // Critical threshold: log_ratio = 0 means Mvir = Mvir_ffb
-        // We use a sharp cutoff at the threshold
-        if(log_ratio > 0.0) {
+        if(random_uniform < f_ffb) {
             galaxies[p].FFBRegime = 1;  // FFB halo
         } else {
             galaxies[p].FFBRegime = 0;  // Normal halo
         }
         
         // Optional: Add debug output for FFB halos
-        // if(galaxies[p].FFBRegime == 1 && (z > 8.0 || p == 0)) {
-        //     printf("=== FFB HALO DETECTED ===\n");
-        //     printf("  Galaxy %d at z=%.4f\n", p, z);
-        //     printf("  Mvir = %.4e (10^10 Msun/h)\n", Mvir);
-        //     printf("  Threshold = %.4e (10^10 Msun/h)\n", Mvir_ffb);
-        //     printf("  Mass ratio = %.4f\n", Mvir / Mvir_ffb);
-        //     printf("  --> FFB MODE ACTIVATED\n");
-        //     printf("=========================\n\n");
-        // }
+        if(galaxies[p].FFBRegime == 1 && (z > 8.0 || p == 0)) {
+            const double Mvir_ffb = calculate_ffb_threshold_mass(z, run_params);
+            printf("=== FFB HALO DETECTED ===\n");
+            printf("  Galaxy %d at z=%.4f\n", p, z);
+            printf("  Mvir = %.4e (10^10 Msun/h)\n", Mvir);
+            printf("  Threshold = %.4e (10^10 Msun/h)\n", Mvir_ffb);
+            printf("  Mass ratio = %.4f\n", Mvir / Mvir_ffb);
+            printf("  FFB fraction (f_ffb) = %.4f\n", f_ffb);
+            printf("  --> FFB MODE ACTIVATED\n");
+            printf("=========================\n\n");
+        }
     }
 }
+
+// void determine_and_store_ffb_regime(const int ngal, struct GALAXY *galaxies,
+//                                      const struct params *run_params, const int step)
+// {
+//     // Early exit if FFB is disabled
+//     if(run_params->FeedbackFreeModeOn == 0) {
+//         for(int p = 0; p < ngal; p++) {
+//             galaxies[p].FFBRegime = 0;
+//         }
+//         return;
+//     }
+    
+//     // Minimum halo mass for FFB (resolution limit)
+//     const double MIN_HALO_MASS_FFB = 5.0;  // 5×10^10 M☉/h
+    
+//     // FFB redshift window with smooth transitions
+//     const double Z_CENTER = 9.0;      // Peak FFB activity
+//     const double Z_WIDTH = 2.0;       // Transition width (smooth from z=7 to z=11)
+    
+//     for(int p = 0; p < ngal; p++) {
+//         if(galaxies[p].mergeType > 0) continue;
+        
+//         const double z = run_params->ZZ[galaxies[p].SnapNum];
+//         const double Mvir = galaxies[p].Mvir;
+        
+//         // Default to non-FFB
+//         galaxies[p].FFBRegime = 0;
+        
+//         // Don't allow FFB in tiny halos
+//         if(Mvir < MIN_HALO_MASS_FFB) {
+//             continue;
+//         }
+        
+//         // ====================================================================
+//         // SMOOTH REDSHIFT TRANSITION (KEY TO SMOOTH SFR HISTORY!)
+//         // ====================================================================
+//         // FFB should gradually turn on/off with redshift, not sharply at z=8
+//         // Use Gaussian or exp(-x²) to smoothly weight FFB probability
+        
+//         // Redshift weighting: peaks at Z_CENTER, falls off smoothly
+//         // Using exp(-(z-z0)²/(2σ²)) for smooth Gaussian transition
+//         const double z_offset = (z - Z_CENTER) / Z_WIDTH;
+//         const double z_weight = exp(-0.5 * z_offset * z_offset);
+        
+//         // This gives:
+//         // z=9: weight=1.0 (full FFB)
+//         // z=7 or z=11: weight=0.6 (partial FFB)
+//         // z=5 or z=13: weight=0.1 (minimal FFB)
+        
+//         // Skip if redshift weight is negligible
+//         if(z_weight < 0.01) {
+//             continue;
+//         }
+        
+//         // ====================================================================
+//         // SMOOTH MASS TRANSITION
+//         // ====================================================================
+        
+//         const double Mvir_ffb = calculate_ffb_threshold_mass(z, run_params);
+        
+//         // Calculate probability of FFB using smooth error function
+//         const double log_ratio = log10(Mvir / Mvir_ffb);
+        
+//         // Transition width in dex
+//         const double sigma = 0.3;  // ~factor of 2 transition width
+        
+//         // Mass probability using error function
+//         const double P_mass = 0.5 * (1.0 + erf(log_ratio / (sigma * sqrt(2.0))));
+        
+//         // ====================================================================
+//         // COMBINED PROBABILITY (MASS × REDSHIFT)
+//         // ====================================================================
+//         // This creates smooth transitions in BOTH mass and redshift!
+        
+//         const double P_FFB = P_mass * z_weight;
+        
+//         // ====================================================================
+//         // PROBABILISTIC ASSIGNMENT
+//         // ====================================================================
+        
+//         // Generate random number [0,1]
+//         const double random_uniform = (double)rand() / (double)RAND_MAX;
+        
+//         if(random_uniform < P_FFB) {
+//             galaxies[p].FFBRegime = 1;
+            
+//             // Debug output (reduced verbosity)
+//             if(step == 0 && p == 0 && z > 8.5) {
+//                 printf("FFB: z=%.2f (wgt=%.2f), Mvir=%.2e, M_thr=%.2e, P_mass=%.2f, P_FFB=%.2f\n",
+//                        z, z_weight, Mvir, Mvir_ffb, P_mass, P_FFB);
+//             }
+//         }
+//     }
+// }
 
 float calculate_stellar_scale_height_BR06(float disk_scale_length_pc)
 {
@@ -405,30 +499,30 @@ double calculate_ffb_threshold_mass(const double z, const struct params *run_par
 }
 
 
-// double calculate_ffb_fraction(const double Mvir, const double z, const struct params *run_params)
-// {
-//     // Calculate the fraction of galaxies in FFB regime
-//     // Uses smooth sigmoid transition from Li et al. 2024, equation (3)
+double calculate_ffb_fraction(const double Mvir, const double z, const struct params *run_params)
+{
+    // Calculate the fraction of galaxies in FFB regime
+    // Uses smooth sigmoid transition from Li et al. 2024, equation (3)
     
-//     if (run_params->FeedbackFreeModeOn == 0) {
-//         return 0.0;  // FFB mode disabled
-//     }
+    if (run_params->FeedbackFreeModeOn == 0) {
+        return 0.0;  // FFB mode disabled
+    }
     
-//     // Calculate FFB threshold mass
-//     const double Mvir_ffb = calculate_ffb_threshold_mass(z, run_params);
+    // Calculate FFB threshold mass
+    const double Mvir_ffb = calculate_ffb_threshold_mass(z, run_params);
     
-//     // Width of transition in dex (Li et al. use 0.15 dex)
-//     const double delta_log_M = 0.15;
+    // Width of transition in dex (Li et al. use 0.15 dex)
+    const double delta_log_M = 0.15;
     
-//     // Calculate argument for sigmoid function
-//     const double x = log10(Mvir / Mvir_ffb) / delta_log_M;
+    // Calculate argument for sigmoid function
+    const double x = log10(Mvir / Mvir_ffb) / delta_log_M;
     
-//     // Sigmoid function: S(x) = 1 / (1 + exp(-x))
-//     // Smoothly varies from 0 (well below threshold) to 1 (well above threshold)
-//     const double f_ffb = 1.0 / (1.0 + exp(-x));
+    // Sigmoid function: S(x) = 1 / (1 + exp(-x))
+    // Smoothly varies from 0 (well below threshold) to 1 (well above threshold)
+    const double f_ffb = 1.0 / (1.0 + exp(-x));
     
-//     return f_ffb;
-// }
+    return f_ffb;
+}
 
 
 // double calculate_ffb_boosted_sfe(const int gal, const double base_sfe, 

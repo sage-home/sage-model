@@ -334,7 +334,7 @@ int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals
             determine_and_store_regime(ngal, galaxies, run_params);
         }
         if (run_params->FeedbackFreeModeOn == 1) {
-            determine_and_store_ffb_regime(ngal, galaxies, run_params);
+            determine_and_store_ffb_regime(ngal, galaxies, run_params, step);
         }
 
         // Loop over all galaxies in the halo
