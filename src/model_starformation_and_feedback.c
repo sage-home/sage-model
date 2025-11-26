@@ -10,7 +10,6 @@
 #include "model_misc.h"
 #include "model_disk_instability.h"
 
-// static long galaxy_debug_counter = 0;
 
 void starformation_and_feedback(const int p, const int centralgal, const double time, const double dt, const int halonr, const int step,
                                 struct GALAXY *galaxies, const struct params *run_params)
@@ -345,7 +344,7 @@ void starformation_ffb(const int p, const int centralgal, const double dt, const
 {
     // ========================================================================
     // FEEDBACK-FREE BURST (FFB) STAR FORMATION
-    // Implementation of Li et al. 2024 - Equation (4)
+    // Implementation of Li et al. 2024 - Equation (4) (modified to be Kauffmann-like)
     // ========================================================================
     
     double reff, tdyn, strdot, stars, metallicity;
@@ -404,10 +403,6 @@ void starformation_ffb(const int p, const int centralgal, const double dt, const
         stars = 0.0;
     }
     
-    // ========================================================================
-    // UPDATE GALAXY PROPERTIES (NO FEEDBACK!)
-    // ========================================================================
-    
     // Update star formation rate tracking
     galaxies[p].SfrDisk[step] += stars / dt;
     galaxies[p].SfrDiskColdGas[step] = galaxies[p].ColdGas;
@@ -418,7 +413,7 @@ void starformation_ffb(const int p, const int centralgal, const double dt, const
     update_from_star_formation(p, stars, metallicity, galaxies, run_params);
     
     // ========================================================================
-    // NO FEEDBACK UPDATE
+    // Stars first form, then feedback acts on them
     // Key physics: star formation completes on free-fall time (~1 Myr)
     // before feedback from these stars can act (~2 Myr)
     // ========================================================================

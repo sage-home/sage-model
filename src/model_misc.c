@@ -197,7 +197,7 @@ void determine_and_store_regime(const int ngal, struct GALAXY *galaxies,
 }
 
 void determine_and_store_ffb_regime(const int ngal, struct GALAXY *galaxies,
-                                     const struct params *run_params, const int step)
+                                     const struct params *run_params)
 {
     // Only apply FFB if the mode is enabled
     if(run_params->FeedbackFreeModeOn == 0) {
@@ -242,100 +242,6 @@ void determine_and_store_ffb_regime(const int ngal, struct GALAXY *galaxies,
         }
     }
 }
-
-// void determine_and_store_ffb_regime(const int ngal, struct GALAXY *galaxies,
-//                                      const struct params *run_params, const int step)
-// {
-//     // Early exit if FFB is disabled
-//     if(run_params->FeedbackFreeModeOn == 0) {
-//         for(int p = 0; p < ngal; p++) {
-//             galaxies[p].FFBRegime = 0;
-//         }
-//         return;
-//     }
-    
-//     // Minimum halo mass for FFB (resolution limit)
-//     const double MIN_HALO_MASS_FFB = 5.0;  // 5×10^10 M☉/h
-    
-//     // FFB redshift window with smooth transitions
-//     const double Z_CENTER = 9.0;      // Peak FFB activity
-//     const double Z_WIDTH = 2.0;       // Transition width (smooth from z=7 to z=11)
-    
-//     for(int p = 0; p < ngal; p++) {
-//         if(galaxies[p].mergeType > 0) continue;
-        
-//         const double z = run_params->ZZ[galaxies[p].SnapNum];
-//         const double Mvir = galaxies[p].Mvir;
-        
-//         // Default to non-FFB
-//         galaxies[p].FFBRegime = 0;
-        
-//         // Don't allow FFB in tiny halos
-//         if(Mvir < MIN_HALO_MASS_FFB) {
-//             continue;
-//         }
-        
-//         // ====================================================================
-//         // SMOOTH REDSHIFT TRANSITION (KEY TO SMOOTH SFR HISTORY!)
-//         // ====================================================================
-//         // FFB should gradually turn on/off with redshift, not sharply at z=8
-//         // Use Gaussian or exp(-x²) to smoothly weight FFB probability
-        
-//         // Redshift weighting: peaks at Z_CENTER, falls off smoothly
-//         // Using exp(-(z-z0)²/(2σ²)) for smooth Gaussian transition
-//         const double z_offset = (z - Z_CENTER) / Z_WIDTH;
-//         const double z_weight = exp(-0.5 * z_offset * z_offset);
-        
-//         // This gives:
-//         // z=9: weight=1.0 (full FFB)
-//         // z=7 or z=11: weight=0.6 (partial FFB)
-//         // z=5 or z=13: weight=0.1 (minimal FFB)
-        
-//         // Skip if redshift weight is negligible
-//         if(z_weight < 0.01) {
-//             continue;
-//         }
-        
-//         // ====================================================================
-//         // SMOOTH MASS TRANSITION
-//         // ====================================================================
-        
-//         const double Mvir_ffb = calculate_ffb_threshold_mass(z, run_params);
-        
-//         // Calculate probability of FFB using smooth error function
-//         const double log_ratio = log10(Mvir / Mvir_ffb);
-        
-//         // Transition width in dex
-//         const double sigma = 0.3;  // ~factor of 2 transition width
-        
-//         // Mass probability using error function
-//         const double P_mass = 0.5 * (1.0 + erf(log_ratio / (sigma * sqrt(2.0))));
-        
-//         // ====================================================================
-//         // COMBINED PROBABILITY (MASS × REDSHIFT)
-//         // ====================================================================
-//         // This creates smooth transitions in BOTH mass and redshift!
-        
-//         const double P_FFB = P_mass * z_weight;
-        
-//         // ====================================================================
-//         // PROBABILISTIC ASSIGNMENT
-//         // ====================================================================
-        
-//         // Generate random number [0,1]
-//         const double random_uniform = (double)rand() / (double)RAND_MAX;
-        
-//         if(random_uniform < P_FFB) {
-//             galaxies[p].FFBRegime = 1;
-            
-//             // Debug output (reduced verbosity)
-//             if(step == 0 && p == 0 && z > 8.5) {
-//                 printf("FFB: z=%.2f (wgt=%.2f), Mvir=%.2e, M_thr=%.2e, P_mass=%.2f, P_FFB=%.2f\n",
-//                        z, z_weight, Mvir, Mvir_ffb, P_mass, P_FFB);
-//             }
-//         }
-//     }
-// }
 
 float calculate_stellar_scale_height_BR06(float disk_scale_length_pc)
 {
@@ -411,13 +317,6 @@ float calculate_molecular_fraction_BR06(float gas_surface_density, float stellar
     // Convert to molecular fraction: f_mol = R_mol / (1 + R_mol)
     // This is the standard conversion from molecular-to-atomic ratio to molecular fraction
     double f_mol = R_mol / (1.0 + R_mol);
-    
-    // Apply physical bounds
-    // Apply aggressive capping for massive galaxies
-    // Cap at 40% for most galaxies, with smooth transition
-    // if (f_mol > 0.4) {
-    //     f_mol = 0.4 + 0.2 * tanh((f_mol - 0.4) / 0.15);
-    // }
     
     return f_mol;
 }
@@ -523,32 +422,3 @@ double calculate_ffb_fraction(const double Mvir, const double z, const struct pa
     
     return f_ffb;
 }
-
-
-// double calculate_ffb_boosted_sfe(const int gal, const double base_sfe, 
-//                                  struct GALAXY *galaxies, const struct params *run_params)
-// {
-//     // Calculate the effective SFE including FFB boost
-//     // Interpolates between base SFE and maximum FFB efficiency
-    
-//     if (run_params->FeedbackFreeModeOn == 0) {
-//         return base_sfe;  // No FFB boost
-//     }
-    
-//     // Get galaxy properties
-//     const double Mvir = galaxies[gal].Mvir;
-//     const double z = run_params->ZZ[galaxies[gal].SnapNum];
-    
-//     // Calculate FFB fraction (0 = nonFFB, 1 = full FFB)
-//     const double f_ffb = calculate_ffb_fraction(Mvir, z, run_params);
-    
-//     // Maximum SFE in FFB regime (default 0.2, can be up to 1.0)
-//     const double sfe_max = run_params->FFBMaxEfficiency;
-    
-//     // Interpolate between base SFE and FFB maximum
-//     // For f_ffb = 0: returns base_sfe
-//     // For f_ffb = 1: returns sfe_max
-//     const double boosted_sfe = base_sfe * (1.0 - f_ffb) + sfe_max * f_ffb;
-    
-//     return boosted_sfe;
-// }
