@@ -10,7 +10,6 @@ extern "C" {
     extern double cooling_recipe(const int gal, const double dt, struct GALAXY *galaxies, const struct params *run_params);
     extern double cooling_recipe_regime_aware(const int gal, const double dt, struct GALAXY *galaxies, const struct params *run_params);
     extern double cooling_recipe_cgm(const int gal, const double dt, struct GALAXY *galaxies, const struct params *run_params);
-    extern double cooling_recipe_cgm_sage(const int gal, const double dt, struct GALAXY *galaxies, const struct params *run_params);
     extern double cooling_recipe_hot(const int gal, const double dt, struct GALAXY *galaxies, const struct params *run_params);
     extern double calculate_cgm_cool_fraction(const int gal, struct GALAXY *galaxies);
     extern void cgm_inflow_model(const int gal, const double dt, struct GALAXY *galaxies, const struct params *run_params);

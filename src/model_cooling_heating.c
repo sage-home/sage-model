@@ -360,65 +360,6 @@ double cooling_recipe_cgm(const int gal, const double dt, struct GALAXY *galaxie
     return coolingGas;
 }
 
-double cooling_recipe_cgm_sage(const int gal, const double dt, struct GALAXY *galaxies, const struct params *run_params)
-{
-    double coolingGas;
-
-    if(galaxies[gal].CGMgas > 0.0 && galaxies[gal].Vvir > 0.0) {
-        const double tcool = galaxies[gal].Rvir / galaxies[gal].Vvir;
-        const double temp = 35.9 * galaxies[gal].Vvir * galaxies[gal].Vvir;         // in Kelvin
-
-        double logZ = -10.0;
-        if(galaxies[gal].MetalsCGMgas > 0) {
-            logZ = log10(galaxies[gal].MetalsCGMgas / galaxies[gal].CGMgas);
-        }
-
-        double lambda = get_metaldependent_cooling_rate(log10(temp), logZ);
-        double x = PROTONMASS * BOLTZMANN * temp / lambda;        // now this has units sec g/cm^3
-        x /= (run_params->UnitDensity_in_cgs * run_params->UnitTime_in_s);         // now in internal units
-        const double rho_rcool = x / tcool * 0.885;  // 0.885 = 3/2 * mu, mu=0.59 for a fully ionized gas
-
-        // an isothermal density profile for the hot gas is assumed here
-        const double rho0 = galaxies[gal].CGMgas / (4 * M_PI * galaxies[gal].Rvir);
-        const double rcool = sqrt(rho0 / rho_rcool);
-
-        coolingGas = 0.0;
-        if(rcool > galaxies[gal].Rvir) {
-            // "cold accretion" regime
-            coolingGas = galaxies[gal].CGMgas / (galaxies[gal].Rvir / galaxies[gal].Vvir) * dt;
-        } else {
-            // "hot halo cooling" regime
-            coolingGas = (galaxies[gal].CGMgas / galaxies[gal].Rvir) * (rcool / (2.0 * tcool)) * dt;
-        }
-
-        // coolingGas = (galaxies[gal].CGMgas / galaxies[gal].Rvir) * (rcool / (2.0 * tcool)) * dt;
-        // coolingGas = galaxies[gal].CGMgas / (galaxies[gal].Rvir / galaxies[gal].Vvir) * dt;
-
-        if(coolingGas > galaxies[gal].CGMgas) {
-            coolingGas = galaxies[gal].CGMgas;
-        } else {
-			if(coolingGas < 0.0) coolingGas = 0.0;
-        }
-
-		// at this point we have calculated the maximal cooling rate
-		// if AGNrecipeOn we now reduce it in line with past heating before proceeding
-
-		if(run_params->AGNrecipeOn > 0 && coolingGas > 0.0) {
-			coolingGas = do_AGN_heating_cgm(coolingGas, gal, dt, x, rcool, galaxies, run_params);
-        }
-
-		if (coolingGas > 0.0) {
-			galaxies[gal].Cooling += 0.5 * coolingGas * galaxies[gal].Vvir * galaxies[gal].Vvir;
-        }
-	} else {
-		coolingGas = 0.0;
-    }
-
-	XASSERT(coolingGas >= 0.0, -1,
-            "Error: Cooling gas mass = %g should be >= 0.0", coolingGas);
-    return coolingGas;
-}
-
 double cooling_recipe_regime_aware(const int gal, const double dt, struct GALAXY *galaxies, const struct params *run_params)
 {
     double cgm_cooling = 0.0;
@@ -429,11 +370,7 @@ double cooling_recipe_regime_aware(const int gal, const double dt, struct GALAXY
         
         // Primary: Precipitation cooling from CGMgas
         if(galaxies[gal].CGMgas > 0.0) {
-            if (run_params->CGMrecipeSAGEOn == 1) {
-                cgm_cooling = cooling_recipe_cgm_sage(gal, dt, galaxies, run_params);
-            } else {
-                cgm_cooling = cooling_recipe_cgm(gal, dt, galaxies, run_params);
-            }
+            cgm_cooling = cooling_recipe_cgm(gal, dt, galaxies, run_params);
         }
         
         // Secondary: Traditional cooling from HotGas  
@@ -451,11 +388,7 @@ double cooling_recipe_regime_aware(const int gal, const double dt, struct GALAXY
         
         // Secondary: Precipitation cooling from CGMgas (gradually depletes)
         if(galaxies[gal].CGMgas > 0.0) {
-            if (run_params->CGMrecipeSAGEOn == 1) {
-                cgm_cooling = cooling_recipe_cgm_sage(gal, dt, galaxies, run_params);
-            } else {
-                cgm_cooling = cooling_recipe_cgm(gal, dt, galaxies, run_params);
-            }
+            cgm_cooling = cooling_recipe_cgm(gal, dt, galaxies, run_params);
         }
     }
 

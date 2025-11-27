@@ -237,10 +237,6 @@ int read_parameter_file(const char *fname, struct params *run_params)
     ParamAddr[NParam] = &(run_params->CGMrecipeOn);
     ParamID[NParam++] = INT;
 
-    strncpy(ParamTag[NParam], "CGMrecipeSAGEOn", MAXTAGLEN);
-    ParamAddr[NParam] = &(run_params->CGMrecipeSAGEOn);
-    ParamID[NParam++] = INT;
-
     strncpy(ParamTag[NParam], "FIREmodeOn", MAXTAGLEN);
     ParamAddr[NParam] = &(run_params->FIREmodeOn);
     ParamID[NParam++] = INT;

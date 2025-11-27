@@ -229,17 +229,17 @@ void determine_and_store_ffb_regime(const int ngal, struct GALAXY *galaxies,
         }
         
         // Optional: Add debug output for FFB halos
-        if(galaxies[p].FFBRegime == 1 && (z > 8.0 || p == 0)) {
-            const double Mvir_ffb = calculate_ffb_threshold_mass(z, run_params);
-            printf("=== FFB HALO DETECTED ===\n");
-            printf("  Galaxy %d at z=%.4f\n", p, z);
-            printf("  Mvir = %.4e (10^10 Msun/h)\n", Mvir);
-            printf("  Threshold = %.4e (10^10 Msun/h)\n", Mvir_ffb);
-            printf("  Mass ratio = %.4f\n", Mvir / Mvir_ffb);
-            printf("  FFB fraction (f_ffb) = %.4f\n", f_ffb);
-            printf("  --> FFB MODE ACTIVATED\n");
-            printf("=========================\n\n");
-        }
+        // if(galaxies[p].FFBRegime == 1 && (z > 8.0 || p == 0)) {
+        //     const double Mvir_ffb = calculate_ffb_threshold_mass(z, run_params);
+        //     printf("=== FFB HALO DETECTED ===\n");
+        //     printf("  Galaxy %d at z=%.4f\n", p, z);
+        //     printf("  Mvir = %.4e (10^10 Msun/h)\n", Mvir);
+        //     printf("  Threshold = %.4e (10^10 Msun/h)\n", Mvir_ffb);
+        //     printf("  Mass ratio = %.4f\n", Mvir / Mvir_ffb);
+        //     printf("  FFB fraction (f_ffb) = %.4f\n", f_ffb);
+        //     printf("  --> FFB MODE ACTIVATED\n");
+        //     printf("=========================\n\n");
+        // }
     }
 }
 

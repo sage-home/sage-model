@@ -52,7 +52,6 @@ ReionizationOn        1   %0: switch off
 DiskInstabilityOn     1   %0: switch off; 1: bulge and BH growth through instabilities w. instability starbursts
 CGMrecipeOn           1   %0: switch off
 FIREmodeOn            1   %0: switch off
-CGMrecipeSAGEOn       0   %0: switch off
 FeedbackFreeModeOn    1   %0: switch off
 
 %------------------------------------------
