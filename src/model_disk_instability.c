@@ -39,7 +39,6 @@ void check_disk_instability(const int p, const int centralgal, const int halonr,
             galaxies[p].BulgeMass += unstable_stars;
             galaxies[p].InstabilityBulgeMass += unstable_stars;  // Track origin of bulge mass
             galaxies[p].MetalsBulgeMass += metallicity * unstable_stars;
-            // galaxies[p].BulgeScaleRadius = get_bulge_radius(p, galaxies, run_params);
             
             // UPDATE: Tonini incremental radius evolution (equation 15)
             update_instability_bulge_radius(p, unstable_stars, galaxies, run_params);
@@ -83,7 +82,6 @@ void check_disk_instability(const int p, const int centralgal, const int halonr,
                 galaxies[p].DiskScaleRadius = 0.0;
             }
         
-            // galaxies[p].DiskScaleRadius = get_disk_radius(halonr, p, halos, galaxies);
         }
 
         // burst excess gas and feed black hole (really need a dedicated model for bursts and BH growth here)
@@ -103,8 +101,5 @@ void check_disk_instability(const int p, const int centralgal, const int halonr,
 
             collisional_starburst_recipe(unstable_gas_fraction, p, centralgal, time, dt, halonr, 1, step, galaxies, run_params);
         }
-
-        // Update bulge size after mass transfer
-        // galaxies[p].BulgeScaleRadius = get_bulge_radius(p, galaxies, run_params);
     }
 }

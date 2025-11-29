@@ -220,9 +220,6 @@ void add_galaxies_together(const int t, const int p, struct GALAXY *galaxies, co
         galaxies[t].MergerBulgeMass += galaxies[p].StellarMass;
     }
 
-    // galaxies[t].BulgeScaleRadius = get_bulge_radius(t, galaxies, run_params);
-    // galaxies[t].DiskScaleRadius = get_disk_radius(t, halonr, galaxies, run_params);
-
     for(int step = 0; step < STEPS; step++) {
         galaxies[t].SfrBulge[step] += galaxies[p].SfrDisk[step] + galaxies[p].SfrBulge[step];
         galaxies[t].SfrBulgeColdGas[step] += galaxies[p].SfrDiskColdGas[step] + galaxies[p].SfrBulgeColdGas[step];
