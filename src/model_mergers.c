@@ -45,7 +45,78 @@ double estimate_merging_time(const int sat_halo, const int mother_halo, const in
 
 }
 
+double calculate_merger_remnant_radius(const struct GALAXY *g1, const struct GALAXY *g2, const double mass_ratio)
+{
+    // 1. Calculate Total Baryonic Mass (Stars + Gas) for both progenitors
+    double M1 = g1->StellarMass + g1->ColdGas;
+    double M2 = g2->StellarMass + g2->ColdGas;
+    double M_tot = M1 + M2;
 
+    if (M_tot <= 0.0) return 0.0;
+
+    // 2. Calculate Half-Mass Radius for both progenitors
+    // For Discs: R_half ~ 1.68 * R_scale (Exponential profile)
+    // For Bulges: We assume the stored radius is the half-mass radius
+    
+    // Progenitor 1 (Central)
+    double R1_disk_half = 1.68 * g1->DiskScaleRadius;
+    double R1_bulge_half = g1->BulgeScaleRadius;
+    double R1;
+
+    if (g1->StellarMass + g1->ColdGas > 0) {
+        // Mass-weighted average radius of the whole galaxy
+        // Note: For pure discs, BulgeMass is 0, so this works naturally
+        double M1_disk = g1->ColdGas + (g1->StellarMass - g1->BulgeMass);
+        double M1_bulge = g1->BulgeMass;
+        R1 = (M1_disk * R1_disk_half + M1_bulge * R1_bulge_half) / M1;
+    } else {
+        R1 = 0.0;
+    }
+
+    // Progenitor 2 (Satellite)
+    double R2_disk_half = 1.68 * g2->DiskScaleRadius;
+    double R2_bulge_half = g2->BulgeScaleRadius;
+    double R2;
+
+    if (g2->StellarMass + g2->ColdGas > 0) {
+        double M2_disk = g2->ColdGas + (g2->StellarMass - g2->BulgeMass);
+        double M2_bulge = g2->BulgeMass;
+        R2 = (M2_disk * R2_disk_half + M2_bulge * R2_bulge_half) / M2;
+    } else {
+        R2 = 0.0;
+    }
+
+    // Safeguard against zero radius (e.g., pure gas cloud with no set radius yet)
+    if (R1 <= 0.0) R1 = R2; 
+    if (R2 <= 0.0) R2 = R1;
+    if (R1 <= 0.0) return 0.0; // Both zero
+
+    // 3. Calculate Energy Terms (ignoring G, as it cancels out)
+    // We use "Potential" units: P = M^2 / R
+    
+    // E_initial (Eq 21): Self-binding energy of progenitors
+    double E_init = (M1 * M1) / R1 + (M2 * M2) / R2;
+
+    // E_orbital (Eq 22): Interaction energy at merger
+    // Approximated as circular orbit energy at separation R1 + R2
+    double E_orb = (M1 * M2) / (R1 + R2);
+
+    // E_rad (Eq 23): Radiative losses due to gas
+    // C_rad = 2.75 (from Covington et al. 2011, cited in Tonini 2016)
+    double C_rad = 2.75;
+    double f_gas = (g1->ColdGas + g2->ColdGas) / M_tot;
+    double E_rad = C_rad * E_init * f_gas;
+
+    // 4. Total Final Energy (Eq 20)
+    // E_final = E_init + E_orb + E_rad
+    double E_final = E_init + E_orb + E_rad;
+
+    // 5. Final Radius (Eq 17 rearranged)
+    // R_final = M_tot^2 / E_final
+    double R_final = (M_tot * M_tot) / E_final;
+
+    return R_final;
+}
 
 void deal_with_galaxy_merger(const int p, const int merger_centralgal, const int centralgal,
                              const double time, const double dt, const int halonr, const int step,
@@ -69,6 +140,15 @@ void deal_with_galaxy_merger(const int p, const int merger_centralgal, const int
         mass_ratio = 1.0;
     }
 
+    // 1. Calculate the New Merger Radius via Energy Conservation
+    // We calculate this regardless of merger type, but apply it selectively
+    double new_merger_radius = calculate_merger_remnant_radius(&galaxies[merger_centralgal], &galaxies[p], mass_ratio);
+    
+    // Determine Central Morphology (Tonini 2016 Section 5.2)
+    // Is the central galaxy Disc-dominated or Bulge-dominated?
+    double central_disk_mass = galaxies[merger_centralgal].StellarMass - galaxies[merger_centralgal].BulgeMass;
+    int is_disk_dominated = (central_disk_mass > 0.5 * galaxies[merger_centralgal].StellarMass);
+
     add_galaxies_together(merger_centralgal, p, galaxies, run_params);
 
     // grow black hole through accretion from cold disk during mergers, a la Kauffmann & Haehnelt (2000)
@@ -84,12 +164,41 @@ void deal_with_galaxy_merger(const int p, const int merger_centralgal, const int
     }
 
     if(mass_ratio > run_params->ThreshMajorMerger) {
+        // CASE 1: MAJOR MERGER (Section 5.2.3)
+        // Destroys disc, creates pure merger-driven bulge
         make_bulge_from_burst(merger_centralgal, galaxies, run_params);
+        
+        // Apply the Energy Conservation Radius
+        galaxies[merger_centralgal].MergerBulgeRadius = new_merger_radius;
+        galaxies[merger_centralgal].BulgeScaleRadius = new_merger_radius; // It is now a pure spheroid
+        
         galaxies[merger_centralgal].TimeOfLastMajorMerger = time;
-        galaxies[p].mergeType = 2;  // mark as major merger
+        galaxies[p].mergeType = 2; 
+
     } else {
-        galaxies[p].mergeType = 1;  // mark as minor merger
+        // CASE 2: MINOR MERGER
+        galaxies[p].mergeType = 1;
+
+        if (is_disk_dominated) {
+            // Minor merger on DISC (Section 5.2.1)
+            // Satellite absorbed by disc, triggers instability.
+            // Radius logic handled inside add_galaxies_together -> update_instability_bulge_radius
+            // DO NOT update MergerBulgeRadius here.
+        } else {
+            // Minor merger on SPHEROID (Section 5.2.3)
+            // Satellite adds directly to the Merger Bulge.
+            // We use the energy conservation radius calculated above.
+            galaxies[merger_centralgal].MergerBulgeRadius = new_merger_radius;
+        }
     }
+
+    // if(mass_ratio > run_params->ThreshMajorMerger) {
+    //     make_bulge_from_burst(merger_centralgal, galaxies, run_params);
+    //     galaxies[merger_centralgal].TimeOfLastMajorMerger = time;
+    //     galaxies[p].mergeType = 2;  // mark as major merger
+    // } else {
+    //     galaxies[p].mergeType = 1;  // mark as minor merger
+    // }
 
 }
 

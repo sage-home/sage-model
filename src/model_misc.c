@@ -203,36 +203,35 @@ double get_bulge_radius(const int p, struct GALAXY *galaxies, const struct param
         const double M_total = M_merger + M_instability;
         
         if(M_total <= 0.0) {
-            galaxies[p].BulgeScaleRadius = 0.0;
-            galaxies[p].MergerBulgeRadius = 0.0;
-            galaxies[p].InstabilityBulgeRadius = 0.0;
             return 0.0;
         }
         
-        // Merger bulge radius: use Shen equation 33 (steep relation)
-        double R_merger = 0.0;
-        if(M_merger > 0.0) {
-            const double M_merger_sun = M_merger * 1.0e10 / h;
-            const double log_R_kpc = 0.56 * log10(M_merger_sun) - 5.54;
-            const double R_merger_kpc = pow(10.0, log_R_kpc);
-            R_merger = R_merger_kpc * 1.0e-3 * h;
-        }
-        galaxies[p].MergerBulgeRadius = R_merger;
+        // 1. Retrieve the Merger Radius
+        // This is now calculated in model_mergers.c via Energy Conservation
+        // and stored persistently.
+        double R_merger = galaxies[p].MergerBulgeRadius;
         
-        // Instability bulge radius: already set by incremental updates
-        // If not set yet (first initialization), use disc scaling
+        // Failsafe: If mass exists but radius is 0 (e.g. initialization), use Shen as fallback
+        if(M_merger > 0.0 && R_merger <= 0.0) {
+             const double M_merger_sun = M_merger * 1.0e10 / h;
+             const double log_R_kpc = 0.56 * log10(M_merger_sun) - 5.54;
+             R_merger = pow(10.0, log_R_kpc) * 1.0e-3 * h;
+             // Store it so we don't recalculate
+             galaxies[p].MergerBulgeRadius = R_merger;
+        }
+
+        // 2. Retrieve Instability Radius (Already correct in your code)
         double R_instability = galaxies[p].InstabilityBulgeRadius;
-        if(M_instability > 0.0 && R_instability <= 0.0) {
-            const double R_disc_kpc = galaxies[p].DiskScaleRadius * 1.0e3 / h;
-            R_instability = 0.2 * R_disc_kpc * 1.0e-3 * h;
-        }
-        galaxies[p].InstabilityBulgeRadius = R_instability;
         
-        // Combined radius: mass-weighted average (equation 25)
-        double R_bulge = 0.0;
-        if(M_total > 0.0) {
-            R_bulge = (M_merger * R_merger + M_instability * R_instability) / M_total;
+        // Failsafe for instability radius
+        if(M_instability > 0.0 && R_instability <= 0.0) {
+            const double R_disc = galaxies[p].DiskScaleRadius;
+            R_instability = 0.2 * R_disc;
+            galaxies[p].InstabilityBulgeRadius = R_instability;
         }
+        
+        // 3. Weighted Average (Equation 25)
+        double R_bulge = (M_merger * R_merger + M_instability * R_instability) / M_total;
         
         galaxies[p].BulgeScaleRadius = R_bulge;
         return R_bulge;

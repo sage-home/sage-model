@@ -4,7 +4,7 @@
 
 FileNameGalaxies  model
 %OutputDir         /<absolute>/<root>/<path>/sage-model/output/millennium/
-OutputDir   /Users/mbradley/Documents/PhD/SAGE-2.0/sage-model/output/millennium_noffb/
+OutputDir   /Users/mbradley/Documents/PhD/SAGE-2.0/sage-model/output/millennium/
 
 FirstFile         0
 LastFile          7
@@ -52,7 +52,7 @@ ReionizationOn        1   %0: switch off
 DiskInstabilityOn     1   %0: switch off; 1: bulge and BH growth through instabilities w. instability starbursts
 CGMrecipeOn           1   %0: switch off
 FIREmodeOn            1   %0: switch off
-FeedbackFreeModeOn    0   %0: switch off
+FeedbackFreeModeOn    1   %0: switch off
 BulgeSizeOn           3   %0: switch off; 1: Shen eq. 33; 2: Shen eq. 32; 3: Tonini
 
 %------------------------------------------
