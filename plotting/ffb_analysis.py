@@ -10,9 +10,10 @@ Creates plots for:
 3. FFB mass contribution to z=0 galaxies
 4. Metallicity evolution
 5. Merger rates of FFB galaxies
-6. Merger trees (color-coded by sSFR)
-7. FFB progenitor trees (z=0 galaxies with FFB history)
-8. BCG-style merger tree (single galaxy, full evolution)
+6. Bulge-to-total ratio: FFB vs normal galaxies (z=6-8)
+7. Merger trees (color-coded by sSFR)
+8. FFB progenitor trees (z=0 galaxies with FFB history)
+9. BCG-style merger tree (single galaxy, full evolution)
 """
 
 import h5py as h5
@@ -78,6 +79,27 @@ def identify_ffb_galaxies():
     print("IDENTIFYING FFB GALAXIES")
     print("="*60)
     
+    # Pass 1: Identify all galaxies that ever enter FFB regime
+    print("Pass 1: Identifying all FFB galaxies across simulation...")
+    ffb_galaxy_indices = set()
+    
+    for snap in range(FirstSnap, LastSnap + 1):
+        try:
+            ffb_regime = read_hdf(snap_num=snap, param='FFBRegime')
+            galaxy_index = read_hdf(snap_num=snap, param='GalaxyIndex')
+            
+            is_ffb = (ffb_regime == 1)
+            if np.any(is_ffb):
+                ffb_galaxy_indices.update(galaxy_index[is_ffb])
+        except Exception as e:
+            # Silent fail for pass 1, will catch in pass 2
+            continue
+            
+    print(f"Found {len(ffb_galaxy_indices)} unique galaxies that experience FFB phase.")
+    
+    # Pass 2: Track these galaxies
+    print("Pass 2: Tracking evolution...")
+    
     # Track FFB galaxies by their GalaxyIndex
     ffb_galaxy_data = {}
     
@@ -121,7 +143,7 @@ def identify_ffb_galaxies():
             except:
                 merge_type = np.zeros_like(stellar_mass, dtype=int)
             
-            # Identify FFB galaxies
+            # Identify FFB galaxies (for stats)
             is_ffb = (ffb_regime == 1)
             n_ffb = np.sum(is_ffb)
             n_total = len(ffb_regime)
@@ -132,8 +154,11 @@ def identify_ffb_galaxies():
             if n_ffb > 0:
                 print(f"Snap {snap:3d} (z={z:6.2f}): {n_ffb:6d} FFB galaxies out of {n_total:8d} ({100*n_ffb/n_total:.3f}%)")
             
-            # Store data for each FFB galaxy
-            for idx in np.where(is_ffb)[0]:
+            # Store data for each FFB galaxy (if it is in our tracking list)
+            # Use isin to find indices of galaxies we want to track
+            is_trackable = np.isin(galaxy_index, list(ffb_galaxy_indices))
+            
+            for idx in np.where(is_trackable)[0]:
                 gal_idx = galaxy_index[idx]
                 
                 if gal_idx not in ffb_galaxy_data:
@@ -857,6 +882,189 @@ def plot_merger_rates(ffb_data):
     print(f"  Mergers outside FFB: {len(mergers_outside_ffb)}")
     print(f"  Average mergers per galaxy (FFB): {rate_ffb:.3f}")
     print(f"  Average mergers per galaxy (normal): {rate_normal:.3f}")
+
+
+def plot_bulge_to_total_ratio():
+    """
+    Plot bulge-to-total ratio as a function of redshift
+    Compares FFB galaxies vs normal galaxies in redshift range 6-8
+    Bulge mass = MergerBulgeMass + InstabilityBulgeMass
+    """
+    print("\n" + "="*60)
+    print("PLOTTING BULGE-TO-TOTAL RATIO (z=6-8)")
+    print("="*60)
+    
+    # Redshift range to analyze
+    z_min, z_max = 6.0, 8.0
+    
+    # Storage for data
+    ffb_redshifts = []
+    ffb_ratios = []
+    normal_redshifts = []
+    normal_ratios = []
+    
+    # Loop through snapshots in the redshift range
+    for snap in range(FirstSnap, LastSnap + 1):
+        z = redshifts[snap]
+        
+        # Only analyze snapshots in the desired redshift range
+        if z < z_min or z > z_max:
+            continue
+        
+        try:
+            # Read data
+            ffb_regime = read_hdf(snap_num=snap, param='FFBRegime')
+            stellar_mass = read_hdf(snap_num=snap, param='StellarMass') * 1e10 / Hubble_h
+            merger_bulge_mass = read_hdf(snap_num=snap, param='MergerBulgeMass') * 1e10 / Hubble_h
+            instability_bulge_mass = read_hdf(snap_num=snap, param='InstabilityBulgeMass') * 1e10 / Hubble_h
+            
+            # Calculate total bulge mass
+            total_bulge_mass = merger_bulge_mass + instability_bulge_mass
+            
+            # Filter: only galaxies above minimum stellar mass with positive bulge and stellar mass
+            valid = (stellar_mass > min_stellar_mass) & (stellar_mass > 0) & (total_bulge_mass >= 0)
+            
+            # Calculate bulge-to-total ratio
+            bulge_to_total = np.divide(total_bulge_mass, stellar_mass, 
+                                      where=valid, out=np.zeros_like(stellar_mass))
+            
+            # Separate FFB and normal galaxies
+            is_ffb = (ffb_regime == 1) & valid
+            is_normal = (ffb_regime == 0) & valid
+            
+            # Store FFB galaxy data
+            if np.any(is_ffb):
+                n_ffb = np.sum(is_ffb)
+                ffb_redshifts.extend([z] * n_ffb)
+                ffb_ratios.extend(bulge_to_total[is_ffb].tolist())
+            
+            # Store normal galaxy data
+            if np.any(is_normal):
+                n_normal = np.sum(is_normal)
+                normal_redshifts.extend([z] * n_normal)
+                normal_ratios.extend(bulge_to_total[is_normal].tolist())
+            
+            print(f"Snap {snap:3d} (z={z:6.2f}): {np.sum(is_ffb):6d} FFB, {np.sum(is_normal):6d} normal galaxies")
+            
+        except Exception as e:
+            print(f"Warning: Could not read snap {snap}: {e}")
+            continue
+    
+    # Convert to arrays
+    ffb_redshifts = np.array(ffb_redshifts)
+    ffb_ratios = np.array(ffb_ratios)
+    normal_redshifts = np.array(normal_redshifts)
+    normal_ratios = np.array(normal_ratios)
+    
+    print(f"\nTotal data points collected:")
+    print(f"  FFB galaxies: {len(ffb_ratios)}")
+    print(f"  Normal galaxies: {len(normal_ratios)}")
+    
+    if len(ffb_ratios) == 0 and len(normal_ratios) == 0:
+        print("Warning: No data found in redshift range 6-8")
+        return
+    
+    # Create figure
+    fig, ax = plt.subplots(figsize=(12, 8))
+    
+    # Plot scatter points with transparency
+    if len(normal_ratios) > 0:
+        ax.scatter(normal_redshifts, normal_ratios, c='steelblue', s=5, alpha=0.3, 
+                  label=f'Normal galaxies (N={len(normal_ratios)})', edgecolors='none')
+    
+    if len(ffb_ratios) > 0:
+        ax.scatter(ffb_redshifts, ffb_ratios, c='red', s=10, alpha=0.4, 
+                  label=f'FFB galaxies (N={len(ffb_ratios)})', edgecolors='none')
+    
+    # Calculate and plot median trends with percentile bands
+    z_bins = np.linspace(z_min, z_max, 10)
+    
+    # Normal galaxies trend
+    if len(normal_ratios) > 0:
+        bin_centers_normal = []
+        median_normal = []
+        mean_normal = []
+        p25_normal = []
+        p75_normal = []
+        
+        for i in range(len(z_bins) - 1):
+            mask = (normal_redshifts >= z_bins[i]) & (normal_redshifts < z_bins[i+1])
+            if np.sum(mask) > 5:  # Require at least 5 galaxies per bin
+                bin_centers_normal.append((z_bins[i] + z_bins[i+1]) / 2)
+                median_normal.append(np.median(normal_ratios[mask]))
+                mean_normal.append(np.mean(normal_ratios[mask]))
+                p25_normal.append(np.percentile(normal_ratios[mask], 25))
+                p75_normal.append(np.percentile(normal_ratios[mask], 75))
+        
+        if len(bin_centers_normal) > 0:
+            bin_centers_normal = np.array(bin_centers_normal)
+            median_normal = np.array(median_normal)
+            mean_normal = np.array(mean_normal)
+            p25_normal = np.array(p25_normal)
+            p75_normal = np.array(p75_normal)
+            
+            ax.plot(bin_centers_normal, median_normal, 'b-', lw=3, label='Normal median', zorder=5)
+            ax.plot(bin_centers_normal, mean_normal, 'b--', lw=2, alpha=0.7, label='Normal mean', zorder=5)
+            ax.fill_between(bin_centers_normal, p25_normal, p75_normal, 
+                           color='steelblue', alpha=0.3, label='Normal 25-75%', zorder=3)
+    
+    # FFB galaxies trend
+    if len(ffb_ratios) > 0:
+        bin_centers_ffb = []
+        median_ffb = []
+        mean_ffb = []
+        p25_ffb = []
+        p75_ffb = []
+        
+        for i in range(len(z_bins) - 1):
+            mask = (ffb_redshifts >= z_bins[i]) & (ffb_redshifts < z_bins[i+1])
+            if np.sum(mask) > 5:
+                bin_centers_ffb.append((z_bins[i] + z_bins[i+1]) / 2)
+                median_ffb.append(np.median(ffb_ratios[mask]))
+                mean_ffb.append(np.mean(ffb_ratios[mask]))
+                p25_ffb.append(np.percentile(ffb_ratios[mask], 25))
+                p75_ffb.append(np.percentile(ffb_ratios[mask], 75))
+        
+        if len(bin_centers_ffb) > 0:
+            bin_centers_ffb = np.array(bin_centers_ffb)
+            median_ffb = np.array(median_ffb)
+            mean_ffb = np.array(mean_ffb)
+            p25_ffb = np.array(p25_ffb)
+            p75_ffb = np.array(p75_ffb)
+            
+            ax.plot(bin_centers_ffb, median_ffb, 'r-', lw=3, label='FFB median', zorder=5)
+            ax.plot(bin_centers_ffb, mean_ffb, 'r--', lw=2, alpha=0.7, label='FFB mean', zorder=5)
+            ax.fill_between(bin_centers_ffb, p25_ffb, p75_ffb, 
+                           color='red', alpha=0.3, label='FFB 25-75%', zorder=3)
+    
+    ax.set_xlabel('Redshift', fontsize=14)
+    ax.set_ylabel(r'Bulge-to-Total Ratio ($M_{\rm bulge} / M_*$)', fontsize=14)
+    ax.set_title(r'Bulge-to-Total Ratio: FFB vs Normal Galaxies (z=6-8)' + '\n' + 
+                 r'$M_{\rm bulge} = M_{\rm bulge,merger} + M_{\rm bulge,instability}$', 
+                 fontsize=15)
+    ax.set_xlim(z_min, z_max)
+    ax.set_ylim(0, 0.2)
+    ax.legend(loc='best', fontsize=10, framealpha=0.9)
+    ax.grid(True, alpha=0.3)
+    
+    plt.tight_layout()
+    filename = OutputDir + 'ffb_bulge_to_total_ratio' + OutputFormat
+    plt.savefig(filename, dpi=150, bbox_inches='tight')
+    print(f"\nSaved: {filename}")
+    plt.close()
+    
+    # Print summary statistics
+    print(f"\nBulge-to-total ratio statistics:")
+    if len(ffb_ratios) > 0:
+        print(f"  FFB galaxies:")
+        print(f"    Median: {np.median(ffb_ratios):.3f}")
+        print(f"    Mean: {np.mean(ffb_ratios):.3f}")
+        print(f"    25th-75th percentile: {np.percentile(ffb_ratios, 25):.3f} - {np.percentile(ffb_ratios, 75):.3f}")
+    if len(normal_ratios) > 0:
+        print(f"  Normal galaxies:")
+        print(f"    Median: {np.median(normal_ratios):.3f}")
+        print(f"    Mean: {np.mean(normal_ratios):.3f}")
+        print(f"    25th-75th percentile: {np.percentile(normal_ratios, 25):.3f} - {np.percentile(normal_ratios, 75):.3f}")
 
 
 def redshift_to_lookback_time(z, H0=73, OmegaM=0.25, OmegaL=0.75):
@@ -1697,6 +1905,7 @@ def main():
     plot_ffb_contribution_z0(ffb_data)
     plot_metallicity_evolution(ffb_data)
     plot_merger_rates(ffb_data)
+    plot_bulge_to_total_ratio()  # Bulge-to-total ratio: FFB vs normal galaxies (z=6-8)
     plot_merger_tree(ffb_data, num_trees=5)
     plot_ffb_progenitor_trees(num_trees=5)  # z=0 galaxies with FFB progenitors
     plot_bcg_style_merger_tree()  # BCG-style single tree for most massive z=0 galaxy

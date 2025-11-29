@@ -1143,39 +1143,34 @@ def plot_gas_mass_functions(sim_configs, snapshot, output_dir):
             
             # Calculate error bars for SAGE25 (main model only)
             if i == 0 and len(w_h1) > 0:  # Only for the main model
-                # Calculate bin-by-bin errors for H1
-                error_h1_upper = []
-                error_h1_lower = []
+                # Calculate Poisson errors for H1
+                # Error in counts is sqrt(N)
+                sigma_counts = np.sqrt(counts_h1)
                 
-                for bin_idx in range(NB):
-                    bin_left = mi + bin_idx * binwidth
-                    bin_right = mi + (bin_idx + 1) * binwidth
-                    
-                    # Find galaxies in this mass bin
-                    bin_mask = (h1 >= bin_left) & (h1 < bin_right)
-                    bin_data = h1[bin_mask]
-                    
-                    if len(bin_data) > 1:
-                        # Calculate standard error using the provided formula
-                        error_mass = np.std(bin_data) / np.sqrt(len(bin_data))
-                        
-                        # Convert to error in number density (fractional error)
-                        if counts_h1[bin_idx] > 0:
-                            # Estimate fractional error based on mass uncertainty
-                            fractional_error = error_mass / (binwidth * 0.5)  # Normalize by bin width
-                            log_error = fractional_error / np.log(10)  # Convert to log space
-                            
-                            error_h1_upper.append(model_HI_gas_log[bin_idx] + log_error)
-                            error_h1_lower.append(model_HI_gas_log[bin_idx] - log_error)
-                        else:
-                            error_h1_upper.append(np.nan)
-                            error_h1_lower.append(np.nan)
-                    else:
-                        error_h1_upper.append(np.nan)
-                        error_h1_lower.append(np.nan)
+                # Convert to phi
+                phi = counts_h1 / volume / binwidth
+                phi_sigma = sigma_counts / volume / binwidth
                 
-                error_h1_upper = np.array(error_h1_upper)
-                error_h1_lower = np.array(error_h1_lower)
+                # Calculate upper and lower bounds in log space
+                # Upper: log10(phi + sigma)
+                error_h1_upper = np.log10(phi + phi_sigma)
+                
+                # Lower: log10(phi - sigma) - handle negative values
+                phi_lower_linear = phi - phi_sigma
+                error_h1_lower = np.full_like(phi_lower_linear, np.nan)
+                valid_lower = phi_lower_linear > 0
+                error_h1_lower[valid_lower] = np.log10(phi_lower_linear[valid_lower])
+                
+                # For bins where phi - sigma <= 0, the lower bound in log space effectively goes to -infinity
+                # We can set it to a very small value or the bottom of the plot
+                # Here we'll leave it as NaN so fill_between handles it (or we can clamp it)
+                # Let's clamp it to a minimum value for plotting purposes if needed, 
+                # but NaN is usually safer for fill_between to just not plot that part or handle it gracefully.
+                # However, fill_between needs matching x and y. 
+                # If lower is NaN, it might not plot the shading at all for that point.
+                # Let's set invalid lower bounds to a very small number (e.g. -10) 
+                # so the shading goes down to the bottom.
+                error_h1_lower[~valid_lower] = -10.0
                 
                 # Plot error shading for H1
                 valid_error_mask = ~(np.isnan(error_h1_upper) | np.isnan(error_h1_lower)) & mask_h1
@@ -1408,39 +1403,26 @@ def plot_gas_mass_functions(sim_configs, snapshot, output_dir):
             
             # Calculate error bars for SAGE25 (main model only)
             if i == 0 and len(w_h2) > 0:  # Only for the main model
-                # Calculate bin-by-bin errors for H2
-                error_h2_upper = []
-                error_h2_lower = []
+                # Calculate Poisson errors for H2
+                # Error in counts is sqrt(N)
+                sigma_counts = np.sqrt(counts_h2)
                 
-                for bin_idx in range(NB):
-                    bin_left = mi + bin_idx * binwidth
-                    bin_right = mi + (bin_idx + 1) * binwidth
-                    
-                    # Find galaxies in this mass bin
-                    bin_mask = (h2 >= bin_left) & (h2 < bin_right)
-                    bin_data = h2[bin_mask]
-                    
-                    if len(bin_data) > 1:
-                        # Calculate standard error using the provided formula
-                        error_mass = np.std(bin_data) / np.sqrt(len(bin_data))
-                        
-                        # Convert to error in number density (fractional error)
-                        if counts_h2[bin_idx] > 0:
-                            # Estimate fractional error based on mass uncertainty
-                            fractional_error = error_mass / (binwidth * 0.5)  # Normalize by bin width
-                            log_error = fractional_error / np.log(10)  # Convert to log space
-                            
-                            error_h2_upper.append(model_h2_gas_log[bin_idx] + log_error)
-                            error_h2_lower.append(model_h2_gas_log[bin_idx] - log_error)
-                        else:
-                            error_h2_upper.append(np.nan)
-                            error_h2_lower.append(np.nan)
-                    else:
-                        error_h2_upper.append(np.nan)
-                        error_h2_lower.append(np.nan)
+                # Convert to phi
+                phi = counts_h2 / volume / binwidth
+                phi_sigma = sigma_counts / volume / binwidth
                 
-                error_h2_upper = np.array(error_h2_upper)
-                error_h2_lower = np.array(error_h2_lower)
+                # Calculate upper and lower bounds in log space
+                # Upper: log10(phi + sigma)
+                error_h2_upper = np.log10(phi + phi_sigma)
+                
+                # Lower: log10(phi - sigma) - handle negative values
+                phi_lower_linear = phi - phi_sigma
+                error_h2_lower = np.full_like(phi_lower_linear, np.nan)
+                valid_lower = phi_lower_linear > 0
+                error_h2_lower[valid_lower] = np.log10(phi_lower_linear[valid_lower])
+                
+                # Handle invalid lower bounds (where error > value)
+                error_h2_lower[~valid_lower] = -10.0
                 
                 # Plot error shading for H2
                 valid_error_mask = ~(np.isnan(error_h2_upper) | np.isnan(error_h2_lower)) & mask_h2

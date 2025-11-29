@@ -87,8 +87,8 @@ MODEL_CONFIGS = [
     },
     # NEW: Add your comparison model here
     {
-        'name': 'Millennium - Somerville',   # UPDATE: Display name for your comparison model
-        'dir': './output/millennium_somerville/',  # UPDATE: Path to your comparison model directory
+        'name': 'Millennium - no FFB',   # UPDATE: Display name for your comparison model
+        'dir': './output/millennium_noffb/',  # UPDATE: Path to your comparison model directory
         'color': 'magenta',            # Color for plotting
         'linestyle': '-',           # Dotted line style
         'linewidth': 2,             # Line width

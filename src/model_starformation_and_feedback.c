@@ -69,6 +69,10 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
 
         const double cold_crit = 0.19 * galaxies[p].Vvir * reff;
         if(galaxies[p].ColdGas > cold_crit) {
+            // make stars only from H2
+            // float area = M_PI * 9.0 * galaxies[p].DiskScaleRadius * galaxies[p].DiskScaleRadius;
+            // strdot = run_params->UnitTime_in_s / SEC_PER_MEGAYEAR * run_params->SfrEfficiency * galaxies[p].H2gas;
+        
             strdot = run_params->SfrEfficiency * galaxies[p].H2gas / tdyn;
         } else {
             strdot = 0.0;
