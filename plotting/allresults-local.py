@@ -73,6 +73,14 @@ if __name__ == '__main__':
 
     IntraClusterStars = read_hdf(snap_num = Snapshot, param = 'IntraClusterStars') * 1.0e10 / Hubble_h
     DiskRadius = read_hdf(snap_num = Snapshot, param = 'DiskRadius')
+    BulgeRadius = read_hdf(snap_num = Snapshot, param = 'BulgeScaleRadius')
+    MergerBulgeRadius = read_hdf(snap_num = Snapshot, param = 'MergerBulgeRadius')
+    InstabilityBulgeRadius = read_hdf(snap_num = Snapshot, param = 'InstabilityBulgeRadius')
+    MergerBulgeMass = read_hdf(snap_num = Snapshot, param = 'MergerBulgeMass') * 1.0e10 / Hubble_h
+    InstabilityBulgeMass = read_hdf(snap_num = Snapshot, param = 'InstabilityBulgeMass') * 1.0e10 / Hubble_h
+
+    print("Bulge Scale Radius sample:")
+    print(BulgeRadius)
 
     H2gas = read_hdf(snap_num = Snapshot, param = 'H2gas') * 1.0e10 / Hubble_h
     Vvir = read_hdf(snap_num = Snapshot, param = 'Vvir')
@@ -1353,6 +1361,7 @@ if __name__ == '__main__':
     sc = plt.scatter(log10_sigma_H2, log10_sigma_SFR, c=np.log10(StellarMass[w]), cmap='plasma',
                       alpha=0.6, s=5, vmin=8, vmax=12, label='SAGE25')
     cb = plt.colorbar(sc)
+
     cb.set_label(r'$\log_{10} M_{\mathrm{stars}}\ (M_{\odot})$')
     # Add canonical Kennicutt-Schmidt law (Kennicutt 1998): log(Sigma_SFR) = 1.4*log(Sigma_gas) - 3.6
     sigma_gas_range = np.linspace(-4, 4, 100)
@@ -2039,4 +2048,199 @@ if __name__ == '__main__':
 
     plt.savefig(OutputDir + '25.cooling_rate_vs_temperature' + OutputFormat)
     print('Saved to', OutputDir + '25.cooling_rate_vs_temperature' + OutputFormat, '\n')
+    plt.close()
+
+    # -------------------------------------------------------
+
+    print('Plotting Bulge Size vs Bulge Mass')
+
+    plt.figure()
+    w = np.where((BulgeMass > 0.0) & (BulgeRadius > 0.0))[0]
+    if(len(w) > dilute): w = sample(list(w), dilute)
+
+    log10_bulge_mass = np.log10(BulgeMass[w])
+    log10_bulge_radius = np.log10(BulgeRadius[w] / 0.001)  # Convert to kpc
+    bulge_fraction = BulgeMass[w] / StellarMass[w]
+
+    # Color by bulge fraction
+    sc = plt.scatter(log10_bulge_mass, log10_bulge_radius, c=bulge_fraction, 
+                    cmap='RdYlBu_r', s=5, alpha=0.6, vmin=0, vmax=1)
+    plt.colorbar(sc, label=r'$f_{\mathrm{bulge}} = M_{\mathrm{bulge}}/M_{\mathrm{stars}}$')
+
+    # Add the theoretical mass-size relation
+    # R_e = 3.5 kpc * (M_bulge / 10^11 Msun)^0.55 (Shen+2003, offset for bulges per Gadotti 2009)
+    M_bulge_range = np.logspace(8, 12, 100)
+    R_bulge_theory = 3.5 * (M_bulge_range / 1e11)**0.55
+    plt.plot(np.log10(M_bulge_range), np.log10(R_bulge_theory), 
+            'k--', linewidth=2, label=r'$R_e = 3.5(M/10^{11})^{0.55}$ kpc', zorder=10)
+
+    # Add text annotation
+    plt.text(11.0, 1.5, 'Shen+03 (early-type)\nGadotti 09 (bulges)', 
+            fontsize=10, color='black', alpha=0.7)
+
+    plt.xlabel(r'$\log_{10} M_{\mathrm{bulge}}\ (M_{\odot})$')
+    plt.ylabel(r'$\log_{10} R_{\mathrm{bulge}}\ (\mathrm{kpc})$')
+    plt.xlim(8, 12)
+    plt.ylim(-0.5, 2.0)
+    plt.legend(loc='upper left', frameon=False)
+    plt.grid(True, alpha=0.3, linestyle=':', linewidth=0.5)
+
+    outputFile = OutputDir + '26.bulge_size_mass_relation' + OutputFormat
+    plt.savefig(outputFile)
+    print('Saved file to', outputFile, '\n')
+    plt.close()
+
+    # -------------------------------------------------------
+
+    print('Plotting Bulge vs Disk Size')
+
+    plt.figure()
+    w = np.where((BulgeMass > 0.0) & (BulgeRadius > 0.0) & (DiskRadius > 0.0) & 
+                (StellarMass > 1e9))[0]
+    if(len(w) > dilute): w = sample(list(w), dilute)
+
+    log10_disk_radius = np.log10(DiskRadius[w] / 0.001)  # Convert to kpc
+    log10_bulge_radius = np.log10(BulgeRadius[w] / 0.001)  # Convert to kpc
+    log10_stellar_mass = np.log10(StellarMass[w])
+
+    # Color by total stellar mass
+    # sc = plt.scatter(log10_disk_radius, log10_bulge_radius, c=log10_stellar_mass,
+    #                 cmap='plasma', s=5, alpha=0.6, vmin=9, vmax=12)
+    # plt.colorbar(sc, label=r'$\log_{10} M_{\mathrm{stars}}\ (M_{\odot})$')
+
+    # Add Merger Bulge Radius
+    w_merger = np.where((MergerBulgeRadius > 0.0) & (DiskRadius > 0.0) & (StellarMass > 1e9))[0]
+    if(len(w_merger) > dilute): w_merger = sample(list(w_merger), dilute)
+
+    log10_merger_radius = np.log10(MergerBulgeRadius[w_merger] / 0.001)
+    log10_disk_radius_merger = np.log10(DiskRadius[w_merger] / 0.001)
+    log10_stellar_mass = np.log10(StellarMass[w_merger])
+    sc = plt.scatter(log10_disk_radius_merger, log10_merger_radius, c=log10_stellar_mass, marker='d', edgecolors='k',
+                    cmap='plasma', s=50, alpha=0.4, label='Merger Bulge')
+
+    # Add Instability Bulge Radius
+    w_instab = np.where((InstabilityBulgeRadius > 0.0) & (DiskRadius > 0.0) & (StellarMass > 1e9))[0]
+    if(len(w_instab) > dilute): w_instab = sample(list(w_instab), dilute)
+    log10_instab_radius = np.log10(InstabilityBulgeRadius[w_instab] / 0.001)
+    log10_disk_radius_instab = np.log10(DiskRadius[w_instab] / 0.001)
+    log10_stellar_mass = np.log10(StellarMass[w_instab])
+    plt.scatter(log10_disk_radius_instab, log10_instab_radius, c=log10_stellar_mass, marker='s', 
+                    cmap='plasma', s=5, alpha=0.4, label='Instability Bulge')
+
+    plt.colorbar(sc, label=r'$\log_{10} M_{\mathrm{stars}}\ (M_{\odot})$')
+
+    # Add 1:1 line
+    plt.plot([-1, 3], [-1, 3], 'k:', linewidth=1, alpha=0.5, label='1:1')
+
+    # Add typical ratio line (bulge ~ 0.1 * disk)
+    disk_range = np.linspace(-1, 3, 100)
+    plt.plot(disk_range, disk_range + np.log10(0.1), 'r--', 
+            linewidth=2, label=r'$R_{\mathrm{bulge}} = 0.1 R_{\mathrm{disk}}$', alpha=0.7)
+
+    plt.xlabel(r'$\log_{10} R_{\mathrm{disk}}\ (\mathrm{kpc})$')
+    plt.ylabel(r'$\log_{10} R_{\mathrm{bulge}}\ (\mathrm{kpc})$')
+    plt.xlim(-0.5, 2.5)
+    plt.ylim(-1.5, 2.0)
+    plt.legend(loc='upper left', frameon=False)
+    plt.grid(True, alpha=0.3, linestyle=':', linewidth=0.5)
+
+    outputFile = OutputDir + '27.bulge_vs_disk_size' + OutputFormat
+    plt.savefig(outputFile)
+    print('Saved file to', outputFile, '\n')
+    plt.close()
+    # -------------------------------------------------------
+
+    print('Plotting Mass Components vs Stellar Mass')
+
+    plt.figure()
+    w = np.where(StellarMass > 1e9)[0]
+    if(len(w) > dilute): w = sample(list(w), dilute)
+
+    log10_stellar_mass = np.log10(StellarMass[w])
+    disk_mass = StellarMass[w] - BulgeMass[w]
+    # Ensure positive values for log
+    disk_mass[disk_mass <= 0] = 1e-10
+    merger_bulge_mass = MergerBulgeMass[w]
+    merger_bulge_mass[merger_bulge_mass <= 0] = 1e-10
+    instability_bulge_mass = InstabilityBulgeMass[w]
+    instability_bulge_mass[instability_bulge_mass <= 0] = 1e-10
+
+    plt.scatter(log10_stellar_mass, np.log10(disk_mass), c='b', s=10, alpha=0.8, label='Disk Mass', marker='s')
+    plt.scatter(log10_stellar_mass, np.log10(merger_bulge_mass), c='r', s=10, alpha=0.6, label='Merger Bulge Mass', marker='s')
+    plt.scatter(log10_stellar_mass, np.log10(instability_bulge_mass), c='greenyellow', s=10, alpha=0.3, label='Instability Bulge Mass', marker='s')
+
+    plt.xlabel(r'$\log_{10} M_{\mathrm{stars}}\ (M_{\odot})$')
+    plt.ylabel(r'$\log_{10} M_{\mathrm{component}}\ (M_{\odot})$')
+    plt.xlim(9, 12)
+    plt.ylim(8, 12)
+    plt.legend(loc='upper left', frameon=False)
+    plt.grid(True, alpha=0.3, linestyle=':', linewidth=0.5)
+
+    outputFile = OutputDir + '28.mass_components_vs_stellar_mass' + OutputFormat
+    plt.savefig(outputFile)
+    print('Saved file to', outputFile, '\n')
+    plt.close()
+
+    # -------------------------------------------------------
+
+    print('Plotting Mass Ratios vs Stellar Mass')
+
+    plt.figure()
+    w = np.where(StellarMass > 1e9)[0]
+    if(len(w) > dilute): w = sample(list(w), dilute)
+
+    log10_stellar_mass = np.log10(StellarMass[w])
+    disk_ratio = (StellarMass[w] - BulgeMass[w]) / StellarMass[w]
+    merger_ratio = MergerBulgeMass[w] / StellarMass[w]
+    instability_ratio = InstabilityBulgeMass[w] / StellarMass[w]
+
+    plt.scatter(log10_stellar_mass, disk_ratio, c='b', s=10, alpha=0.8, label='Disk Fraction', marker='s')
+    plt.scatter(log10_stellar_mass, merger_ratio, c='r', s=10, alpha=0.6, label='Merger Bulge Fraction', marker='s')
+    plt.scatter(log10_stellar_mass, instability_ratio, c='greenyellow', s=10, alpha=0.3, label='Instability Bulge Fraction', marker='s')
+
+    plt.xlabel(r'$\log_{10} M_{\mathrm{stars}}\ (M_{\odot})$')
+    plt.ylabel(r'Mass Fraction')
+    plt.xlim(9, 12)
+    plt.ylim(0, 1.05)
+    # plt.legend(loc='center left', frameon=False)
+    plt.grid(True, alpha=0.3, linestyle=':', linewidth=0.5)
+
+    outputFile = OutputDir + '29.mass_ratios_vs_stellar_mass' + OutputFormat
+    plt.savefig(outputFile)
+    print('Saved file to', outputFile, '\n')
+    plt.close()
+
+    # -------------------------------------------------------
+
+    print('Plotting Disk Scale Radius vs Disk Mass')
+
+    plt.figure()
+    w = np.where((StellarMass > 1e9) & (DiskRadius > 0.0))[0]
+    if(len(w) > dilute): w = sample(list(w), dilute)
+
+    disk_mass = StellarMass[w] - BulgeMass[w]
+    # Ensure positive values for log
+    w_pos = np.where(disk_mass > 0)[0]
+    disk_mass = disk_mass[w_pos]
+    disk_radius = DiskRadius[w][w_pos]
+    stellar_mass = StellarMass[w][w_pos]
+
+    log10_disk_mass = np.log10(disk_mass)
+    log10_disk_radius = np.log10(disk_radius / 0.001) # Convert to kpc
+    log10_stellar_mass = np.log10(stellar_mass)
+
+    # Create 2D histogram
+    h = plt.hist2d(log10_disk_mass, log10_disk_radius, bins=150, cmap='viridis', cmin=1)
+    plt.colorbar(h[3], label='Number of Galaxies')
+
+    plt.ylabel(r'$\log_{10} R_{\mathrm{disk}}\ (\mathrm{kpc})$')
+    plt.xlabel(r'$\log_{10} M_{\mathrm{disk}}\ (M_{\odot})$')
+    plt.xlim(9.0, 12.0)
+    plt.ylim(1.0e-3, 1.0e2)
+    plt.yscale('log')
+    plt.grid(True, alpha=0.3, linestyle=':', linewidth=0.5, color='white')
+
+    outputFile = OutputDir + '30.disk_mass_vs_disk_radius' + OutputFormat
+    plt.savefig(outputFile)
+    print('Saved file to', outputFile, '\n')
     plt.close()

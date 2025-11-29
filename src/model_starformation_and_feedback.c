@@ -73,6 +73,78 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
         } else {
             strdot = 0.0;
         }
+    } else if(run_params->SFprescription == 2) {
+        // Somerville et al. 2025: Density Modulated Star Formation Efficiency
+        // Using Equation 3 for efficiency: epsilon = (Sigma/Sigma_crit)/(1 + Sigma/Sigma_crit)
+        
+        reff = 3.0 * galaxies[p].DiskScaleRadius;
+        tdyn = reff / galaxies[p].Vvir;
+        const float h = run_params->Hubble_h;
+        const float rs_pc = galaxies[p].DiskScaleRadius * 1.0e6 / h;
+        float disk_area_pc2 = M_PI * pow(3.0 * rs_pc, 2); // pc^2
+        float gas_surface_density = (galaxies[p].ColdGas * 1.0e10 / h) / disk_area_pc2; // Msun/pc^2
+        
+        // Critical surface density from Equation 2
+        // Sigma_crit = <p_dot/m_star> / (pi * G)
+        // <p_dot/m_star> ~ 30 km/s/Myr, G = 4.302e-3 pc (km/s)^2/Msun
+        const double Sigma_crit = 30.0 / (M_PI * 4.302e-3); // ~2176 Msun/pc^2
+        
+        // Cloud-scale star formation efficiency from Equation 3
+        double epsilon_cl = (gas_surface_density / Sigma_crit) / (1.0 + gas_surface_density / Sigma_crit);
+        
+        // Fraction of gas in dense clouds (f_dense from Equation 8)
+        const double f_dense = 0.5; // Paper explores 0.1, 0.5, 1.0
+        
+        // Star formation rate: SFR ~ epsilon_cl * f_dense * m_gas / tdyn
+        // This is the key: efficiency scales with density, but we use tdyn as the timescale
+        if(tdyn > 0.0 && gas_surface_density > 0.0) {
+            strdot = epsilon_cl * f_dense * galaxies[p].ColdGas / tdyn;
+        } else {
+            strdot = 0.0;
+        }
+    } else if(run_params->SFprescription == 3) {
+        // Somerville et al. 2025: Density Modulated Star Formation Efficiency with H2
+        // Using Equation 3 for efficiency: epsilon = (Sigma/Sigma_crit)/(1 + Sigma/Sigma_crit)
+        // But replacing cold gas with H2 gas using Blitz & Rosolowsky 2006
+        
+        reff = 3.0 * galaxies[p].DiskScaleRadius;
+        tdyn = reff / galaxies[p].Vvir;
+        const float h = run_params->Hubble_h;
+        const float rs_pc = galaxies[p].DiskScaleRadius * 1.0e6 / h;
+        
+        if (rs_pc <= 0.0) {
+            galaxies[p].H2gas = 0.0;
+            strdot = 0.0;
+        } else {
+            float disk_area_pc2 = M_PI * pow(3.0 * rs_pc, 2); // pc^2
+            float gas_surface_density = (galaxies[p].ColdGas * 1.0e10 / h) / disk_area_pc2; // Msun/pc^2
+            float stellar_surface_density = (galaxies[p].StellarMass * 1.0e10 / h) / disk_area_pc2; // Msun/pc^2
+            
+            // Calculate molecular fraction using Blitz & Rosolowsky 2006
+            total_molecular_gas = calculate_molecular_fraction_BR06(gas_surface_density, stellar_surface_density, 
+                                                                   rs_pc) * galaxies[p].ColdGas;
+            
+            galaxies[p].H2gas = total_molecular_gas;
+            
+            // Critical surface density from Equation 2
+            // Sigma_crit = <p_dot/m_star> / (pi * G)
+            // <p_dot/m_star> ~ 30 km/s/Myr, G = 4.302e-3 pc (km/s)^2/Msun
+            const double Sigma_crit = 30.0 / (M_PI * 4.302e-3); // ~2176 Msun/pc^2
+            
+            // Cloud-scale star formation efficiency from Equation 3
+            double epsilon_cl = (gas_surface_density / Sigma_crit) / (1.0 + gas_surface_density / Sigma_crit);
+            
+            // Fraction of gas in dense clouds (f_dense from Equation 8)
+            const double f_dense = 0.5; // Paper explores 0.1, 0.5, 1.0
+            
+            // Star formation rate using H2 gas instead of total cold gas
+            // SFR ~ epsilon_cl * f_dense * H2_gas / tdyn
+            if(tdyn > 0.0 && gas_surface_density > 0.0 && galaxies[p].H2gas > 0.0) {
+                strdot = epsilon_cl * f_dense * galaxies[p].H2gas / tdyn;
+            } else {
+                strdot = 0.0;
+            }
+        }
     } else {
         fprintf(stderr, "No star formation prescription selected!\n");
         ABORT(0);

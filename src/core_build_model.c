@@ -225,6 +225,9 @@ int join_galaxies_of_progenitors(const int halonr, const int ngalstart, int *gal
                         galaxies[ngal].MergTime = 999.9f;
 
                         galaxies[ngal].DiskScaleRadius = get_disk_radius(halonr, ngal, halos, galaxies);
+                        galaxies[ngal].BulgeScaleRadius = get_bulge_radius(ngal, galaxies, run_params);
+                        galaxies[ngal].MergerBulgeRadius = get_bulge_radius(ngal, galaxies, run_params);
+                        galaxies[ngal].InstabilityBulgeRadius = get_bulge_radius(ngal, galaxies, run_params);
 
                         galaxies[ngal].Type = 0;
                     } else {
@@ -327,15 +330,22 @@ int evolve_galaxies(const int halonr, const int ngal, int *numgals, int *maxgals
     const double halo_age = run_params->Age[halo_snapnum];
     const double infallingGas = infall_recipe(centralgal, ngal, Zcurr, galaxies, run_params);
 
+    if (run_params->CGMrecipeOn == 1) {
+        determine_and_store_regime(ngal, galaxies, run_params);
+    }
+    if (run_params->FeedbackFreeModeOn == 1) {
+        determine_and_store_ffb_regime(ngal, galaxies, run_params);
+    }
+
     // We integrate things forward by using a number of intervals equal to STEPS
     for(int step = 0; step < STEPS; step++) {
 
-        if (run_params->CGMrecipeOn == 1) {
-            determine_and_store_regime(ngal, galaxies, run_params);
-        }
-        if (run_params->FeedbackFreeModeOn == 1) {
-            determine_and_store_ffb_regime(ngal, galaxies, run_params);
-        }
+        // if (run_params->CGMrecipeOn == 1) {
+        //     determine_and_store_regime(ngal, galaxies, run_params);
+        // }
+        // if (run_params->FeedbackFreeModeOn == 1) {
+        //     determine_and_store_ffb_regime(ngal, galaxies, run_params);
+        // }
 
         // Loop over all galaxies in the halo
         for(int p = 0; p < ngal; p++) {

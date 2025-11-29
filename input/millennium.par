@@ -45,7 +45,7 @@ BoxSize         62.5 % Size of the simulation box in Mpc/h.
 %----- SAGE recipe options ----------------
 %------------------------------------------
 
-SFprescription        1   %0: original Croton et al. 2006; 1: BR06 H2 Stars
+SFprescription        1   %0: original Croton et al. 2006; 1: BR06 H2 Stars; 2: Somerville et al. 2025 SFR; 3: Somerville et al. 2025 SFR + H2
 AGNrecipeOn           2   %0: switch off; 1: empirical model; 2: Bondi-Hoyle model; 3: cold cloud accretion model
 SupernovaRecipeOn     1   %0: switch off; 1: original Croton et al. 2016
 ReionizationOn        1   %0: switch off
@@ -53,6 +53,7 @@ DiskInstabilityOn     1   %0: switch off; 1: bulge and BH growth through instabi
 CGMrecipeOn           1   %0: switch off
 FIREmodeOn            1   %0: switch off
 FeedbackFreeModeOn    1   %0: switch off
+BulgeSizeOn           3   %0: switch off; 1: Shen eq. 33; 2: Shen eq. 32; 3: Tonini
 
 %------------------------------------------
 %----- SAGE model parameters --------------

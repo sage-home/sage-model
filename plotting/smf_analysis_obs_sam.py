@@ -41,6 +41,7 @@ MODEL_CONFIGS = [
         'volume_fraction': 1.0,      # Fraction of the full volume output by the model
         'use_for_residuals': False,  # NEW: Flag to indicate this is NOT the comparison model
         'hubble_h': 0.73,            # Hubble parameter for this model
+        'baryon_fraction': 0.17,     # Baryon fraction for this model
         'redshifts': [127.000, 79.998, 50.000, 30.000, 19.916, 18.244, 16.725, 15.343, 14.086, 12.941, 11.897, 10.944, 10.073, 
                      9.278, 8.550, 7.883, 7.272, 6.712, 6.197, 5.724, 5.289, 4.888, 4.520, 4.179, 3.866, 3.576, 3.308, 3.060, 
                      2.831, 2.619, 2.422, 2.239, 2.070, 1.913, 1.766, 1.630, 1.504, 1.386, 1.276, 1.173, 1.078, 0.989, 0.905, 
@@ -58,6 +59,7 @@ MODEL_CONFIGS = [
         'volume_fraction': 1.0,      # Fraction of the full volume output by the model
         'use_for_residuals': True,   # NEW: Flag to indicate this is the comparison model
         'hubble_h': 0.73,            # Different Hubble parameter for this model
+        'baryon_fraction': 0.17,     # Baryon fraction for this model
         'redshifts': [127.000, 79.998, 50.000, 30.000, 19.916, 18.244, 16.725, 15.343, 14.086, 12.941, 11.897, 10.944, 10.073, 
                      9.278, 8.550, 7.883, 7.272, 6.712, 6.197, 5.724, 5.289, 4.888, 4.520, 4.179, 3.866, 3.576, 3.308, 3.060, 
                      2.831, 2.619, 2.422, 2.239, 2.070, 1.913, 1.766, 1.630, 1.504, 1.386, 1.276, 1.173, 1.078, 0.989, 0.905, 
@@ -76,6 +78,26 @@ MODEL_CONFIGS = [
         'volume_fraction': 1.0,     # Fraction of the full volume output by the model
         'use_for_residuals': False,   # NEW: Flag to indicate this is the comparison model
         'hubble_h': 0.73,            # Different Hubble parameter for this model
+        'baryon_fraction': 0.17,     # Baryon fraction for this model
+        'redshifts': [127.000, 79.998, 50.000, 30.000, 19.916, 18.244, 16.725, 15.343, 14.086, 12.941, 11.897, 10.944, 10.073, 
+                     9.278, 8.550, 7.883, 7.272, 6.712, 6.197, 5.724, 5.289, 4.888, 4.520, 4.179, 3.866, 3.576, 3.308, 3.060, 
+                     2.831, 2.619, 2.422, 2.239, 2.070, 1.913, 1.766, 1.630, 1.504, 1.386, 1.276, 1.173, 1.078, 0.989, 0.905, 
+                     0.828, 0.755, 0.687, 0.624, 0.564, 0.509, 0.457, 0.408, 0.362, 0.320, 0.280, 0.242, 0.208, 0.175, 0.144, 
+                     0.116, 0.089, 0.064, 0.041, 0.020, 0.000]  # Redshift of each snapshot for this model
+    },
+    # NEW: Add your comparison model here
+    {
+        'name': 'Millennium - Somerville',   # UPDATE: Display name for your comparison model
+        'dir': './output/millennium_somerville/',  # UPDATE: Path to your comparison model directory
+        'color': 'magenta',            # Color for plotting
+        'linestyle': '-',           # Dotted line style
+        'linewidth': 2,             # Line width
+        'alpha': 0.8,               # Transparency
+        'boxsize': 62.5,            # Box size in h^-1 Mpc for this model
+        'volume_fraction': 1.0,     # Fraction of the full volume output by the model
+        'use_for_residuals': False,   # NEW: Flag to indicate this is the comparison model
+        'hubble_h': 0.73,            # Different Hubble parameter for this model
+        'baryon_fraction': 0.17,     # Baryon fraction for this model
         'redshifts': [127.000, 79.998, 50.000, 30.000, 19.916, 18.244, 16.725, 15.343, 14.086, 12.941, 11.897, 10.944, 10.073, 
                      9.278, 8.550, 7.883, 7.272, 6.712, 6.197, 5.724, 5.289, 4.888, 4.520, 4.179, 3.866, 3.576, 3.308, 3.060, 
                      2.831, 2.619, 2.422, 2.239, 2.070, 1.913, 1.766, 1.630, 1.504, 1.386, 1.276, 1.173, 1.078, 0.989, 0.905, 
@@ -2002,6 +2024,7 @@ def plot_smf_redshift_grid(galaxy_types='all', mass_range=(7, 12),
                 # Read data for the selected snapshot
                 stellar_mass = read_hdf(directory, snap_num=snap_str, param='StellarMass')
                 galaxy_type = read_hdf(directory, snap_num=snap_str, param='Type')
+                mvir = read_hdf(directory, snap_num=snap_str, param='Mvir')
                 
                 if stellar_mass is None or galaxy_type is None:
                     print(f"  Could not read data for {model_name} Snap_{best_snap}")
@@ -2059,6 +2082,42 @@ def plot_smf_redshift_grid(galaxy_types='all', mass_range=(7, 12),
                     phi_upper = np.log10(phi_err[mask_upper])
                     ax.plot(xaxeshisto[mask_upper], phi_upper, 'v', 
                            color=color, markersize=4, alpha=alpha*0.7)
+                
+                # NEW: Add scaled halo mass function line
+                if mvir is not None:
+                    # Calculate baryonic mass from halo mass
+                    baryon_fraction = model_config.get('baryon_fraction', 0.17)
+                    baryonic_mass = mvir * 1.0e10 / model_config['hubble_h'] * baryon_fraction
+                    
+                    # Filter same as stellar mass (positive mass and correct galaxy type)
+                    # Note: mvir should be positive for all halos, but good to check
+                    combined_mask_halo = (baryonic_mass > 0) & mask
+                    filtered_halo_masses = baryonic_mass[combined_mask_halo]
+                    
+                    if len(filtered_halo_masses) > 0:
+                        # Calculate HMF
+                        xaxeshisto_halo, phi_halo, _ = calculate_smf(filtered_halo_masses, volume=volume)
+                        
+                        # Plot scaled HMF
+                        mask_plot_halo = phi_halo > 0
+                        if np.any(mask_plot_halo):
+                            phi_halo_log = np.log10(phi_halo[mask_plot_halo])
+                            
+                            # Create label only if not already in legend
+                            hmf_label = None
+                            hmf_key = f'{model_name}_hmf'
+                            if hmf_key not in models_in_legend:
+                                hmf_label = f'{model_name} (Mvir * {baryon_fraction})'
+                                models_in_legend.add(hmf_key)
+                            
+                            # Plot as thick line
+                            hmf_plot = ax.plot(xaxeshisto_halo[mask_plot_halo], phi_halo_log, 
+                                   color=color, linestyle='-', linewidth=linewidth+1.5,
+                                   label=hmf_label, alpha=alpha) # Made slightly thicker than main line
+                            
+                            # Add to simulation legend if labeled
+                            if hmf_label is not None:
+                                panel_sim_legend_items.append((hmf_plot[0], hmf_label))
                 
             except Exception as e:
                 print(f"Warning: Could not process {model_name} for this redshift bin: {e}")
@@ -3487,6 +3546,7 @@ def plot_smf_all_redshift_bins(galaxy_types='all', mass_range=(7, 12),
                 # Read data for the selected snapshot
                 stellar_mass = read_hdf(directory, snap_num=snap_str, param='StellarMass')
                 galaxy_type = read_hdf(directory, snap_num=snap_str, param='Type')
+                mvir = read_hdf(directory, snap_num=snap_str, param='Mvir')
                 
                 if stellar_mass is None or galaxy_type is None:
                     print(f"  Could not read data for {model_name} Snap_{best_snap}")
@@ -3544,6 +3604,42 @@ def plot_smf_all_redshift_bins(galaxy_types='all', mass_range=(7, 12),
                     phi_upper = np.log10(phi_err[mask_upper])
                     ax.plot(xaxeshisto[mask_upper], phi_upper, 'v', 
                            color=color, markersize=4, alpha=alpha*0.7)
+                
+                # NEW: Add scaled halo mass function line
+                if mvir is not None:
+                    # Calculate baryonic mass from halo mass
+                    baryon_fraction = model_config.get('baryon_fraction', 0.17)
+                    baryonic_mass = mvir * 1.0e10 / model_config['hubble_h'] * baryon_fraction
+                    
+                    # Filter same as stellar mass (positive mass and correct galaxy type)
+                    # Note: mvir should be positive for all halos, but good to check
+                    combined_mask_halo = (baryonic_mass > 0) & mask
+                    filtered_halo_masses = baryonic_mass[combined_mask_halo]
+                    
+                    if len(filtered_halo_masses) > 0:
+                        # Calculate HMF
+                        xaxeshisto_halo, phi_halo, _ = calculate_smf(filtered_halo_masses, volume=volume)
+                        
+                        # Plot scaled HMF
+                        mask_plot_halo = phi_halo > 0
+                        if np.any(mask_plot_halo):
+                            phi_halo_log = np.log10(phi_halo[mask_plot_halo])
+                            
+                            # Create label only if not already in legend
+                            hmf_label = None
+                            hmf_key = f'{model_name}_hmf'
+                            if hmf_key not in models_in_legend:
+                                hmf_label = f'{model_name} (Mvir * {baryon_fraction})'
+                                models_in_legend.add(hmf_key)
+                            
+                            # Plot as thick line
+                            # hmf_plot = ax.plot(xaxeshisto_halo[mask_plot_halo], phi_halo_log, 
+                            #        color=color, linestyle='-', linewidth=linewidth+1.5,
+                            #        label=hmf_label, alpha=alpha) # Made slightly thicker than main line
+                            
+                            # Add to simulation legend if labeled
+                            if hmf_label is not None:
+                                panel_sim_legend_items.append((hmf_plot[0], hmf_label))
                 
             except Exception as e:
                 print(f"Warning: Could not process {model_name} for this redshift bin: {e}")
@@ -3819,11 +3915,11 @@ if __name__ == "__main__":
         # plot_smf_all_redshift_bins(galaxy_types='satellite',
         #                         save_path=OutputDir + 'comprehensive_satellite.pdf')
         
-        print("\nCreating COMPREHENSIVE SMF grid with residuals (z=0-12)...")
-        plot_smf_all_redshift_bins_with_residuals(
-            galaxy_types='all',
-            save_path=OutputDir + 'comprehensive_all_with_residuals.pdf'
-        )
+        # print("\nCreating COMPREHENSIVE SMF grid with residuals (z=0-12)...")
+        # plot_smf_all_redshift_bins_with_residuals(
+        #     galaxy_types='all',
+        #     save_path=OutputDir + 'comprehensive_all_with_residuals.pdf'
+        # )
         
         print("\nSplit redshift SMF analysis complete!")
         print("Generated plots:")

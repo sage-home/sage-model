@@ -18,7 +18,7 @@ void init_galaxy(const int p, const int halonr, int *galaxycounter, const struct
 
     galaxies[p].Type = 0;
     galaxies[p].Regime = -1; // undefined at initialization
-    galaxies[p].FFBRegime = 0;
+    galaxies[p].FFBRegime = -1;
 
     galaxies[p].GalaxyNr = *galaxycounter;
     (*galaxycounter)++;
@@ -48,6 +48,8 @@ void init_galaxy(const int p, const int halonr, int *galaxycounter, const struct
     galaxies[p].ColdGas = 0.0;
     galaxies[p].StellarMass = 0.0;
     galaxies[p].BulgeMass = 0.0;
+    galaxies[p].MergerBulgeMass = 0.0;      // Track how bulge formed
+    galaxies[p].InstabilityBulgeMass = 0.0; // Track how bulge formed
     galaxies[p].HotGas = 0.0;
     galaxies[p].EjectedMass = 0.0;
     galaxies[p].BlackHoleMass = 0.0;
@@ -73,6 +75,9 @@ void init_galaxy(const int p, const int halonr, int *galaxycounter, const struct
     }
 
     galaxies[p].DiskScaleRadius = get_disk_radius(halonr, p, halos, galaxies);
+    galaxies[p].BulgeScaleRadius = get_bulge_radius(p, galaxies, run_params);
+    galaxies[p].MergerBulgeRadius = get_bulge_radius(p, galaxies, run_params);
+    galaxies[p].InstabilityBulgeRadius = get_bulge_radius(p, galaxies, run_params);
     galaxies[p].MergTime = 999.9f;
     galaxies[p].Cooling = 0.0;
     galaxies[p].Heating = 0.0;
@@ -113,7 +118,401 @@ double get_disk_radius(const int halonr, const int p, const struct halo_data *ha
     }
 }
 
+double get_bulge_radius(const int p, struct GALAXY *galaxies, const struct params *run_params)
+{
+    // BulgeSizeOn == 0: No bulge size calculation
+    if(run_params->BulgeSizeOn == 0) {
+        galaxies[p].BulgeScaleRadius = 0.0;
+        galaxies[p].MergerBulgeRadius = 0.0;
+        galaxies[p].InstabilityBulgeRadius = 0.0;
+        return 0.0;
+    }
+    
+    const double h = run_params->Hubble_h;
+    
+    // BulgeSizeOn == 1: Shen equation 33 (simple power-law)
+    if(run_params->BulgeSizeOn == 1) {
+        if(galaxies[p].BulgeMass <= 0.0) {
+            galaxies[p].BulgeScaleRadius = 0.0;
+            galaxies[p].MergerBulgeRadius = 0.0;
+            galaxies[p].InstabilityBulgeRadius = 0.0;
+            return 0.0;
+        }
+        
+        // Convert bulge mass from 10^10 M_sun/h to M_sun
+        const double M_bulge_sun = galaxies[p].BulgeMass * 1.0e10 / h;
+        
+        // Shen+2003 equation (33): log(R/kpc) = 0.56 log(M/Msun) - 5.54
+        const double log_R_kpc = 0.56 * log10(M_bulge_sun) - 5.54;
+        double R_bulge_kpc = pow(10.0, log_R_kpc);
+        
+        // Convert to code units (Mpc/h)
+        const double R_bulge = R_bulge_kpc * 1.0e-3 * h;
+        
+        galaxies[p].BulgeScaleRadius = R_bulge;
+        galaxies[p].MergerBulgeRadius = 0.0;
+        galaxies[p].InstabilityBulgeRadius = 0.0;
+        
+        return R_bulge;
+    }
+    
+    // BulgeSizeOn == 2: Shen equation 32 (two-regime power-law)
+    if(run_params->BulgeSizeOn == 2) {
+        if(galaxies[p].BulgeMass <= 0.0) {
+            galaxies[p].BulgeScaleRadius = 0.0;
+            galaxies[p].MergerBulgeRadius = 0.0;
+            galaxies[p].InstabilityBulgeRadius = 0.0;
+            return 0.0;
+        }
+        
+        // Convert bulge mass from 10^10 M_sun/h to M_sun
+        const double M_bulge_sun = galaxies[p].BulgeMass * 1.0e10 / h;
+        
+        // Transition mass from Shen et al. (2003) equation (32)
+        const double M_transition = 2.0e10;  // M_sun
+        
+        double R_bulge_kpc;
+        
+        if(M_bulge_sun > M_transition) {
+            // High-mass regime: like giant ellipticals
+            // log(R/kpc) = 0.56 log(M) - 5.54
+            const double log_R = 0.56 * log10(M_bulge_sun) - 5.54;
+            R_bulge_kpc = pow(10.0, log_R);
+        } else {
+            // Low-mass regime: like dwarf ellipticals  
+            // log(R/kpc) = 0.14 log(M) - 1.21
+            const double log_R = 0.14 * log10(M_bulge_sun) - 1.21;
+            R_bulge_kpc = pow(10.0, log_R);
+        }
+        
+        // Convert to code units (Mpc/h)
+        const double R_bulge = R_bulge_kpc * 1.0e-3 * h;
+        
+        galaxies[p].BulgeScaleRadius = R_bulge;
+        galaxies[p].MergerBulgeRadius = 0.0;
+        galaxies[p].InstabilityBulgeRadius = 0.0;
+        
+        return R_bulge;
+    }
+    
+    // BulgeSizeOn == 3: Tonini setup (separate merger and instability bulges)
+    if(run_params->BulgeSizeOn == 3) {
+        const double M_merger = galaxies[p].MergerBulgeMass;
+        const double M_instability = galaxies[p].InstabilityBulgeMass;
+        const double M_total = M_merger + M_instability;
+        
+        if(M_total <= 0.0) {
+            galaxies[p].BulgeScaleRadius = 0.0;
+            galaxies[p].MergerBulgeRadius = 0.0;
+            galaxies[p].InstabilityBulgeRadius = 0.0;
+            return 0.0;
+        }
+        
+        // Merger bulge radius: use Shen equation 33 (steep relation)
+        double R_merger = 0.0;
+        if(M_merger > 0.0) {
+            const double M_merger_sun = M_merger * 1.0e10 / h;
+            const double log_R_kpc = 0.56 * log10(M_merger_sun) - 5.54;
+            const double R_merger_kpc = pow(10.0, log_R_kpc);
+            R_merger = R_merger_kpc * 1.0e-3 * h;
+        }
+        galaxies[p].MergerBulgeRadius = R_merger;
+        
+        // Instability bulge radius: already set by incremental updates
+        // If not set yet (first initialization), use disc scaling
+        double R_instability = galaxies[p].InstabilityBulgeRadius;
+        if(M_instability > 0.0 && R_instability <= 0.0) {
+            const double R_disc_kpc = galaxies[p].DiskScaleRadius * 1.0e3 / h;
+            R_instability = 0.2 * R_disc_kpc * 1.0e-3 * h;
+        }
+        galaxies[p].InstabilityBulgeRadius = R_instability;
+        
+        // Combined radius: mass-weighted average (equation 25)
+        double R_bulge = 0.0;
+        if(M_total > 0.0) {
+            R_bulge = (M_merger * R_merger + M_instability * R_instability) / M_total;
+        }
+        
+        galaxies[p].BulgeScaleRadius = R_bulge;
+        return R_bulge;
+    }
+    
+    // Default fallback (should not reach here)
+    galaxies[p].BulgeScaleRadius = 0.0;
+    galaxies[p].MergerBulgeRadius = 0.0;
+    galaxies[p].InstabilityBulgeRadius = 0.0;
+    return 0.0;
+}
 
+void update_instability_bulge_radius(const int p, const double delta_mass, 
+                                     struct GALAXY *galaxies, const struct params *run_params)
+{
+    // Tonini+2016 equation (15): incremental radius evolution
+    // R_i = (R_i,OLD * M_i,OLD + δM * 0.2 * R_D) / (M_i,OLD + δM)
+    
+    if(run_params->BulgeSizeOn != 3) return;  // Only for Tonini mode
+    if(delta_mass <= 0.0) return;
+    
+    const double h = run_params->Hubble_h;
+    const double M_old = galaxies[p].InstabilityBulgeMass - delta_mass;  // Mass before addition
+    const double R_old = galaxies[p].InstabilityBulgeRadius;
+    
+    // Current disc radius in kpc
+    const double R_disc_kpc = galaxies[p].DiskScaleRadius * 1.0e3 / h;
+    
+    // New mass contribution scales with 0.2 * R_disc
+    const double R_new_contribution_kpc = 0.2 * R_disc_kpc;
+    const double R_new_contribution = R_new_contribution_kpc * 1.0e-3 * h;  // to Mpc/h
+    
+    double R_new;
+    if(M_old > 0.0 && R_old > 0.0) {
+        // Incremental update (equation 15)
+        const double R_old_kpc = R_old * 1.0e3 / h;
+        const double M_new = galaxies[p].InstabilityBulgeMass;
+        const double R_new_kpc = (R_old_kpc * M_old + R_new_contribution_kpc * delta_mass) / M_new;
+        R_new = R_new_kpc * 1.0e-3 * h;
+    } else {
+        // First mass addition: initialize with 0.2 * R_disc
+        R_new = R_new_contribution;
+    }
+    
+    galaxies[p].InstabilityBulgeRadius = R_new;
+}
+
+// double get_bulge_radius(const int p, struct GALAXY *galaxies, const struct params *run_params)
+// {
+//     // Mass-size relation for bulges based on Shen et al. (2003) and Gadotti (2009)
+//     // 
+//     // Key findings from literature:
+//     // - Shen+2003: Early-type galaxies follow R̄ ∝ M^0.55 (their eq. 10)
+//     // - Gadotti 2009: Classical bulges have similar slope but are OFFSET from ellipticals
+//     // - Pseudobulges follow a shallower relation similar to disks
+//     //
+//     // For simplicity in a semi-analytic model, we use a single relation
+//     // that represents classical bulges (merger-formed)
+    
+//     if(galaxies[p].BulgeMass <= 0.0) {
+//         return 0.0;
+//     }
+    
+//     const double h = run_params->Hubble_h;
+    
+//     // Convert bulge mass from 10^10 M_sun/h to M_sun
+//     const double M_bulge_sun = galaxies[p].BulgeMass * 1.0e10 / h;
+    
+//     // Mass-size relation from Shen et al. (2003) for early-type galaxies
+//     // R̄ ∝ M^0.55 for early-types (their Section 5.2)
+//     // 
+//     // Normalization: At M = 10^11 M_sun, typical R_e ~ 3-5 kpc for bulges
+//     // (from Gadotti 2009 Figure 11 - classical bulges are offset ~0.3 dex 
+//     // BELOW ellipticals which have R_e ~ 5-6 kpc at 10^11 M_sun)
+    
+//     const double M_0 = 1.0e11;       // Reference mass in M_sun
+//     const double R_0 = 3.5;          // Reference radius in kpc (classical bulges)
+//     const double alpha = 0.55;       // Power law index from Shen+2003 early-types
+    
+//     double R_bulge_kpc = R_0 * pow(M_bulge_sun / M_0, alpha);
+    
+//     // No artificial bounds - let the physics determine the sizes
+//     // Bulges can range from <0.1 kpc (dwarf spheroidals) to >10 kpc (massive ellipticals)
+    
+//     // Convert to code units (Mpc/h)
+//     return R_bulge_kpc * 1.0e-3 * h;  // kpc to Mpc/h
+// }
+
+// double get_bulge_radius(const int p, struct GALAXY *galaxies, const struct params *run_params)
+// {
+
+        //GOOD ONE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+//     // Mass-size relation for bulges based on Shen et al. (2003) and Gadotti (2009)
+//     // 
+//     // Key findings from literature:
+//     // - Shen+2003: Early-type galaxies follow R̄ ∝ M^0.55 (their eq. 10)
+//     // - Gadotti 2009: Classical bulges have similar slope but are OFFSET from ellipticals
+//     // - Pseudobulges follow a shallower relation similar to disks
+//     //
+//     // For simplicity in a semi-analytic model, we use a single relation
+//     // that represents classical bulges (merger-formed)
+    
+//     if(galaxies[p].BulgeMass <= 0.0) {
+//         return 0.0;
+//     }
+    
+//     const double h = run_params->Hubble_h;
+    
+//     // Convert bulge mass from 10^10 M_sun/h to M_sun
+//     const double M_bulge_sun = galaxies[p].BulgeMass * 1.0e10 / h;
+    
+//     // Shen+2003 equation (33): log(R/kpc) = 0.56 log(M/Msun) - 5.54
+//     const double log_R_kpc = 0.56 * log10(M_bulge_sun) - 5.54;
+//     double R_bulge_kpc = pow(10.0, log_R_kpc);
+    
+//     // No artificial bounds - let the physics determine the sizes
+//     // Bulges can range from <0.1 kpc (dwarf spheroidals) to >10 kpc (massive ellipticals)
+
+//     // printf("Bulge mass: %e, Bulge radius: %e\n", galaxies[p].BulgeMass, R_bulge_kpc);
+    
+//     // Convert to code units (Mpc/h)
+//     return R_bulge_kpc * 1.0e-3 / h;  // kpc to Mpc/h
+// }
+
+// double get_bulge_radius(const int p, struct GALAXY *galaxies, const struct params *run_params)
+// {
+//     // Mass-size relation for bulges based on Shen et al. (2003) equation (32)
+//     // 
+//     // Two-regime power law with transition at M_transition = 2×10^10 M☉:
+//     // - High mass (M > 2×10^10 M☉): log(R/kpc) = 0.56 log(M) - 5.54  [giant ellipticals]
+//     // - Low mass  (M < 2×10^10 M☉): log(R/kpc) = 0.14 log(M) - 1.21  [dwarf ellipticals]
+//     //
+//     // Physical motivation:
+//     // - Massive bulges: steep R-M relation, de Vaucouleurs profiles, merger-formed
+//     // - Dwarf bulges: shallow R-M relation, exponential profiles, disk-like
+    
+//     if(galaxies[p].BulgeMass <= 0.0) {
+//         return 0.0;
+//     }
+    
+//     const double h = run_params->Hubble_h;
+    
+//     // Convert bulge mass from 10^10 M_sun/h to M_sun
+//     const double M_bulge_sun = galaxies[p].BulgeMass * 1.0e10 / h;
+    
+//     // Transition mass from Shen et al. (2003) equation (32)
+//     const double M_transition = 2.0e10;  // M_sun
+    
+//     double R_bulge_kpc;
+    
+//     if(M_bulge_sun > M_transition) {
+//         // High-mass regime: like giant ellipticals
+//         // log(R/kpc) = 0.56 log(M) - 5.54
+//         const double log_R = 0.56 * log10(M_bulge_sun) - 5.54;
+//         R_bulge_kpc = pow(10.0, log_R);
+//     } else {
+//         // Low-mass regime: like dwarf ellipticals  
+//         // log(R/kpc) = 0.14 log(M) - 1.21
+//         const double log_R = 0.14 * log10(M_bulge_sun) - 1.21;
+//         R_bulge_kpc = pow(10.0, log_R);
+//     }
+    
+//     // Convert to code units (Mpc/h)
+//     return R_bulge_kpc * 1.0e-3 * h;  // kpc to Mpc/h
+// }
+
+// double get_bulge_radius(const int p, struct GALAXY *galaxies, const struct params *run_params)
+// {
+//     // Mass-size relation for bulges based on Shen et al. (2003) equation (32)
+//     // 
+//     // Two-regime power law with transition at M_transition = 2×10^10 M☉:
+//     // - High mass (M > 2×10^10 M☉): log(R/kpc) = 0.56 log(M) - 5.54  [giant ellipticals]
+//     // - Low mass  (M < 2×10^10 M☉): log(R/kpc) = 0.14 log(M) - 1.21  [dwarf ellipticals]
+//     //
+//     // Physical motivation:
+//     // - Massive bulges: steep R-M relation, de Vaucouleurs profiles, merger-formed
+//     // - Dwarf bulges: shallow R-M relation, exponential profiles, disk-like
+    
+//     if(galaxies[p].BulgeMass <= 0.0) {
+//         return 0.0;
+//     }
+    
+//     const double h = run_params->Hubble_h;
+    
+//     // Convert bulge mass from 10^10 M_sun/h to M_sun
+//     const double M_bulge_sun = galaxies[p].BulgeMass * 1.0e10 / h;
+    
+//     // Transition mass from Shen et al. (2003) equation (32)
+//     const double M_transition = 2.0e10;  // M_sun
+    
+//     double R_bulge_kpc;
+    
+//     if(M_bulge_sun > M_transition) {
+//         // High-mass regime: like giant ellipticals
+//         // log(R/kpc) = 0.56 log(M) - 5.54
+//         const double log_R = 0.56 * log10(M_bulge_sun) - 5.54;
+//         R_bulge_kpc = pow(10.0, log_R);
+//     } else {
+//         // Low-mass regime: like dwarf ellipticals  
+//         // log(R/kpc) = 0.14 log(M) - 1.21
+//         const double log_R = 0.14 * log10(M_bulge_sun) - 1.21;
+//         R_bulge_kpc = pow(10.0, log_R);
+//     }
+    
+//     // Convert to code units (Mpc/h)
+//     return R_bulge_kpc * 1.0e-3 * h;  // kpc to Mpc/h
+// }
+
+
+// double get_bulge_radius(const int p, struct GALAXY *galaxies, const struct params *run_params)
+// {
+//     if(galaxies[p].BulgeMass <= 0.0) {
+//         return 0.0;
+//     }
+    
+//     const double h = run_params->Hubble_h;
+//     const double M_bulge_sun = galaxies[p].BulgeMass * 1.0e10 / h;
+    
+//     // Determine bulge type from formation history
+//     const double M_merger = galaxies[p].MergerBulgeMass;
+//     const double M_instability = galaxies[p].InstabilityBulgeMass;
+//     const double M_total = M_merger + M_instability;
+    
+//     if(M_total <= 0.0) {
+//         // Fallback: use simple power-law
+//         const double h = run_params->Hubble_h;
+    
+//         // Convert bulge mass from 10^10 M_sun/h to M_sun
+//         const double M_bulge_sun = galaxies[p].BulgeMass * 1.0e10 / h;
+        
+//         // Shen+2003 equation (33): log(R/kpc) = 0.56 log(M/Msun) - 5.54
+//         const double log_R_kpc = 0.56 * log10(M_bulge_sun) - 5.54;
+//         double R_bulge_kpc = pow(10.0, log_R_kpc);
+        
+//         // No artificial bounds - let the physics determine the sizes
+//         // Bulges can range from <0.1 kpc (dwarf spheroidals) to >10 kpc (massive ellipticals)
+
+//         // printf("Bulge mass: %e, Bulge radius: %e\n", galaxies[p].BulgeMass, R_bulge_kpc);
+        
+//         // Convert to code units (Mpc/h)
+//         R_bulge_kpc * 1.0e-3 / h;  // kpc to Mpc/h
+//     }
+    
+//     // Calculate merger bulge radius (classical)
+//     double R_merger = 0.0;
+//     if(M_merger > 0.0) {
+//         const double h = run_params->Hubble_h;
+    
+//         // Convert bulge mass from 10^10 M_sun/h to M_sun
+//         const double M_bulge_sun = galaxies[p].BulgeMass * 1.0e10 / h;
+        
+//         // Shen+2003 equation (33): log(R/kpc) = 0.56 log(M/Msun) - 5.54
+//         const double log_R_kpc = 0.56 * log10(M_bulge_sun) - 5.54;
+//         double R_bulge_kpc = pow(10.0, log_R_kpc);
+        
+//         // No artificial bounds - let the physics determine the sizes
+//         // Bulges can range from <0.1 kpc (dwarf spheroidals) to >10 kpc (massive ellipticals)
+
+//         // printf("Bulge mass: %e, Bulge radius: %e\n", galaxies[p].BulgeMass, R_bulge_kpc);
+        
+//         // Convert to code units (Mpc/h)
+//         R_merger = R_bulge_kpc * 1.0e-3 / h;  // kpc to Mpc/h
+//     }
+    
+//     // Calculate instability bulge radius (pseudo)
+//     // Use Tonini+2016: R_bulge ~ 0.2 * R_disc on average
+//     double R_instability = 0.0;
+//     if(M_instability > 0.0) {
+//         const double R_disc_kpc = galaxies[p].DiskScaleRadius * 1.0e3 / h;  // Convert to kpc
+//         R_instability = 0.2 * R_disc_kpc;  // kpc (Fisher & Drory 2008)
+//     }
+    
+//     // Store the calculated radii in the struct (converted to Mpc/h)
+//     galaxies[p].MergerBulgeRadius = R_merger * 1.0e-3 * h;
+//     galaxies[p].InstabilityBulgeRadius = R_instability * 1.0e-3 * h;
+    
+//     // Mass-weighted average
+//     const double R_bulge_kpc = (M_merger * R_merger + M_instability * R_instability) / M_total;
+    
+//     return R_bulge_kpc * 1.0e-3 * h;  // Convert to Mpc/h
+// }
 
 double get_metallicity(const double gas, const double metals)
 {
@@ -208,12 +607,16 @@ void determine_and_store_ffb_regime(const int ngal, struct GALAXY *galaxies,
         return;
     }
     
+    // Counter for diagnostics
+    static int total_galaxies_checked = 0;
+    static int ffb_galaxies_assigned = 0;
+    
     // Classify each galaxy as FFB or normal based on equation (2)
     for(int p = 0; p < ngal; p++) {
         if(galaxies[p].mergeType > 0) continue;
         
         const double z = run_params->ZZ[galaxies[p].SnapNum];
-        const double Mvir = galaxies[p].Mvir;  // in 10^10 M☉/h
+        const double Mvir = galaxies[p].Mvir;  // in 10^10 Mâ˜‰/h
         
         // Calculate smooth FFB fraction using sigmoid transition (Li et al. 2024, eq. 3)
         const double f_ffb = calculate_ffb_fraction(Mvir, z, run_params);
@@ -222,26 +625,99 @@ void determine_and_store_ffb_regime(const int ngal, struct GALAXY *galaxies,
         // Galaxies near threshold have intermediate probability of being FFB
         const double random_uniform = (double)rand() / (double)RAND_MAX;
         
+        total_galaxies_checked++;
+        
         if(random_uniform < f_ffb) {
             galaxies[p].FFBRegime = 1;  // FFB halo
+            ffb_galaxies_assigned++;
+            
+            // Debug output for first few FFB halos at high-z
+            if(ffb_galaxies_assigned <= 10 && z > 8.0) {
+                const double Mvir_ffb = calculate_ffb_threshold_mass(z, run_params);
+                printf("=== FFB HALO #%d DETECTED ===\n", ffb_galaxies_assigned);
+                printf("  Galaxy %d at z=%.4f\n", p, z);
+                printf("  Mvir = %.4e (10^10 Msun/h)\n", Mvir);
+                printf("  Threshold = %.4e (10^10 Msun/h)\n", Mvir_ffb);
+                printf("  Mass ratio = %.4f\n", Mvir / Mvir_ffb);
+                printf("  FFB fraction (f_ffb) = %.4f\n", f_ffb);
+                printf("  --> FFB MODE ACTIVATED\n");
+                printf("============================\n\n");
+            }
         } else {
             galaxies[p].FFBRegime = 0;  // Normal halo
         }
-        
-        // Optional: Add debug output for FFB halos
-        // if(galaxies[p].FFBRegime == 1 && (z > 8.0 || p == 0)) {
-        //     const double Mvir_ffb = calculate_ffb_threshold_mass(z, run_params);
-        //     printf("=== FFB HALO DETECTED ===\n");
-        //     printf("  Galaxy %d at z=%.4f\n", p, z);
-        //     printf("  Mvir = %.4e (10^10 Msun/h)\n", Mvir);
-        //     printf("  Threshold = %.4e (10^10 Msun/h)\n", Mvir_ffb);
-        //     printf("  Mass ratio = %.4f\n", Mvir / Mvir_ffb);
-        //     printf("  FFB fraction (f_ffb) = %.4f\n", f_ffb);
-        //     printf("  --> FFB MODE ACTIVATED\n");
-        //     printf("=========================\n\n");
-        // }
+    }
+    
+    // Print summary every 10000 galaxies
+    if(total_galaxies_checked % 10000 == 0 && total_galaxies_checked > 0) {
+        printf("FFB SUMMARY: %d/%d galaxies (%.1f%%) assigned FFB regime\n", 
+               ffb_galaxies_assigned, total_galaxies_checked, 
+               100.0 * ffb_galaxies_assigned / total_galaxies_checked);
     }
 }
+
+// void determine_and_store_ffb_regime(const int ngal, struct GALAXY *galaxies,
+//                                      const struct params *run_params)
+// {
+//     // Only apply FFB if the mode is enabled
+//     if(run_params->FeedbackFreeModeOn == 0) {
+//         // FFB mode disabled - mark all galaxies as normal
+//         for(int p = 0; p < ngal; p++) {
+//             galaxies[p].FFBRegime = 0;
+//         }
+//         return;
+//     }
+    
+//     // Counter for diagnostics
+//     static int total_galaxies_checked = 0;
+//     static int ffb_galaxies_assigned = 0;
+    
+//     // Classify each galaxy as FFB or normal based on equation (2)
+//     for(int p = 0; p < ngal; p++) {
+//         if(galaxies[p].mergeType > 0) continue;
+        
+//         const double z = run_params->ZZ[galaxies[p].SnapNum];
+//         const double Mvir = galaxies[p].Mvir;  // in 10^10 M☉/h
+        
+//         // Calculate smooth FFB fraction using sigmoid transition (Li et al. 2024, eq. 3)
+//         const double f_ffb = calculate_ffb_fraction(Mvir, z, run_params);
+        
+//         // DETERMINISTIC assignment: use f_ffb as a threshold, not a probability
+//         // This preserves the smooth sigmoid behavior but makes it deterministic
+//         total_galaxies_checked++;
+        
+//         if(f_ffb > 0.5) {
+//             // More than 50% chance → assign FFB deterministically
+//             if(galaxies[p].FFBRegime != 1) {
+//                 ffb_galaxies_assigned++;
+//             }
+//             galaxies[p].FFBRegime = 1;  // FFB halo
+            
+//             // Debug output for first few FFB halos at high-z
+//             if(ffb_galaxies_assigned <= 10 && z > 8.0) {
+//                 const double Mvir_ffb = calculate_ffb_threshold_mass(z, run_params);
+//                 printf("=== FFB HALO #%d DETECTED ===\n", ffb_galaxies_assigned);
+//                 printf("  Galaxy %d at z=%.4f\n", p, z);
+//                 printf("  Mvir = %.4e (10^10 Msun/h)\n", Mvir);
+//                 printf("  Threshold = %.4e (10^10 Msun/h)\n", Mvir_ffb);
+//                 printf("  Mass ratio = %.4f\n", Mvir / Mvir_ffb);
+//                 printf("  FFB fraction (f_ffb) = %.4f (> 0.5 → FFB)\n", f_ffb);
+//                 printf("  --> FFB MODE ACTIVATED\n");
+//                 printf("============================\n\n");
+//             }
+//         } else {
+//             // Less than 50% chance → assign normal deterministically
+//             galaxies[p].FFBRegime = 0;  // Normal halo
+//         }
+//     }
+    
+//     // Print summary every 10000 galaxies
+//     if(total_galaxies_checked % 10000 == 0 && total_galaxies_checked > 0) {
+//         printf("FFB SUMMARY: %d/%d galaxies (%.1f%%) assigned FFB regime\n", 
+//                ffb_galaxies_assigned, total_galaxies_checked, 
+//                100.0 * ffb_galaxies_assigned / total_galaxies_checked);
+//     }
+// }
 
 float calculate_stellar_scale_height_BR06(float disk_scale_length_pc)
 {

@@ -152,6 +152,7 @@ struct GALAXY
 
     /* misc */
     float DiskScaleRadius;
+    float BulgeScaleRadius;
     float MergTime;
     double Cooling;
     double Heating;
@@ -176,6 +177,11 @@ struct GALAXY
     float tff;
     float tcool_over_tff;
     float tdeplete;
+
+    float MergerBulgeMass;     // For size calculation only
+    float InstabilityBulgeMass; // For size calculation only
+    float MergerBulgeRadius;       // Classical bulge radius (post-processing)
+    float InstabilityBulgeRadius;  // Pseudo-bulge radius (post-processing)
 };
 
 
@@ -445,6 +451,7 @@ struct params
     int32_t    FIREmodeOn;
     int32_t    CGMrecipeSAGEOn;
     int32_t    FeedbackFreeModeOn;
+    int32_t    BulgeSizeOn;
 
     double RecycleFraction;
     double Yield;

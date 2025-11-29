@@ -18,7 +18,7 @@
 #define NUM_OUTPUT_FIELDS 2
 #pragma message "Using SAGE in MCMC mode (will only write " STR(NUM_OUTPUT_FIELDS) " fields into the hdf5 file)"
 #else
-#define NUM_OUTPUT_FIELDS 66
+#define NUM_OUTPUT_FIELDS 71
 #endif
 
 #define NUM_GALS_PER_BUFFER 8192
@@ -355,6 +355,11 @@ int32_t initialize_hdf5_galaxy_files(const int filenr, struct save_info *save_in
         MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, SfrDiskZ);
         MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, SfrBulgeZ);
         MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, DiskScaleRadius);
+        MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, BulgeScaleRadius);
+        MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, MergerBulgeRadius);
+        MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, InstabilityBulgeRadius);
+        MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, MergerBulgeMass);
+        MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, InstabilityBulgeMass);
         MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, Cooling);
         MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, Heating);
         MALLOC_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, QuasarModeBHaccretionMass);
@@ -635,6 +640,11 @@ int32_t finalize_hdf5_galaxy_files(const struct forest_info *forest_info, struct
         FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, SfrDiskZ);
         FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, SfrBulgeZ);
         FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, DiskScaleRadius);
+        FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, BulgeScaleRadius);
+        FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, MergerBulgeRadius);
+        FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, InstabilityBulgeRadius);
+        FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, MergerBulgeMass);
+        FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, InstabilityBulgeMass);
         FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, Cooling);
         FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, Heating);
         FREE_GALAXY_OUTPUT_INNER_ARRAY(snap_idx, QuasarModeBHaccretionMass);
@@ -776,7 +786,7 @@ int32_t generate_field_metadata(char (*field_names)[MAX_STRING_LEN], char (*fiel
                                                          "Vmax", "VelDisp", "ColdGas", "StellarMass", "BulgeMass", "HotGas", "EjectedMass",
                                                          "BlackHoleMass", "IntraClusterStars", "MetalsColdGas", "MetalsStellarMass", "MetalsBulgeMass",
                                                          "MetalsHotGas", "MetalsEjectedMass", "MetalsIntraClusterStars", "SfrDisk", "SfrBulge", "SfrDiskZ",
-                                                         "SfrBulgeZ", "DiskRadius", "Cooling", "Heating", "QuasarModeBHaccretionMass",
+                                                         "SfrBulgeZ", "DiskRadius", "BulgeScaleRadius", "MergerBulgeRadius", "InstabilityBulgeRadius", "MergerBulgeMass", "InstabilityBulgeMass", "Cooling", "Heating", "QuasarModeBHaccretionMass",
                                                          "TimeOfLastMajorMerger", "TimeOfLastMinorMerger", "OutflowRate", "infallMvir",
                                                          "infallVvir", "infallVmax", "Regime", "CGMgas", "MetalsCGMgas", "MassLoading", "H2gas",
                                                          "tcool", "tff", "tcool_over_tff", "tdeplete", "RcoolToRvir", "TimeOfInfall", "FFBRegime"};
@@ -808,7 +818,9 @@ int32_t generate_field_metadata(char (*field_names)[MAX_STRING_LEN], char (*fiel
                                                                 "Mass of metals in the hot reservoir.", "Mass of metals in the ejected reseroivr.",
                                                                 "Mass of metals in intra-cluster stars.", "Star formation rate within the disk.",
                                                                 "Star formation rate within the bulge.", "Average metallicity of star-forming disk gas.",
-                                                                "Average metallicity of star-forming bulge gas.", "Disk scale radius based on Mo, Shude & White (1998)",
+                                                                "Average metallicity of star-forming bulge gas.", "Disk scale radius based on Mo, Shude & White (1998)", "Bulge scale radius based on Lange et al. (2015), Shen et al. (2003)",
+                                                                "Bulge radius formed from mergers (classical bulge).", "Bulge radius formed from disk instabilities (pseudo-bulge).",
+                                                                "Mass of stars in the bulge formed from mergers.", "Mass of stars in the bulge formed from disk instabilities.",
                                                                 "Energy rate for gas cooling in the galaxy.", "Energy rate for gas heating in the galaxy.",
                                                                 "Mass that this galaxy's black hole accreted during the last time step.",
                                                                 "Time since this galaxy had a major merger.", "Time since this galaxy had a minor merger.",
@@ -837,7 +849,7 @@ int32_t generate_field_metadata(char (*field_names)[MAX_STRING_LEN], char (*fiel
                                                          "km/s", "km/s", "1.0e10 Msun/h", "1.0e10 Msun/h", "1.0e10 Msun/h", "1.0e10 Msun/h", "1.0e10 Msun/h",
                                                          "1.0e10 Msun/h", "1.0e10 Msun/h", "1.0e10 Msun/h", "1.0e10 Msun/h", "1.0e10 Msun/h",
                                                          "1.0e10 Msun/h", "1.0e10 Msun/h", "1.0e10 Msun/h", "Msun/yr", "Msun/yr", "Msun/yr",
-                                                         "Msun/yr", "Mpc/h", "erg/s", "erg/s", "1.0e10 Msun/h",
+                                                         "Msun/yr", "Mpc/h", "Mpc/h", "Mpc/h", "Mpc/h", "1.0e10 Msun/h", "1.0e10 Msun/h", "erg/s", "erg/s", "1.0e10 Msun/h",
                                                          "Myr", "Myr", "Msun/yr", "1.0e10 Msun/yr", "km/s", "km/s", "Unitless", "1.0e10 Msun/h", "1.0e10 Msun/h", "Unitless", "1.0e10 Msun/h",
                                                          "Myr", "Myr", "Unitless", "Myr", "Unitless", "Myr", "Unitless"};
 
@@ -850,7 +862,7 @@ int32_t generate_field_metadata(char (*field_names)[MAX_STRING_LEN], char (*fiel
                                             H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT,
                                             H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT,
                                             H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT,
-                                            H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT,
+                                            H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT,
                                             H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_INT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT,
                                             H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_FLOAT, H5T_NATIVE_INT};
 #endif
@@ -970,6 +982,11 @@ int32_t prepare_galaxy_for_hdf5_output(const struct GALAXY *g, struct save_info 
     save_info->buffer_output_gals[output_snap_idx].SfrBulgeZ[gals_in_buffer] = tmp_SfrBulgeZ;
 
     save_info->buffer_output_gals[output_snap_idx].DiskScaleRadius[gals_in_buffer] = g->DiskScaleRadius;
+    save_info->buffer_output_gals[output_snap_idx].BulgeScaleRadius[gals_in_buffer] = g->BulgeScaleRadius;
+    save_info->buffer_output_gals[output_snap_idx].MergerBulgeRadius[gals_in_buffer] = g->MergerBulgeRadius;
+    save_info->buffer_output_gals[output_snap_idx].InstabilityBulgeRadius[gals_in_buffer] = g->InstabilityBulgeRadius;
+    save_info->buffer_output_gals[output_snap_idx].MergerBulgeMass[gals_in_buffer] = g->MergerBulgeMass;
+    save_info->buffer_output_gals[output_snap_idx].InstabilityBulgeMass[gals_in_buffer] = g->InstabilityBulgeMass;
 
     if (g->Cooling > 0.0) {
         save_info->buffer_output_gals[output_snap_idx].Cooling[gals_in_buffer] = log10(g->Cooling * run_params->UnitEnergy_in_cgs / run_params->UnitTime_in_s);
@@ -1179,6 +1196,11 @@ int32_t trigger_buffer_write(const int32_t snap_idx, const int32_t num_to_write,
     EXTEND_AND_WRITE_GALAXY_DATASET(SfrDiskZ);
     EXTEND_AND_WRITE_GALAXY_DATASET(SfrBulgeZ);
     EXTEND_AND_WRITE_GALAXY_DATASET(DiskScaleRadius);
+    EXTEND_AND_WRITE_GALAXY_DATASET(BulgeScaleRadius);
+    EXTEND_AND_WRITE_GALAXY_DATASET(MergerBulgeRadius);
+    EXTEND_AND_WRITE_GALAXY_DATASET(InstabilityBulgeRadius);
+    EXTEND_AND_WRITE_GALAXY_DATASET(MergerBulgeMass);
+    EXTEND_AND_WRITE_GALAXY_DATASET(InstabilityBulgeMass);
     EXTEND_AND_WRITE_GALAXY_DATASET(Cooling);
     EXTEND_AND_WRITE_GALAXY_DATASET(Heating);
     EXTEND_AND_WRITE_GALAXY_DATASET(QuasarModeBHaccretionMass);
@@ -1275,6 +1297,7 @@ int32_t write_header(hid_t file_id, const struct forest_info *forest_info, const
     CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "CGMrecipeOn", run_params->CGMrecipeOn, H5T_NATIVE_INT);
     CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "FIREmodeOn", run_params->FIREmodeOn, H5T_NATIVE_INT);
     CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "FeedbackFreeModeOn", run_params->FeedbackFreeModeOn, H5T_NATIVE_INT);
+    CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "BulgeSizeOn", run_params->BulgeSizeOn, H5T_NATIVE_INT);
 
     // Model parameters.
     CREATE_SINGLE_ATTRIBUTE(runtime_group_id, "SfrEfficiency", run_params->SfrEfficiency, H5T_NATIVE_DOUBLE);

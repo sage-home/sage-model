@@ -37,7 +37,12 @@ void check_disk_instability(const int p, const int centralgal, const int halonr,
             const double metallicity = get_metallicity(galaxies[p].StellarMass - galaxies[p].BulgeMass, galaxies[p].MetalsStellarMass - galaxies[p].MetalsBulgeMass);
 
             galaxies[p].BulgeMass += unstable_stars;
+            galaxies[p].InstabilityBulgeMass += unstable_stars;  // Track origin of bulge mass
             galaxies[p].MetalsBulgeMass += metallicity * unstable_stars;
+            // galaxies[p].BulgeScaleRadius = get_bulge_radius(p, galaxies, run_params);
+            
+            // UPDATE: Tonini incremental radius evolution (equation 15)
+            update_instability_bulge_radius(p, unstable_stars, galaxies, run_params);
 
             // Need to fix this. Excluded for now.
             // galaxies[p].mergeType = 3;  // mark as disk instability partial mass transfer
@@ -51,6 +56,34 @@ void check_disk_instability(const int p, const int centralgal, const int halonr,
             }
 #endif
 
+        }
+
+        // CRITICAL: Recalculate disc radius after mass transfer
+        // The disc is now less massive, so its scale radius should shrink
+        // Use conservation of angular momentum: smaller mass → smaller radius
+        if(unstable_stars > 0.0 || unstable_gas > 0.0) {
+            // Disc mass after instability
+            const double new_diskmass = galaxies[p].ColdGas + (galaxies[p].StellarMass - galaxies[p].BulgeMass);
+            
+            if(new_diskmass > 0.0 && diskmass > 0.0) {
+                // Simple scaling: R_new = R_old × (M_new / M_old)
+                // This conserves specific angular momentum per unit mass
+                const double mass_ratio = new_diskmass / diskmass;
+                galaxies[p].DiskScaleRadius *= mass_ratio;
+                
+                // Safety check: don't let disc radius go to zero or become huge
+                if(galaxies[p].DiskScaleRadius < 0.01 * galaxies[p].Rvir) {
+                    galaxies[p].DiskScaleRadius = 0.01 * galaxies[p].Rvir;
+                }
+                if(galaxies[p].DiskScaleRadius > galaxies[p].Rvir) {
+                    galaxies[p].DiskScaleRadius = galaxies[p].Rvir;
+                }
+            } else {
+                // Disc has been completely consumed by bulge
+                galaxies[p].DiskScaleRadius = 0.0;
+            }
+        
+            // galaxies[p].DiskScaleRadius = get_disk_radius(halonr, p, halos, galaxies);
         }
 
         // burst excess gas and feed black hole (really need a dedicated model for bursts and BH growth here)
@@ -70,5 +103,8 @@ void check_disk_instability(const int p, const int centralgal, const int halonr,
 
             collisional_starburst_recipe(unstable_gas_fraction, p, centralgal, time, dt, halonr, 1, step, galaxies, run_params);
         }
+
+        // Update bulge size after mass transfer
+        // galaxies[p].BulgeScaleRadius = get_bulge_radius(p, galaxies, run_params);
     }
 }

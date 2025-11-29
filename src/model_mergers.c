@@ -69,7 +69,7 @@ void deal_with_galaxy_merger(const int p, const int merger_centralgal, const int
         mass_ratio = 1.0;
     }
 
-    add_galaxies_together(merger_centralgal, p, galaxies);
+    add_galaxies_together(merger_centralgal, p, galaxies, run_params);
 
     // grow black hole through accretion from cold disk during mergers, a la Kauffmann & Haehnelt (2000)
     if(run_params->AGNrecipeOn) {
@@ -84,7 +84,7 @@ void deal_with_galaxy_merger(const int p, const int merger_centralgal, const int
     }
 
     if(mass_ratio > run_params->ThreshMajorMerger) {
-        make_bulge_from_burst(merger_centralgal, galaxies);
+        make_bulge_from_burst(merger_centralgal, galaxies, run_params);
         galaxies[merger_centralgal].TimeOfLastMajorMerger = time;
         galaxies[p].mergeType = 2;  // mark as major merger
     } else {
@@ -177,7 +177,7 @@ void quasar_mode_wind(const int gal, const double BHaccrete, struct GALAXY *gala
 
 
 
-void add_galaxies_together(const int t, const int p, struct GALAXY *galaxies)
+void add_galaxies_together(const int t, const int p, struct GALAXY *galaxies, const struct params *run_params)
 {
     galaxies[t].ColdGas += galaxies[p].ColdGas;
     galaxies[t].MetalsColdGas += galaxies[p].MetalsColdGas;
@@ -203,6 +203,26 @@ void add_galaxies_together(const int t, const int p, struct GALAXY *galaxies)
     galaxies[t].BulgeMass += galaxies[p].StellarMass;
     galaxies[t].MetalsBulgeMass += galaxies[p].MetalsStellarMass;
 
+    // Track origin based on morphology (Tonini+2016 logic)
+    const double disk_mass = galaxies[t].StellarMass - galaxies[t].BulgeMass;
+    const double disk_fraction = (galaxies[t].StellarMass > 0.0) ? 
+                                 disk_mass / galaxies[t].StellarMass : 0.0;
+    
+    if(disk_fraction > 0.5) {
+        // Disc-dominated: minor merger triggers instability
+        const double added_mass = galaxies[p].StellarMass;
+        galaxies[t].InstabilityBulgeMass += added_mass;
+        
+        // UPDATE: Tonini incremental radius evolution (equation 16)
+        update_instability_bulge_radius(t, added_mass, galaxies, run_params);
+    } else {
+        // Spheroid-dominated: grows merger bulge
+        galaxies[t].MergerBulgeMass += galaxies[p].StellarMass;
+    }
+
+    // galaxies[t].BulgeScaleRadius = get_bulge_radius(t, galaxies, run_params);
+    // galaxies[t].DiskScaleRadius = get_disk_radius(t, halonr, galaxies, run_params);
+
     for(int step = 0; step < STEPS; step++) {
         galaxies[t].SfrBulge[step] += galaxies[p].SfrDisk[step] + galaxies[p].SfrBulge[step];
         galaxies[t].SfrBulgeColdGas[step] += galaxies[p].SfrDiskColdGas[step] + galaxies[p].SfrBulgeColdGas[step];
@@ -212,11 +232,15 @@ void add_galaxies_together(const int t, const int p, struct GALAXY *galaxies)
 
 
 
-void make_bulge_from_burst(const int p, struct GALAXY *galaxies)
+void make_bulge_from_burst(const int p, struct GALAXY *galaxies, const struct params *run_params)
 {
     // generate bulge
     galaxies[p].BulgeMass = galaxies[p].StellarMass;
+    galaxies[p].MergerBulgeMass = galaxies[p].StellarMass;      // All merger-driven
+    galaxies[p].InstabilityBulgeMass = 0.0;                      // Destroyed
     galaxies[p].MetalsBulgeMass = galaxies[p].MetalsStellarMass;
+
+    // galaxies[p].BulgeScaleRadius = get_bulge_radius(p, galaxies, run_params);
 
     // update the star formation rate
     for(int step = 0; step < STEPS; step++) {
