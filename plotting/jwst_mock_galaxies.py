@@ -1276,7 +1276,7 @@ def run_cosmos_sage_matching():
     # Initialize matcher - UPDATE THESE PATHS!
     matcher = COSMOSSageMatching(
         cosmos_file='./data/COSMOS.csv',  # Update this path to your COSMOS CSV file
-        sage_dir='./output/millennium_FIRE/',        # Update this path to your SAGE output directory
+        sage_dir='./output/millennium/',        # Update this path to your SAGE output directory
         hubble_h=0.73
     )
     
@@ -1331,7 +1331,7 @@ def run_epochs_sage_matching():
     # Initialize matcher for EPOCHS - UPDATE THESE PATHS!
     matcher = ObservationalSageMatching(
         obs_file= './data/EPOCHS.csv',  # Update this path to your EPOCHS CSV file
-        sage_dir='./output/millennium_FIRE/',  # Update this path to your SAGE output directory
+        sage_dir='./output/millennium/',  # Update this path to your SAGE output directory
         dataset_name='EPOCHS',
         hubble_h=0.73
     )
@@ -1387,7 +1387,7 @@ def run_ceers_sage_matching():
     
     # Initialize matcher for CEERS
     matcher = CEERSSageMatching(
-        sage_dir='./output/millennium_FIRE/',  # Update this path to your SAGE output directory
+        sage_dir='./output/millennium/',  # Update this path to your SAGE output directory
         hubble_h=0.73
     )
     

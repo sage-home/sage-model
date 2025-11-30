@@ -180,7 +180,7 @@ MODEL_CONFIGS = [
     # }
     # {
     #     'name': 'Broken model',  # This should match a key in PLOT_COLORS for coloring
-    #     'directory': '/Users/mbradley/Documents/PhD/SAGE-VANILLA/sage-model/output/millennium/',  # Path to your model output directory
+    #     'directory': '/Users/mbradley/Documents/PhD/SAGE-VANILLA/sage-model/output/millennium_vanilla/',  # Path to your model output directory
     #     'filename': 'model_0.hdf5',  # HDF5 filename (usually stays the same)
     #     'snapshot': 'Snap_63',  # Your final snapshot (e.g., 'Snap_127' if you have 128 snapshots)
     #     'hubble_h': 0.73,  # Your Hubble parameter (e.g., 0.6774)

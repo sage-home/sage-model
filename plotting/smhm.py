@@ -27,7 +27,7 @@ MODELS = [
     },
     {
         'name': 'SAGE C16',
-        'dir': './output/millennium_vanilla/',
+        'dir': './output/millennium_vanilla_vanilla/',
         'box_size': 62.5,
         'volume_fraction': 1.0,
         'hubble_h': 0.73,

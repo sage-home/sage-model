@@ -917,9 +917,10 @@ def plot_bulge_to_total_ratio():
             stellar_mass = read_hdf(snap_num=snap, param='StellarMass') * 1e10 / Hubble_h
             merger_bulge_mass = read_hdf(snap_num=snap, param='MergerBulgeMass') * 1e10 / Hubble_h
             instability_bulge_mass = read_hdf(snap_num=snap, param='InstabilityBulgeMass') * 1e10 / Hubble_h
+            bulge_mass = read_hdf(snap_num=snap, param='BulgeMass') * 1e10 / Hubble_h
             
             # Calculate total bulge mass
-            total_bulge_mass = merger_bulge_mass + instability_bulge_mass
+            total_bulge_mass = bulge_mass
             
             # Filter: only galaxies above minimum stellar mass with positive bulge and stellar mass
             valid = (stellar_mass > min_stellar_mass) & (stellar_mass > 0) & (total_bulge_mass >= 0)

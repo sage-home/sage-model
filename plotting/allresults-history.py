@@ -1136,7 +1136,7 @@ if __name__ == '__main__':
     # --------------------------------------------------------
 
     # Load second model for comparison
-    FileName2 = '../../SAGE_BROKEN/sage-model/output/millennium/model_0.hdf5'
+    FileName2 = '../../SAGE_BROKEN/sage-model/output/millennium_vanilla/model_0.hdf5'
 
     print(f'Reading second model from {FileName2}')
 

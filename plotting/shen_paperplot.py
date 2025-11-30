@@ -432,7 +432,7 @@ import numpy as np
 import h5py
 
 # Configuration  
-DirName = './output/Millennium_noffb/'
+DirName = './output/millennium_noffb/'
 FileName = 'model_0.hdf5'
 Snapshot = 'Snap_63'
 Hubble_h = 0.73

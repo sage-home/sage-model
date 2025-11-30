@@ -98,7 +98,7 @@ def main():
     folders = [
         "/Users/mbradley/Downloads/millennium_plots"
     ]
-    output_pdf = "./output/millennium_big.pdf"
+    output_pdf = "./output/millennium_vanilla_big.pdf"
 
     pdf_files = get_pdf_files(folders)
     print(f"Found {len(pdf_files)} PDF files.")

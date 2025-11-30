@@ -1268,7 +1268,7 @@ if __name__ == '__main__':
     for snap in range(64):
         snap_str = f'Snap_{snap}'
         try:
-            # Read redshift
+            # 1. Get Redshift
             f = h5.File(DirName+FileName, 'r')
             if snap_str not in f:
                 f.close()
@@ -1276,24 +1276,28 @@ if __name__ == '__main__':
             z = f[snap_str].attrs['redshift']
             f.close()
 
-            # Read masses
+            # 2. Read Arrays (Read TYPE here to ensure length matches)
+            Type_snap = read_hdf(snap_num=snap_str, param='Type')
             StellarMass_snap = read_hdf(snap_num=snap_str, param='StellarMass') * 1.0e10 / Hubble_h
-            MergerBulgeMass_snap = read_hdf(snap_num=snap_str, param='MergerBulgeMass') * 1.0e10 / Hubble_h
-            InstabilityBulgeMass_snap = read_hdf(snap_num=snap_str, param='InstabilityBulgeMass') * 1.0e10 / Hubble_h
-
-            # Filter for massive galaxies to avoid resolution noise
-            w = np.where(StellarMass_snap > 1e9)[0]
             
-            if len(w) > 0:
-                # Calculate B/T for individual galaxies
+            # Use BulgeMass directly (Best Practice)
+            BulgeMass_snap = read_hdf(snap_num=snap_str, param='BulgeMass') * 1.0e10 / Hubble_h
+
+            # 3. Filter: Mass > 10.5 AND Centrals (Type 0)
+            # Isolating centrals removes "stripped" satellites, giving a cleaner physics signal
+            w = np.where((StellarMass_snap > 10**10.5) & (Type_snap == 0))[0]
+            
+            # 4. Safety Check: Only calculate if we have enough galaxies
+            # This removes the jagged noise at high-z
+            if len(w) > 1:
                 stellar_mass = StellarMass_snap[w]
-                bulge_mass = MergerBulgeMass_snap[w] + InstabilityBulgeMass_snap[w]
+                bulge_mass = BulgeMass_snap[w]
                 
-                # Avoid division by zero (though stellar mass > 1e9 should prevent this)
+                # Calculate Ratios
                 ratios = bulge_mass / np.maximum(stellar_mass, 1e-10)
-                ratios = np.clip(ratios, 0.0, 1.0) # Ensure physical bounds
+                ratios = np.clip(ratios, 0.0, 1.0) 
                 
-                # Calculate statistics
+                # Calculate Stats
                 p16, p50, p84 = np.percentile(ratios, [16, 50, 84])
                 
                 redshifts.append(z)
@@ -1301,7 +1305,9 @@ if __name__ == '__main__':
                 bt_16.append(p16)
                 bt_84.append(p84)
                 
-                print(f"Snapshot {snap}: z={z:.2f}, Median B/T={p50:.4f} (16-84%: {p16:.4f}-{p84:.4f})")
+                print(f"Snap {snap} (z={z:.2f}): N={len(w)} | Median B/T={p50:.3f}")
+            else:
+                print(f"Snap {snap} (z={z:.2f}): Not enough massive centrals (N={len(w)})")
 
         except Exception as e:
             print(f"Skipping snapshot {snap}: {e}")
