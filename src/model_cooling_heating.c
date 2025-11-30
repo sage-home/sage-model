@@ -377,7 +377,7 @@ double cooling_recipe_regime_aware(const int gal, const double dt, struct GALAXY
         // if(galaxies[gal].HotGas > 0.0) {
         //     hot_cooling = cooling_recipe_hot(gal, dt, galaxies, run_params);
         // }
-        
+    
     } else {
         // HOT REGIME: Traditional physics dominates
         
