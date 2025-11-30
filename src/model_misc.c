@@ -466,9 +466,9 @@ float calculate_midplane_pressure_BR06(float sigma_gas, float sigma_stars, float
     // P_ext/k = 272 cm⁻³ K × (Σ_gas/M_⊙ pc⁻²) × (Σ_*/M_⊙ pc⁻²)^0.5 × (v_g/km s⁻¹) × (h_*/pc)^-0.5
     float pressure = 272.0 * sigma_gas * sqrt(effective_sigma_stars) * v_g / sqrt(h_star_pc);
 
-    if (pressure > 6e5) {
-        pressure = 6e5; // K cm^-3
-    }
+    // if (pressure > 6e5) {
+    //     pressure = 6e5; // K cm^-3
+    // }
 
     return pressure; // K cm⁻³
 }
